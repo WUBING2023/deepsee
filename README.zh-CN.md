@@ -1,0 +1,120 @@
+# 深见 DeepSee
+
+[English](README.md) · [简体中文](README.zh-CN.md)
+
+让 DeepSeek Harness 看见图片，并在需要时把任务交给更合适的 API 模型或本机 CLI。
+
+DeepSee 是一个轻量、可发布的标准 DSH bundle。它不替换 Harness 的 Loop、Goal、Plan 或 Workflow，只补充三件事：视觉读取、模型能力目录、轻量多模型路由。
+
+## 一键安装
+
+发布到 npm 后，用户只需：
+
+```powershell
+npx deepsee-harness install
+dsh web
+```
+
+`deepsee install` 会通过 Harness 官方 `dsh plugin` 管理器，把同一个 bundle 安装到 `web` 和 `headless` profile。它不会修改 Harness 的 `node_modules`，不会写手工 shim，也不会启动独立伴随服务。
+
+从本仓库开发安装：
+
+```powershell
+pnpm install
+pnpm run install:plugin
+pnpm run start:web
+```
+
+默认 Web 地址是 [http://127.0.0.1:3080/](http://127.0.0.1:3080/)。
+
+卸载并保留模型目录、首选项和 MinerU 状态：
+
+```powershell
+deepsee uninstall
+```
+
+## 安装后发生什么
+
+- 标准 bundle 清单 `cordis.patch.yml` 加载 DeepSee Host、Web 客户端和可选 Codex provider。
+- 插件启动时扫描已安装的 Claude Code、Codex、Kimi CLI、OpenCode 和 Ollama；只有通过版本、登录与 Harness 适配验证的路线才能打开。
+- Web 直接使用 Harness 同源路由 `/api/deepsee` 读写模型状态。没有 3091 端口、Bearer 管理 Token 或第二个 Node 进程。
+- 可变状态保存在 `$DSH_HOME/deepsee`，不写进 npm 包目录；升级和卸载不会删除用户配置。
+- DeepSee 自动生成 `$DSH_HOME/.agent-presets/prime`。Preset 目录由 Harness 实时发现，无需修改官方 preset。
+- API Key 仍由 Harness 原生“设置 → 模型”与凭据存储管理。DeepSee 只同步供应商、模型 ID、输入模态和能力描述，不读取或复制 Key。
+- 旧 alpha 的 `OPENDS_BRIDGE_*` 配置可自动迁移到 Harness 的 `llm-pi-ai` 供应商元数据；只保存 Key 的引用，不把 Key 写入 `settings.yaml`。
+
+## 已实现能力
+
+### 视觉读取
+
+在 DeepSee 首选项中选择：
+
+- **模型**：从 Harness 当前已配置且确认支持图片输入的模型中选择。
+- **OCR**：按需安装 MinerU，用于文档文字与版面读取。
+
+图片会先交给所选视觉路线，DeepSeek 再根据识图结果继续回答。界面会提示当前由其他模型识图，不会再把纯文本 DeepSeek 模型显示为最终的视觉执行者。
+
+### 模型目录
+
+侧栏的“深见”面板只保留四列：打开、模型、来源、能力。
+
+- 模型和来源来自 Harness 或启动扫描，不能手工伪造。
+- 能力由模型短请求自动生成，用户可双击修正。
+- CLI 未安装、未登录或缺少适配器时，路线保持关闭。
+- Codex CLI 与 Claude Code 可以选择其已验证的模型档位。
+- “添加模型”直接进入 Harness 原生模型设置，复用已经保存的供应商凭据和模型列表。
+
+### Workflow 与 Prime
+
+- `/workflow <任务>` 显式请求 Harness 原生可见 Workflow。
+- Prime 对简单任务继续使用普通 Loop；只有多条独立工作流、跨能力角色，或已批准且标记为 Workflow 的 Plan 才进入 Workflow。
+- Workflow worker 使用 `opends` provider，把 DeepSee route id 映射为真实 Harness provider/model。
+- Harness/API 模型通过原生 `spawn` 子 Agent 执行；Codex 与 Claude Code 通过各自验证过的 CLI provider 执行。
+- 模型目录工具 `opends_list_models` 让主模型按视觉、编码、写作、推理或审查能力选择路线。
+
+## Web 与 Headless
+
+同一个标准包支持两种 Harness profile：
+
+```powershell
+dsh web
+dsh --profile headless "只回答 OK"
+```
+
+Headless 没有 WebServer 服务，DeepSee 会跳过同源管理路由，但 Runtime 扫描、视觉路由、模型目录、CLI provider 与 Workflow 策略仍可加载。Web profile 才会挂载 `/api/deepsee` 与侧栏界面。
+
+## 常用命令
+
+```powershell
+deepsee install              # 标准一键安装 Web + Headless
+deepsee uninstall            # 标准卸载，保留用户状态
+deepsee doctor               # 检查 bundle、Runtime 与配置，不输出密钥
+deepsee web                  # 交给官方 dsh 启动 Web profile
+
+pnpm run typecheck           # 开发：类型检查
+pnpm test                    # 开发：完整回归
+pnpm run build               # 开发：构建 Host 与可选 Codex provider
+pnpm pack                    # 生成可发布 tarball
+```
+
+兼容期内，内部设置 namespace、工具名和部分状态文件仍使用 `opends-*` / `OPENDS_*`，以便旧安装无损迁移；产品名、npm 包名和命令统一为 DeepSee / `deepsee-harness` / `deepsee`。
+
+## 关键文件
+
+- `cordis.patch.yml`：标准 DSH bundle 层
+- `src/index.ts`：Host 插件、视觉桥、模型目录、Workflow 与 Prime 策略
+- `host/admin-server.mjs`：挂载到 Harness WebServer 的同源配置路由
+- `host/client.js`：DeepSee 侧栏、模型矩阵、视觉/OCR 首选项
+- `host/codex-provider.js`：构建时生成的可选择模型 Codex provider
+- `scripts/install-plugin.mjs`：Web + Headless 一键安装
+- `scripts/runtime-discovery.mjs`：启动扫描、旧状态迁移与注册表生成
+- `scripts/prime-preset.mjs`：基于当前 Harness 标准 preset 生成 Prime
+- `scripts/uninstall-plugin.mjs`：标准卸载并保留 `$DSH_HOME/deepsee`
+
+## 当前兼容边界
+
+当前版本面向 DeepSeek Harness `0.1.0-rc.6`。Codex 与 Claude Code 有可执行子 Agent 适配；Kimi CLI、OpenCode 和 Ollama 在没有稳定 Harness 子 Agent 适配器时只显示验证状态，不会被伪装成可执行路线。视觉 API、普通 API 模型和供应商凭据应优先在 Harness 原生模型页配置。
+
+## 许可证
+
+[MIT](LICENSE) © 2026 WUBING2023

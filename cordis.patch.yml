@@ -1,0 +1,25 @@
+# DeepSee is a normal DSH bundle layer. The plugin itself owns runtime
+# discovery, its same-origin Web route, and the Prime preset lifecycle.
+- insert:
+    - id: deepsee-codex
+      name: 'deepsee-harness/codex'
+      config: {}
+
+    - id: deepsee-harness
+      name: 'deepsee-harness'
+      config:
+        enabled: true
+        provider: ''
+        model: ''
+        maxTokens: 4096
+        autoVision: true
+        allowTextTool: false
+        targetProviders: [deepseek-official, deepseek]
+        visionCacheEntries: 128
+        visionRoute: opends-vision
+        primaryProvider: deepseek-official
+        registryFile: ''
+        routeOverrides: []
+        primeAutoWorkflow: true
+        visionMode: model
+        ocrExecutable: ''
