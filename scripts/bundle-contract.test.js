@@ -14,6 +14,9 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.files).toContain("cordis.patch.yml");
     expect(manifest.scripts.prepare).toBeUndefined();
     expect(manifest.scripts.prepack).toBeUndefined();
+    expect(manifest.scripts.prebuild).toBeUndefined();
+    expect(manifest.scripts.build).toBeUndefined();
+    expect(manifest.scripts["build:plugin"]).toContain("tsc -p tsconfig.build.json");
     expect(manifest.name).toBe("@wubing2023/deepsee");
     expect(manifest.deepsee.installSpec).toBe("github:WUBING2023/deepsee#main");
     expect(patch).toContain("name: '@wubing2023/deepsee'");

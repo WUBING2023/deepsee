@@ -98,7 +98,7 @@ deepsee web                  # Start the official DSH Web profile
 
 pnpm run typecheck           # Development type check
 pnpm test                    # Full regression suite
-pnpm run build               # Build the Host plugin and Codex provider
+pnpm run build:plugin        # Build the Host plugin and Codex provider
 pnpm run pack:release        # Build and produce the distributable tarball
 ```
 

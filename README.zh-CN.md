@@ -98,7 +98,7 @@ deepsee web                  # 交给官方 dsh 启动 Web profile
 
 pnpm run typecheck           # 开发：类型检查
 pnpm test                    # 开发：完整回归
-pnpm run build               # 开发：构建 Host 与可选 Codex provider
+pnpm run build:plugin        # 开发：构建 Host 与可选 Codex provider
 pnpm run pack:release        # 构建并生成可发布 tarball
 ```
 

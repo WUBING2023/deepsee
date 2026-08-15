@@ -62,9 +62,8 @@
     ".env.example"
   ],
   "scripts": {
-    "prebuild": "node ./scripts/clean-dist.mjs && node ./scripts/build-codex-adapter.mjs",
-    "build": "tsc -p tsconfig.build.json",
-    "pack:release": "pnpm run build && pnpm pack",
+    "build:plugin": "node ./scripts/clean-dist.mjs && node ./scripts/build-codex-adapter.mjs && tsc -p tsconfig.build.json",
+    "pack:release": "pnpm run build:plugin && pnpm pack",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "setup": "node ./scripts/setup.mjs",
@@ -74,11 +73,11 @@
     "bridge:enable": "node ./scripts/bridge-state.mjs enable",
     "bridge:disable": "node ./scripts/bridge-state.mjs disable",
     "bridge:status": "node ./scripts/bridge-state.mjs status",
-    "install:plugin": "pnpm run build && node ./scripts/install-plugin.mjs --local",
+    "install:plugin": "pnpm run build:plugin && node ./scripts/install-plugin.mjs --local",
     "uninstall:plugin": "node ./scripts/uninstall-plugin.mjs --local",
-    "dump-config": "pnpm run build && node ./host/bin.mjs --local-home --profile headless --dump-config",
-    "start:web": "pnpm run build && node ./host/bin.mjs --local-home web",
-    "start:headless": "pnpm run build && node ./host/bin.mjs --local-home --profile headless",
+    "dump-config": "pnpm run build:plugin && node ./host/bin.mjs --local-home --profile headless --dump-config",
+    "start:web": "pnpm run build:plugin && node ./host/bin.mjs --local-home web",
+    "start:headless": "pnpm run build:plugin && node ./host/bin.mjs --local-home --profile headless",
     "start:official": "node ./host/bin.mjs --official web --port 3081"
   },
   "dependencies": {},
