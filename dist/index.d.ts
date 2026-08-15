@@ -1,0 +1,43 @@
+import type { Context } from "@deepseek-ai/cordis";
+import z from "@deepseek-ai/schemastery";
+import "@deepseek-ai/dsh-agent";
+import "@deepseek-ai/dsh-attachment";
+import "@deepseek-ai/dsh-commands";
+import "@deepseek-ai/dsh-settings";
+import "@deepseek-ai/dsh-system-prompt";
+import "@deepseek-ai/dsh-subagent";
+import "@deepseek-ai/dsh-subprocess";
+import "@deepseek-ai/dsh-tools";
+import { type ModelRegistryFile, type ModelRouteOverride } from "./model-registry.js";
+export declare const name = "deepsee";
+export declare const inject: readonly ["attachments", "commands", "llm", "settings", "subagents", "subprocess", "systemPrompt", "tools"];
+export interface Config {
+    enabled: boolean;
+    provider: string;
+    model: string;
+    maxTokens: number;
+    autoVision: boolean;
+    allowTextTool: boolean;
+    targetProviders: string[];
+    visionCacheEntries: number;
+    visionRoute: string;
+    primaryProvider: string;
+    registryFile: string;
+    routeOverrides: ModelRouteOverride[];
+    primeAutoWorkflow: boolean;
+    visionMode: "model" | "ocr";
+    ocrExecutable: string;
+}
+export declare const Config: z<Config>;
+export declare function resolveRuntimeConfig(config: Config, registry: ModelRegistryFile, providerIds: ReadonlySet<string>, mineru: {
+    status?: string;
+    executable?: string;
+}): Config;
+export declare function apply(ctx: Context, entryConfig: Config): Promise<void>;
+export { collectVisionInput, countImages, describeImages, imageAttachmentIds, rewriteWithVisualContext, stripImages, visionCacheKey, VisionDescriptionCache, VISION_SYSTEM_PROMPT, } from "./vision.js";
+export { requestExternalText } from "./external.js";
+export { applyRouteOverrides, defaultRoutes, loadRegistryFile, normalizeRegistry, queryRoutes, withFallbackRoutes, } from "./model-registry.js";
+export { VisionBridgeAdapter } from "./vision-adapter.js";
+export { resolveDeepSeeAgentOptions } from "./subagent-router.js";
+export { installCapabilityProfiler, parseCapabilityProfile, requestCapabilityProfile } from "./capability-profiler.js";
+export { describeImagesWithMinerU } from "./ocr.js";

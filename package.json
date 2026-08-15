@@ -65,7 +65,6 @@
     "prebuild": "node ./scripts/clean-dist.mjs && node ./scripts/build-codex-adapter.mjs",
     "build": "tsc -p tsconfig.build.json",
     "prepack": "pnpm run build",
-    "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "setup": "node ./scripts/setup.mjs",

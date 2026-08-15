@@ -14,7 +14,7 @@ Install DeepSee directly from GitHub:
 npx --yes github:WUBING2023/deepsee install
 ```
 
-That single command downloads, builds, and installs DeepSee into both the Harness `web` and `headless` profiles through the official `dsh plugin` manager. It does not patch Harness `node_modules`, create manual shims, or run a companion service.
+That single command downloads the prebuilt plugin and installs DeepSee into both the Harness `web` and `headless` profiles through the official `dsh plugin` manager. It does not download development tooling, patch Harness `node_modules`, create manual shims, or run a companion service.
 
 Then start Harness normally:
 
