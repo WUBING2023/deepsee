@@ -1,15 +1,15 @@
 {
-  "name": "deepsee-harness",
+  "name": "@wubing2023/deepsee",
   "version": "0.6.0-alpha.1",
-  "description": "DeepSee — lightweight vision, runtime routing, and workflow extension for DeepSeek Harness",
+  "description": "DeepSee — one-command vision and model-routing plugin for DeepSeek Harness",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WUBING2023/deepsee-harness.git"
+    "url": "git+https://github.com/WUBING2023/deepsee.git"
   },
-  "homepage": "https://github.com/WUBING2023/deepsee-harness#readme",
+  "homepage": "https://github.com/WUBING2023/deepsee#readme",
   "bugs": {
-    "url": "https://github.com/WUBING2023/deepsee-harness/issues"
+    "url": "https://github.com/WUBING2023/deepsee/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -41,6 +41,9 @@
       "platform": "web"
     }
   },
+  "deepsee": {
+    "installSpec": "github:WUBING2023/deepsee#main"
+  },
   "bin": {
     "deepsee": "./scripts/cli.mjs",
     "opends-bridge": "./scripts/cli.mjs"
@@ -62,6 +65,7 @@
     "prebuild": "node ./scripts/clean-dist.mjs && node ./scripts/build-codex-adapter.mjs",
     "build": "tsc -p tsconfig.build.json",
     "prepack": "pnpm run build",
+    "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "setup": "node ./scripts/setup.mjs",

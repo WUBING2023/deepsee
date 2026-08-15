@@ -38,7 +38,7 @@ import {
   VisionDescriptionCache,
 } from "./vision.js";
 
-export const name = "deepsee-harness";
+export const name = "deepsee";
 export const inject = ["attachments", "commands", "llm", "settings", "subagents", "subprocess", "systemPrompt", "tools"] as const;
 
 export interface Config {

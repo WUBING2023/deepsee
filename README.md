@@ -2,20 +2,25 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-Give DeepSeek Harness vision, a practical model directory, and lightweight routing to API models and local CLI runtimes.
+The one-command vision and model-routing plugin for DeepSeek Harness.
 
-DeepSee is a small, distributable DSH bundle. It does not replace Harness Loop, Goal, Plan, or Workflow. It adds three focused capabilities: visual reading, model capability discovery, and multi-model routing.
+DeepSee is installed as a standard DSH bundle on top of DeepSeek Harness. It does not replace Harness Loop, Goal, Plan, or Workflow. It adds three focused capabilities: visual reading, model capability discovery, and multi-model routing.
 
 ## One-command installation
 
-After the package is published to npm:
+Install DeepSee directly from GitHub:
 
 ```powershell
-npx deepsee-harness install
-dsh web
+npx --yes github:WUBING2023/deepsee install
 ```
 
-`deepsee install` uses the official `dsh plugin` manager to install the same bundle into both the `web` and `headless` profiles. It does not patch Harness `node_modules`, create manual shims, or run a companion service.
+That single command downloads, builds, and installs DeepSee into both the Harness `web` and `headless` profiles through the official `dsh plugin` manager. It does not patch Harness `node_modules`, create manual shims, or run a companion service.
+
+Then start Harness normally:
+
+```powershell
+dsh web
+```
 
 Install from this repository:
 
@@ -97,7 +102,7 @@ pnpm run build               # Build the Host plugin and Codex provider
 pnpm pack                    # Produce the distributable tarball
 ```
 
-For migration compatibility, the internal settings namespace, tool IDs, and some state files still use `opends-*` / `OPENDS_*`. The public product, npm package, and command names are DeepSee, `deepsee-harness`, and `deepsee`.
+For migration compatibility, the internal settings namespace, tool IDs, and some state files still use `opends-*` / `OPENDS_*`. The public product, GitHub repository, scoped package, and command are DeepSee, `WUBING2023/deepsee`, `@wubing2023/deepsee`, and `deepsee`.
 
 ## Project layout
 

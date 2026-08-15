@@ -8,6 +8,8 @@ import { resolveDshHome } from "@deepseek-ai/dsh-home-paths";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const dshHome = resolveDshHome();
 const stateRoot = join(dshHome, "deepsee");
+const pluginManifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+const pluginPackageName = pluginManifest.name;
 
 function loadDotEnv() {
   const path = join(root, ".env");
@@ -51,8 +53,8 @@ function bundleStatus(profile) {
   if (!existsSync(path)) return "profile not initialized";
   try {
     const manifest = JSON.parse(readFileSync(path, "utf8"));
-    const dependency = manifest.dependencies?.["deepsee-harness"];
-    const active = manifest.dsh?.profile?.bundles?.includes("deepsee-harness");
+    const dependency = manifest.dependencies?.[pluginPackageName];
+    const active = manifest.dsh?.profile?.bundles?.includes(pluginPackageName);
     return dependency && active ? `installed (${dependency})` : "run deepsee install";
   } catch {
     return "profile manifest unreadable";

@@ -92,7 +92,7 @@ export const runtimeDefinitions = Object.freeze([
     roles: ["coding", "executor", "review"],
     description: "适合仓库分析、代码实现和工具操作；启动时验证 Codex CLI 登录状态",
     adapterSupported: true,
-    adapterPackage: "deepsee-harness",
+    adapterPackage: "@wubing2023/deepsee",
   },
   {
     command: "kimi",

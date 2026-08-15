@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: "deepsee-harness",
+  id: "deepsee",
   factory: (require) => {
     const module = { exports: {} };
     const exports = module.exports;
