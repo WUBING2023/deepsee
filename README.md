@@ -99,7 +99,7 @@ deepsee web                  # Start the official DSH Web profile
 pnpm run typecheck           # Development type check
 pnpm test                    # Full regression suite
 pnpm run build               # Build the Host plugin and Codex provider
-pnpm pack                    # Produce the distributable tarball
+pnpm run pack:release        # Build and produce the distributable tarball
 ```
 
 For migration compatibility, the internal settings namespace, tool IDs, and some state files still use `opends-*` / `OPENDS_*`. The public product, GitHub repository, scoped package, and command are DeepSee, `WUBING2023/deepsee`, `@wubing2023/deepsee`, and `deepsee`.

@@ -99,7 +99,7 @@ deepsee web                  # 交给官方 dsh 启动 Web profile
 pnpm run typecheck           # 开发：类型检查
 pnpm test                    # 开发：完整回归
 pnpm run build               # 开发：构建 Host 与可选 Codex provider
-pnpm pack                    # 生成可发布 tarball
+pnpm run pack:release        # 构建并生成可发布 tarball
 ```
 
 兼容期内，内部设置 namespace、工具名和部分状态文件仍使用 `opends-*` / `OPENDS_*`，以便旧安装无损迁移；公开产品、GitHub 仓库、作用域包和命令统一为 DeepSee / `WUBING2023/deepsee` / `@wubing2023/deepsee` / `deepsee`。
