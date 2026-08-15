@@ -2,8 +2,8 @@ import { createServer } from "node:http";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { createDeepSeeAdminHandler, DEEPSEE_API_PREFIX } from "../host/admin-server.mjs";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createDeepSeeAdminHandler, DEEPSEE_API_PREFIX, installDeepSeeAdminRoute } from "../host/admin-server.mjs";
 
 const servers = [];
 
@@ -25,6 +25,20 @@ async function fixture() {
 }
 
 describe("embedded DeepSee Host route", () => {
+  it("registers against the injected Harness webServer service", () => {
+    const dispose = vi.fn();
+    const register = vi.fn(() => dispose);
+    const ctx = {
+      webServer: { register },
+      effect: (factory) => factory(),
+    };
+    expect(installDeepSeeAdminRoute(ctx, {})).toBe(true);
+    expect(register).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "prefix",
+      path: DEEPSEE_API_PREFIX,
+    }));
+  });
+
   it("serves redacted state on the Harness origin without a bearer token", async () => {
     const base = await fixture();
     const response = await fetch(`${base}${DEEPSEE_API_PREFIX}/v1/models`, {

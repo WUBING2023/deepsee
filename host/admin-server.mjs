@@ -131,7 +131,7 @@ export function createDeepSeeAdminHandler(options = {}) {
 }
 
 export function installDeepSeeAdminRoute(ctx, options = {}) {
-  const webServer = ctx.get("webServer");
+  const webServer = ctx.webServer ?? ctx.get?.("webServer");
   if (!webServer || typeof webServer.register !== "function") return false;
   const handler = createDeepSeeAdminHandler(options);
   ctx.effect(() => webServer.register({

@@ -466,7 +466,9 @@ export async function apply(ctx: Context, entryConfig: Config): Promise<void> {
   const { discoverDeepSeeRuntimes } = await import("../scripts/runtime-discovery.mjs");
   const { getMinerUStatus } = await import("../scripts/mineru-manager.mjs");
   const { installPrimePreset } = await import("../scripts/prime-preset.mjs");
-  installDeepSeeAdminRoute(ctx, paths);
+  ctx.inject(["webServer"], (httpCtx) => {
+    installDeepSeeAdminRoute(httpCtx, paths);
+  });
   try {
     await discoverDeepSeeRuntimes({ ...paths, cwd: process.cwd() });
   } catch (error) {
