@@ -2,8 +2,13 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const clientSource = readFileSync(new URL("../host/client.js", import.meta.url), "utf8");
+const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 describe("DeepSee native-style model panel", () => {
+  it("registers the browser module under the exact package name", () => {
+    expect(clientSource).toContain(`id: "${manifest.name}"`);
+  });
+
   it("keeps the model directory to the four product-facing columns", () => {
     for (const heading of ["打开", "模型", "来源", "能力"]) {
       expect(clientSource).toContain(`createElement("th",`);

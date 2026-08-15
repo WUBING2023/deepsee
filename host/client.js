@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: "deepsee",
+  id: "@wubing2023/deepsee",
   factory: (require) => {
     const module = { exports: {} };
     const exports = module.exports;
