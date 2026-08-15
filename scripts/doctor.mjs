@@ -3,10 +3,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveDshHome } from "@deepseek-ai/dsh-home-paths";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const dshHome = resolveDshHome();
+const dshHome = process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || root, ".dsh");
 const stateRoot = join(dshHome, "deepsee");
 const pluginManifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const pluginPackageName = pluginManifest.name;

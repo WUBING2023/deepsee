@@ -1,9 +1,11 @@
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
+const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+const dshSpec = `@deepseek-ai/dsh@${manifest.peerDependencies["@deepseek-ai/dsh"]}`;
 const argv = process.argv.slice(2);
 const localHomeIndex = argv.indexOf("--local-home");
 if (localHomeIndex !== -1) {
@@ -29,11 +31,12 @@ const localDsh = join(root, "node_modules", "@deepseek-ai", "dsh", "lib", "bin.j
 if (existsSync(localDsh)) {
   await import(pathToFileURL(localDsh).href);
 } else {
-  const result = spawnSync("dsh", process.argv.slice(2), {
+  const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
+  const result = spawnSync(npxBin, ["--yes", dshSpec, ...process.argv.slice(2)], {
     env: process.env,
     stdio: "inherit",
     windowsHide: true,
-    shell: process.platform === "win32",
+    shell: false,
   });
   if (result.error) throw result.error;
   process.exitCode = result.status ?? 1;

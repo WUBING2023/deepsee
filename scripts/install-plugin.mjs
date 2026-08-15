@@ -8,6 +8,8 @@ import { spawnSync } from "node:child_process";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const dshBin = join(root, "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js");
+const dshSpec = `@deepseek-ai/dsh@${manifest.peerDependencies["@deepseek-ai/dsh"]}`;
+const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
 const args = process.argv.slice(2);
 const local = args.includes("--local");
 const specIndex = args.indexOf("--spec");
@@ -23,12 +25,12 @@ if (!existsSync(join(root, "dist", "index.js"))) {
 
 function runDsh(argv) {
   const localDsh = existsSync(dshBin);
-  const result = spawnSync(localDsh ? process.execPath : "dsh", localDsh ? [dshBin, ...argv] : argv, {
+  const result = spawnSync(localDsh ? process.execPath : npxBin, localDsh ? [dshBin, ...argv] : ["--yes", dshSpec, ...argv], {
     cwd: process.cwd(),
     env,
     stdio: "inherit",
     windowsHide: true,
-    shell: !localDsh && process.platform === "win32",
+    shell: false,
     timeout: 180_000,
   });
   if (result.error) throw result.error;

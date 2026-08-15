@@ -14,12 +14,12 @@ DeepSee 以标准 DSH bundle 的插件形式安装在 DeepSeek Harness 之上。
 npx --yes github:WUBING2023/deepsee install
 ```
 
-这一条命令会下载预构建插件，并通过 Harness 官方 `dsh plugin` 管理器安装到 `web` 和 `headless` profile。它不下载开发工具，不修改 Harness 的 `node_modules`，不会写手工 shim，也不会启动独立伴随服务。
+这一条命令会下载预构建插件，并调用受支持的官方 Harness CLI，将 DeepSee 安装到 `web` 和 `headless` profile。它不下载 DeepSee 开发工具，不修改 Harness 的 `node_modules`，不会写手工 shim，也不会启动独立伴随服务。
 
 安装后按原生方式启动 Harness：
 
 ```powershell
-dsh web
+npx --yes github:WUBING2023/deepsee web
 ```
 
 从本仓库开发安装：
