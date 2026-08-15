@@ -4,12 +4,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { resolveNpxInvocation } from "./npx-command.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const dshBin = join(root, "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js");
 const dshSpec = `@deepseek-ai/dsh@${manifest.peerDependencies["@deepseek-ai/dsh"]}`;
-const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
 const local = process.argv.includes("--local");
 const dshHome = local ? join(root, ".dsh") : process.env.DSH_HOME;
 const env = { ...process.env, ...(dshHome ? { DSH_HOME: dshHome } : {}) };
@@ -21,7 +21,8 @@ for (const profile of ["web", "headless"]) {
   if (!current.dependencies?.[manifest.name]) continue;
   const localDsh = existsSync(dshBin);
   const argv = ["plugin", "--profile", profile, "remove", manifest.name];
-  const result = spawnSync(localDsh ? process.execPath : npxBin, localDsh ? [dshBin, ...argv] : ["--yes", dshSpec, ...argv], {
+  const npx = resolveNpxInvocation(["--yes", dshSpec, ...argv]);
+  const result = spawnSync(localDsh ? process.execPath : npx.command, localDsh ? [dshBin, ...argv] : npx.args, {
     cwd: process.cwd(),
     env,
     stdio: "inherit",

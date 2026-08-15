@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { resolveNpxInvocation } from "../scripts/npx-command.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -31,8 +32,8 @@ const localDsh = join(root, "node_modules", "@deepseek-ai", "dsh", "lib", "bin.j
 if (existsSync(localDsh)) {
   await import(pathToFileURL(localDsh).href);
 } else {
-  const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
-  const result = spawnSync(npxBin, ["--yes", dshSpec, ...process.argv.slice(2)], {
+  const npx = resolveNpxInvocation(["--yes", dshSpec, ...process.argv.slice(2)]);
+  const result = spawnSync(npx.command, npx.args, {
     env: process.env,
     stdio: "inherit",
     windowsHide: true,

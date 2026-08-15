@@ -27,7 +27,7 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain('["web", "headless"]');
     expect(installer).toContain('["plugin", "--profile", profile, "add", spec]');
     expect(installer).toContain("manifest.deepsee?.installSpec");
-    expect(installer).toContain('["--yes", dshSpec, ...argv]');
+    expect(installer).toContain('resolveNpxInvocation(["--yes", dshSpec, ...argv])');
     expect(installer).not.toContain("installProfileShim");
   });
 
