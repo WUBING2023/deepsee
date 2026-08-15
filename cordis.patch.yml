@@ -2,11 +2,11 @@
 # discovery, its same-origin Web route, and the Prime preset lifecycle.
 - insert:
     - id: deepsee-codex
-      name: 'deepsee-harness/codex'
+      name: '@wubing2023/deepsee/codex'
       config: {}
 
-    - id: deepsee-harness
-      name: 'deepsee-harness'
+    - id: deepsee
+      name: '@wubing2023/deepsee'
       config:
         enabled: true
         provider: ''

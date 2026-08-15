@@ -12,7 +12,8 @@ const args = process.argv.slice(2);
 const local = args.includes("--local");
 const specIndex = args.indexOf("--spec");
 const explicitSpec = specIndex >= 0 ? args[specIndex + 1] : undefined;
-const spec = explicitSpec || (local ? `file:${root}` : `${manifest.name}@${manifest.version}`);
+const publicInstallSpec = manifest.deepsee?.installSpec || `${manifest.name}@${manifest.version}`;
+const spec = explicitSpec || (local ? `file:${root}` : publicInstallSpec);
 const dshHome = local ? join(root, ".dsh") : process.env.DSH_HOME;
 const env = { ...process.env, ...(dshHome ? { DSH_HOME: dshHome } : {}) };
 

@@ -11,13 +11,16 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.dsh.bundle.patch).toBe("./cordis.patch.yml");
     expect(manifest.dsh.client.platform).toBe("web");
     expect(manifest.files).toContain("cordis.patch.yml");
-    expect(patch).toContain("name: 'deepsee-harness'");
-    expect(patch).toContain("name: 'deepsee-harness/codex'");
+    expect(manifest.name).toBe("@wubing2023/deepsee");
+    expect(manifest.deepsee.installSpec).toBe("github:WUBING2023/deepsee#main");
+    expect(patch).toContain("name: '@wubing2023/deepsee'");
+    expect(patch).toContain("name: '@wubing2023/deepsee/codex'");
   });
 
   it("installs through the official plugin manager for both profiles", () => {
     expect(installer).toContain('["web", "headless"]');
     expect(installer).toContain('["plugin", "--profile", profile, "add", spec]');
+    expect(installer).toContain("manifest.deepsee?.installSpec");
     expect(installer).not.toContain("installProfileShim");
   });
 

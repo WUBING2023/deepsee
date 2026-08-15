@@ -2,20 +2,25 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-让 DeepSeek Harness 看见图片，并在需要时把任务交给更合适的 API 模型或本机 CLI。
+DeepSeek Harness 的一行安装视觉与模型路由插件。
 
-DeepSee 是一个轻量、可发布的标准 DSH bundle。它不替换 Harness 的 Loop、Goal、Plan 或 Workflow，只补充三件事：视觉读取、模型能力目录、轻量多模型路由。
+DeepSee 以标准 DSH bundle 的插件形式安装在 DeepSeek Harness 之上。它不替换 Harness 的 Loop、Goal、Plan 或 Workflow，只补充三件事：视觉读取、模型能力目录、轻量多模型路由。
 
 ## 一键安装
 
-发布到 npm 后，用户只需：
+直接从 GitHub 一行安装：
 
 ```powershell
-npx deepsee-harness install
-dsh web
+npx --yes github:WUBING2023/deepsee install
 ```
 
-`deepsee install` 会通过 Harness 官方 `dsh plugin` 管理器，把同一个 bundle 安装到 `web` 和 `headless` profile。它不会修改 Harness 的 `node_modules`，不会写手工 shim，也不会启动独立伴随服务。
+这一条命令会下载、构建 DeepSee，并通过 Harness 官方 `dsh plugin` 管理器安装到 `web` 和 `headless` profile。它不会修改 Harness 的 `node_modules`，不会写手工 shim，也不会启动独立伴随服务。
+
+安装后按原生方式启动 Harness：
+
+```powershell
+dsh web
+```
 
 从本仓库开发安装：
 
@@ -97,7 +102,7 @@ pnpm run build               # 开发：构建 Host 与可选 Codex provider
 pnpm pack                    # 生成可发布 tarball
 ```
 
-兼容期内，内部设置 namespace、工具名和部分状态文件仍使用 `opends-*` / `OPENDS_*`，以便旧安装无损迁移；产品名、npm 包名和命令统一为 DeepSee / `deepsee-harness` / `deepsee`。
+兼容期内，内部设置 namespace、工具名和部分状态文件仍使用 `opends-*` / `OPENDS_*`，以便旧安装无损迁移；公开产品、GitHub 仓库、作用域包和命令统一为 DeepSee / `WUBING2023/deepsee` / `@wubing2023/deepsee` / `deepsee`。
 
 ## 关键文件
 
