@@ -18,6 +18,8 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.scripts.build).toBeUndefined();
     expect(manifest.scripts["build:plugin"]).toContain("tsc -p tsconfig.build.json");
     expect(manifest.name).toBe("@wubing2023/deepsee");
+    expect(manifest.dependencies["@deepseek-ai/dsh-sdk-protocol"]).toBe("0.1.0-rc.6");
+    expect(manifest.peerDependencies["@deepseek-ai/dsh-sdk-protocol"]).toBeUndefined();
     expect(manifest.deepsee.installSpec).toBe("github:WUBING2023/deepsee#main");
     expect(patch).toContain("name: '@wubing2023/deepsee'");
     expect(patch).toContain("name: '@wubing2023/deepsee/codex'");
