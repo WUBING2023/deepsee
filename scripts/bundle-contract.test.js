@@ -6,6 +6,7 @@ const patch = readFileSync(new URL("../cordis.patch.yml", import.meta.url), "utf
 const launcher = readFileSync(new URL("../host/bin.mjs", import.meta.url), "utf8");
 const installer = readFileSync(new URL("./install-plugin.mjs", import.meta.url), "utf8");
 const installPolicy = readFileSync(new URL("./install-policy.mjs", import.meta.url), "utf8");
+const folderInstaller = readFileSync(new URL("./folder-install.mjs", import.meta.url), "utf8");
 
 describe("standard DeepSeek Harness bundle", () => {
   it("declares a distributable bundle and Web client", () => {
@@ -35,6 +36,9 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain("resolveInstallOptions");
     expect(installer).toContain("runWithRetries");
     expect(installer).toContain("inspectProfileInstall");
+    expect(installer).toContain("stageFolderPackage");
+    expect(installPolicy).toContain('args.includes("--from-folder")');
+    expect(folderInstaller).toContain('join(dshHome, "deepsee", "packages")');
     expect(installer).not.toContain("timeout: 180_000");
     expect(readFileSync(new URL("./cli.mjs", import.meta.url), "utf8")).toContain("Installation failed / 安装失败");
     expect(installer).not.toContain("installProfileShim");

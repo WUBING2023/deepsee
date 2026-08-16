@@ -32,6 +32,26 @@ npx --yes github:WUBING2023/deepsee install --retries 3         # 增加瞬时�
 npx --yes github:WUBING2023/deepsee install --force             # 强制重装当前版本
 ```
 
+### ZIP 压缩包兜底安装（不再通过 `npx github:` 下载 DeepSee）
+
+如果 GitHub 一行安装超时，请用浏览器下载 [deepsee-main.zip](https://github.com/WUBING2023/deepsee/archive/refs/heads/main.zip) 并解压。进入解压后的 `deepsee-main` 文件夹，在 PowerShell 中依次运行：
+
+```powershell
+node .\scripts\cli.mjs install --from-folder --timeout-ms 0
+node .\scripts\cli.mjs doctor
+node .\scripts\cli.mjs web
+```
+
+这条路线直接使用 ZIP 内已经构建好的文件，不需要执行 `pnpm install`，也不需要源码构建。安装前，DeepSee 会先把插件复制到 `$DSH_HOME\deepsee\packages\<版本>`，所以安装完成后可以删除下载的 ZIP 和解压目录，不会影响插件。电脑上已有 `dsh` 命令时会优先复用；没有时，安装器只会下载锁定版本的官方 Harness CLI。
+
+删除解压目录后，可用下面的命令启动 Harness：
+
+```powershell
+dsh --profile web
+# 如果 dsh 不在 PATH 中：
+npx --yes @deepseek-ai/dsh@0.1.0-rc.6 --profile web
+```
+
 安装后按原生方式启动 Harness：
 
 ```powershell
@@ -128,6 +148,7 @@ pnpm run pack:release        # 构建并生成可发布 tarball
 - `host/client.js`：DeepSee 侧栏、模型矩阵、视觉/OCR 首选项
 - `host/codex-provider.js`：构建时生成的可选择模型 Codex provider
 - `scripts/install-plugin.mjs`：Web + Headless 一键安装
+- `scripts/folder-install.mjs`：将解压的 ZIP 持久化后执行兜底安装
 - `scripts/runtime-discovery.mjs`：启动扫描、旧状态迁移与注册表生成
 - `scripts/prime-preset.mjs`：基于当前 Harness 标准 preset 生成 Prime
 - `scripts/uninstall-plugin.mjs`：标准卸载并保留 `$DSH_HOME/deepsee`

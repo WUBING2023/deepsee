@@ -52,6 +52,7 @@ Install options:
   --timeout-ms <milliseconds>   Per-attempt timeout; 0 disables it (default: 900000)
   --retries <count>             Automatic retry count (default: 1)
   --force                       Reinstall profiles already on this version
+  --from-folder                 Install the extracted ZIP into the normal DSH_HOME
 
 Legacy alias: opends-bridge`);
 }

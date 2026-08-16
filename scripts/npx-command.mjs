@@ -23,3 +23,21 @@ export function resolveNpxInvocation(args, options = {}) {
   }
   return { command: "npx", args };
 }
+
+export function resolveExecutableInvocation(executable, args, options = {}) {
+  const platform = options.platform ?? process.platform;
+  const extension = (platform === "win32" ? win32 : posix).extname(executable).toLowerCase();
+  if (platform === "win32" && [".cmd", ".bat"].includes(extension)) {
+    return {
+      command: options.comSpec ?? process.env.ComSpec ?? "cmd.exe",
+      args: ["/d", "/s", "/c", "call", executable, ...args],
+    };
+  }
+  if (platform === "win32" && extension === ".ps1") {
+    return {
+      command: options.powerShell ?? "powershell.exe",
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", executable, ...args],
+    };
+  }
+  return { command: executable, args };
+}

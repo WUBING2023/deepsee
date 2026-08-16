@@ -26,6 +26,7 @@ describe("DeepSee install policy", () => {
       retries: DEFAULT_INSTALL_RETRIES,
       profiles: ["web", "headless"],
       force: false,
+      fromFolder: false,
     });
     expect(DEFAULT_INSTALL_TIMEOUT_MS).toBe(900_000);
     expect(DEFAULT_INSTALL_RETRIES).toBe(1);
@@ -42,7 +43,14 @@ describe("DeepSee install policy", () => {
       retries: 3,
       profiles: ["web"],
       force: true,
+      fromFolder: false,
     });
+  });
+
+  it("accepts extracted-folder installation without development or spec overrides", () => {
+    expect(resolveInstallOptions(["--from-folder"], {})).toMatchObject({ fromFolder: true });
+    expect(() => resolveInstallOptions(["--from-folder", "--local"], {})).toThrow("--local");
+    expect(() => resolveInstallOptions(["--from-folder", "--spec", "example"], {})).toThrow("--spec");
   });
 
   it("uses environment overrides and rejects invalid values", () => {
@@ -86,14 +94,14 @@ describe("DeepSee install policy", () => {
       dependencies: { "@wubing2023/deepsee": "github:WUBING2023/deepsee#main" },
       dsh: { profile: { bundles: ["@wubing2023/deepsee"] } },
     }));
-    writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ version: "0.6.0-alpha.3" }));
+    writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ version: "0.6.0-alpha.4" }));
 
-    expect(inspectProfileInstall(root, "web", "@wubing2023/deepsee", "0.6.0-alpha.3")).toMatchObject({
+    expect(inspectProfileInstall(root, "web", "@wubing2023/deepsee", "0.6.0-alpha.4")).toMatchObject({
       current: true,
       registered: true,
-      installedVersion: "0.6.0-alpha.3",
+      installedVersion: "0.6.0-alpha.4",
     });
-    expect(inspectProfileInstall(root, "web", "@wubing2023/deepsee", "0.6.0-alpha.4")).toMatchObject({
+    expect(inspectProfileInstall(root, "web", "@wubing2023/deepsee", "0.6.0-alpha.5")).toMatchObject({
       current: false,
       registered: true,
     });

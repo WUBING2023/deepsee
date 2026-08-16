@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveNpxInvocation } from "./npx-command.mjs";
+import { resolveExecutableInvocation, resolveNpxInvocation } from "./npx-command.mjs";
 
 describe("npx command resolution", () => {
   it("runs npm's JavaScript entry directly when available", () => {
@@ -28,5 +28,25 @@ describe("npx command resolution", () => {
     });
     expect(invocation.command).toBe("C:\\Windows\\System32\\cmd.exe");
     expect(invocation.args).toEqual(["/d", "/s", "/c", "call", "npx.cmd", "--yes", "example"]);
+  });
+
+  it("runs an existing Windows DSH batch shim through cmd", () => {
+    const invocation = resolveExecutableInvocation("C:\\Users\\test\\AppData\\Roaming\\npm\\dsh.cmd", ["web"], {
+      platform: "win32",
+      comSpec: "C:\\Windows\\System32\\cmd.exe",
+    });
+    expect(invocation.command).toBe("C:\\Windows\\System32\\cmd.exe");
+    expect(invocation.args).toEqual([
+      "/d", "/s", "/c", "call",
+      "C:\\Users\\test\\AppData\\Roaming\\npm\\dsh.cmd",
+      "web",
+    ]);
+  });
+
+  it("runs native executables directly", () => {
+    expect(resolveExecutableInvocation("C:\\tools\\dsh.exe", ["web"], { platform: "win32" })).toEqual({
+      command: "C:\\tools\\dsh.exe",
+      args: ["web"],
+    });
   });
 });

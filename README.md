@@ -32,6 +32,26 @@ npx --yes github:WUBING2023/deepsee install --retries 3         # Retry transien
 npx --yes github:WUBING2023/deepsee install --force             # Reinstall the current version
 ```
 
+### ZIP fallback (no DeepSee `npx github:` download)
+
+If GitHub installation times out, download [deepsee-main.zip](https://github.com/WUBING2023/deepsee/archive/refs/heads/main.zip) in a browser and extract it. Open PowerShell in the extracted `deepsee-main` folder, then run:
+
+```powershell
+node .\scripts\cli.mjs install --from-folder --timeout-ms 0
+node .\scripts\cli.mjs doctor
+node .\scripts\cli.mjs web
+```
+
+This route uses the prebuilt files already in the ZIP; it does not require `pnpm install` or a source build. Before installation, DeepSee copies the package to `$DSH_HOME\deepsee\packages\<version>`, so the downloaded ZIP and extracted folder can be removed after installation. If an existing `dsh` command is available it is used first; otherwise the installer downloads only the pinned official Harness CLI.
+
+To start Harness after removing the extracted folder:
+
+```powershell
+dsh --profile web
+# If dsh is not on PATH:
+npx --yes @deepseek-ai/dsh@0.1.0-rc.6 --profile web
+```
+
 Then start Harness normally:
 
 ```powershell
@@ -128,6 +148,7 @@ For migration compatibility, the internal settings namespace, tool IDs, and some
 - `host/client.js` — sidebar model matrix and vision/OCR preferences
 - `host/codex-provider.js` — generated Codex provider with model selection
 - `scripts/install-plugin.mjs` — one-command Web + Headless installer
+- `scripts/folder-install.mjs` — durable extracted-ZIP staging for fallback installation
 - `scripts/runtime-discovery.mjs` — startup scanning, migration, and registry generation
 - `scripts/prime-preset.mjs` — Prime preset generation from the current Harness release
 - `scripts/uninstall-plugin.mjs` — standard uninstall preserving `$DSH_HOME/deepsee`

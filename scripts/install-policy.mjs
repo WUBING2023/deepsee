@@ -27,6 +27,14 @@ export function resolveInstallOptions(args, env = process.env) {
   const retriesValue = optionValue(args, "--retries") ?? env.DEEPSEE_INSTALL_RETRIES;
   const profileValue = optionValue(args, "--profile") ?? "all";
   const supportedProfiles = ["web", "headless"];
+  const fromFolder = args.includes("--from-folder");
+
+  if (fromFolder && args.includes("--local")) {
+    throw new Error("--from-folder cannot be combined with the development-only --local option");
+  }
+  if (fromFolder && args.includes("--spec")) {
+    throw new Error("--from-folder cannot be combined with --spec");
+  }
 
   if (profileValue !== "all" && !supportedProfiles.includes(profileValue)) {
     throw new Error("--profile must be web, headless, or all");
@@ -41,6 +49,7 @@ export function resolveInstallOptions(args, env = process.env) {
       : parseNonNegativeInteger(retriesValue, "install retries"),
     profiles: profileValue === "all" ? supportedProfiles : [profileValue],
     force: args.includes("--force"),
+    fromFolder,
   };
 }
 
