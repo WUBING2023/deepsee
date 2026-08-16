@@ -402,7 +402,7 @@ window.__ModuleLoader__.load({
         try {
           const result = await requestAdmin("/v1/tools/mineru/install", { method: "POST", body: "{}" });
           setMineru(result.tool);
-          setMessage("MinerU 已开始在 DeepSee 独立环境中安装；可以关闭窗口，安装会继续。 ");
+          setMessage(result.tool?.message || "MinerU 已开始自动安装；可以关闭窗口，安装会继续。");
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "MinerU 安装启动失败。");
         }
@@ -483,7 +483,7 @@ window.__ModuleLoader__.load({
                   visionOptions.length === 0 && createElement("option", { value: "" }, "暂无视觉模型"),
                   visionOptions.map((route) => createElement("option", { key: route.id, value: route.id }, `${routeDisplayName(route)} · ${routeSourceLabel(route)}`)),
                 )
-              : createElement("button", { className: "opends-button secondary opends-vision-target", type: "button", disabled: !serviceReady || mineru.status === "ready" || mineru.status === "installing", onClick: installMinerU }, mineru.status === "ready" ? "MinerU · 已就绪" : mineru.status === "installing" ? "MinerU · 安装中…" : "MinerU · 安装"),
+              : createElement("button", { className: "opends-button secondary opends-vision-target", type: "button", title: mineru.message || "自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP。", disabled: !serviceReady || mineru.status === "ready" || mineru.status === "installing", onClick: installMinerU }, mineru.status === "ready" ? "MinerU · 已就绪" : mineru.status === "installing" ? "MinerU · 安装中…" : mineru.status === "error" ? "MinerU · 重试" : "MinerU · 安装"),
           ),
         ),
         createElement("div", { className: "opends-pref-row", title: "Prime 模式可为复杂任务选择 Harness 原生 Workflow。" },

@@ -95,6 +95,21 @@ Choose one visual reader in DeepSee preferences:
 
 Images are read by the selected visual route before DeepSeek continues with the observation. The conversation UI explicitly identifies the visual model instead of presenting a text-only DeepSeek model as the image reader.
 
+#### MinerU automatic installation
+
+Click **MinerU · Install** once. DeepSee keeps the UI simple and automatically falls through these isolated installation routes:
+
+1. Reuse an existing compatible MinerU installation.
+2. Use an existing `uv` with official PyPI, then the configurable mainland mirror.
+3. Use an installed Python 3.10–3.12 on Windows, or 3.10–3.13 on Linux/macOS, with `venv` + `pip`.
+4. Download the official portable UV archive, verify its SHA-256 checksum, and keep it inside DeepSee rather than changing the system installation.
+5. If package installation still fails, download the official MinerU source ZIP and install from the extracted source.
+
+DeepSee installs the `mineru[core]>=3,<4` feature set because its OCR route explicitly uses the CPU-compatible `pipeline` backend. Package sources and model sources retry independently; model download starts with MinerU's `auto` source selection and can fall back to ModelScope or Hugging Face. Progress and the successful method are kept in the tool status, while detailed command output is written to the MinerU install logs under DeepSee state. A source ZIP still needs a compatible Python runtime (or the verified portable UV fallback) and network access for Python dependencies and model files; it is not a complete offline model bundle.
+
+The strategy follows MinerU's official [installation guide](https://opendatalab.github.io/MinerU/quick_start/), [extension-module guidance](https://opendatalab.github.io/MinerU/quick_start/extension_modules/), and [model-source policy](https://opendatalab.github.io/MinerU/usage/model_source/).
+Advanced deployments can override the package spec, PyPI mirror, model source, source ZIP, source extra, and per-command timeout through the documented `OPENDS_MINERU_*` values in `.env.example`; ordinary users do not need to configure them.
+
 ### Model directory
 
 The DeepSee panel keeps a compact four-column model matrix: Enabled, Model, Source, and Capabilities.
@@ -149,6 +164,7 @@ For migration compatibility, the internal settings namespace, tool IDs, and some
 - `host/codex-provider.js` — generated Codex provider with model selection
 - `scripts/install-plugin.mjs` — one-command Web + Headless installer
 - `scripts/folder-install.mjs` — durable extracted-ZIP staging for fallback installation
+- `scripts/mineru-install-strategies.mjs` — extensible Python, UV, mirror, portable archive, and source-ZIP policy
 - `scripts/runtime-discovery.mjs` — startup scanning, migration, and registry generation
 - `scripts/prime-preset.mjs` — Prime preset generation from the current Harness release
 - `scripts/uninstall-plugin.mjs` — standard uninstall preserving `$DSH_HOME/deepsee`

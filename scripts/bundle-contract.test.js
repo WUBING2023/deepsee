@@ -7,6 +7,8 @@ const launcher = readFileSync(new URL("../host/bin.mjs", import.meta.url), "utf8
 const installer = readFileSync(new URL("./install-plugin.mjs", import.meta.url), "utf8");
 const installPolicy = readFileSync(new URL("./install-policy.mjs", import.meta.url), "utf8");
 const folderInstaller = readFileSync(new URL("./folder-install.mjs", import.meta.url), "utf8");
+const mineruManager = readFileSync(new URL("./mineru-manager.mjs", import.meta.url), "utf8");
+const mineruWorker = readFileSync(new URL("./install-mineru-worker.mjs", import.meta.url), "utf8");
 
 describe("standard DeepSeek Harness bundle", () => {
   it("declares a distributable bundle and Web client", () => {
@@ -48,5 +50,16 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(launcher).not.toContain("startDeepSeeAdminServer");
     expect(launcher).not.toContain("OPENDS_ADMIN_PORT");
     expect(launcher).not.toContain("3091");
+  });
+
+  it("installs MinerU through an automatic fallback chain", () => {
+    expect(mineruManager).not.toContain('if (!findExecutable("uv"))');
+    expect(mineruWorker).toContain("discoverCompatiblePythonRuntimes");
+    expect(mineruWorker).toContain("下载并校验便携 UV 压缩包");
+    expect(mineruWorker).toContain("下载并解压 MinerU 官方源码 ZIP");
+    expect(mineruWorker).toContain("verifySha256");
+    const strategyFlow = mineruWorker.slice(mineruWorker.indexOf("function installPackage"));
+    expect(strategyFlow.indexOf("系统 UV")).toBeLessThan(strategyFlow.indexOf("便携 UV"));
+    expect(strategyFlow.indexOf("便携 UV")).toBeLessThan(strategyFlow.indexOf("官方源码 ZIP"));
   });
 });

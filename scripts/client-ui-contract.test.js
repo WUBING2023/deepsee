@@ -47,5 +47,7 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).toContain('createElement("option", { value: "model" }, "模型")');
     expect(clientSource).toContain('createElement("option", { value: "ocr" }, "OCR")');
     expect(clientSource).toContain("MinerU · 安装");
+    expect(clientSource).toContain("MinerU · 重试");
+    expect(clientSource).toContain("自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP");
   });
 });

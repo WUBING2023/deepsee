@@ -39,6 +39,26 @@ function readState(root) {
   }
 }
 
+function stateDetails(state) {
+  return {
+    ...(state.installMethod ? { installMethod: state.installMethod } : {}),
+    ...(state.strategy ? { strategy: state.strategy } : {}),
+    ...(Array.isArray(state.attempts) ? { attempts: state.attempts } : {}),
+    ...(state.startedAt ? { startedAt: state.startedAt } : {}),
+    ...(state.completedAt ? { completedAt: state.completedAt } : {}),
+  };
+}
+
+function processIsRunning(pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function writeMinerUState(root, value) {
   const path = statePath(root);
   mkdirSync(join(root, ".opends-tools", "mineru"), { recursive: true });
@@ -61,17 +81,40 @@ export function getMinerUStatus(root) {
       installed: true,
       managed: true,
       executable: managed,
-      message: "MinerU 已安装，可用于文档 OCR 与版面解析。",
+      message: state.message || "MinerU 已安装，可用于文档 OCR 与版面解析。",
+      ...stateDetails(state),
     };
   }
   if (state.status === "installing") {
     const started = Date.parse(state.startedAt || "");
-    if (Number.isFinite(started) && Date.now() - started < 2 * 60 * 60 * 1000) {
-      return { status: "installing", installed: false, managed: true, message: "正在安装 MinerU…" };
+    const age = Number.isFinite(started) ? Date.now() - started : Number.POSITIVE_INFINITY;
+    const withinMaximumInstallWindow = age >= 0 && age < 24 * 60 * 60 * 1000;
+    const startupGrace = withinMaximumInstallWindow && age < 60_000 && !state.pid;
+    if (withinMaximumInstallWindow && (processIsRunning(state.pid) || startupGrace)) {
+      return {
+        status: "installing",
+        installed: false,
+        managed: true,
+        message: state.message || "正在自动选择 MinerU 安装方式…",
+        ...stateDetails(state),
+      };
     }
+    return {
+      status: "error",
+      installed: false,
+      managed: true,
+      message: "上一次 MinerU 安装进程已结束但没有完成；点击重试会重新检测安装方式。",
+      ...stateDetails(state),
+    };
   }
   if (state.status === "error") {
-    return { status: "error", installed: false, managed: true, message: state.message || "MinerU 安装失败，可重试。" };
+    return {
+      status: "error",
+      installed: false,
+      managed: true,
+      message: state.message || "MinerU 安装失败，可重试。",
+      ...stateDetails(state),
+    };
   }
   const external = managedExists ? undefined : findExecutable("mineru");
   if (external) {
@@ -81,6 +124,7 @@ export function getMinerUStatus(root) {
       managed: false,
       executable: external,
       message: "MinerU 已安装，可用于文档 OCR 与版面解析。",
+      installMethod: "系统已有安装",
     };
   }
   return {
@@ -94,28 +138,50 @@ export function getMinerUStatus(root) {
 export function startMinerUInstall(root) {
   const current = getMinerUStatus(root);
   if (current.status === "ready" || current.status === "installing") return current;
-  if (!findExecutable("uv")) throw new Error("未找到 uv；请先安装 uv 后重试。");
   const toolRoot = join(root, ".opends-tools", "mineru");
   mkdirSync(toolRoot, { recursive: true });
   const stdoutPath = join(toolRoot, "install.stdout.log");
   const stderrPath = join(toolRoot, "install.stderr.log");
   const stdout = openSync(stdoutPath, "a");
   const stderr = openSync(stderrPath, "a");
-  const child = spawn(process.execPath, [join(moduleRoot, "scripts", "install-mineru-worker.mjs"), root], {
-    cwd: root,
-    detached: true,
-    windowsHide: true,
-    stdio: ["ignore", stdout, stderr],
-    env: { ...process.env, OPENDS_MINERU_INSTALL: "1" },
-  });
-  closeSync(stdout);
-  closeSync(stderr);
-  child.unref();
+  const startedAt = new Date().toISOString();
   writeMinerUState(root, {
     status: "installing",
-    pid: child.pid,
-    startedAt: new Date().toISOString(),
-    message: "正在安装 MinerU…",
+    startedAt,
+    strategy: "自动检测",
+    attempts: [],
+    message: "正在检测已有 UV、Python 与可用下载源…",
   });
+  let child;
+  try {
+    child = spawn(process.execPath, [join(moduleRoot, "scripts", "install-mineru-worker.mjs"), root], {
+      cwd: root,
+      detached: true,
+      windowsHide: true,
+      stdio: ["ignore", stdout, stderr],
+      env: { ...process.env, OPENDS_MINERU_INSTALL: "1" },
+    });
+  } finally {
+    closeSync(stdout);
+    closeSync(stderr);
+  }
+  if (!child?.pid) {
+    writeMinerUState(root, {
+      status: "error",
+      startedAt,
+      completedAt: new Date().toISOString(),
+      message: "MinerU 后台安装进程未能启动。",
+    });
+    throw new Error("MinerU 后台安装进程未能启动。");
+  }
+  child.once("error", (error) => {
+    writeMinerUState(root, {
+      status: "error",
+      startedAt,
+      completedAt: new Date().toISOString(),
+      message: `MinerU 后台安装进程启动失败：${error.message}`,
+    });
+  });
+  child.unref();
   return getMinerUStatus(root);
 }

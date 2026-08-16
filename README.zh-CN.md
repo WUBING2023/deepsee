@@ -95,6 +95,21 @@ npx --yes github:WUBING2023/deepsee uninstall
 
 图片会先交给所选视觉路线，DeepSeek 再根据识图结果继续回答。界面会提示当前由其他模型识图，不会再把纯文本 DeepSeek 模型显示为最终的视觉执行者。
 
+#### MinerU 自动安装
+
+用户只需点击一次 **MinerU · 安装**。DeepSee 会在独立目录中自动按顺序尝试：
+
+1. 直接复用电脑上已经可用的 MinerU。
+2. 使用已有 `uv`，先连接官方 PyPI，再切换可配置的国内镜像。
+3. 使用已有 Python：Windows 支持 3.10–3.12，Linux/macOS 支持 3.10–3.13；自动创建 `venv` 并通过 `pip` 安装。
+4. 自动下载官方便携 UV 压缩包，校验 SHA-256 后仅保存在 DeepSee 内部，不修改系统安装。
+5. 包安装仍不成功时，下载 MinerU 官方源码 ZIP，解压后从源码安装。
+
+DeepSee 默认安装 `mineru[core]>=3,<4`，因为 OCR 路线明确使用支持纯 CPU 的 `pipeline` 后端，不会为了识字强制安装无关的完整推理后端。Python 包源与模型源分别重试；模型下载先使用 MinerU 的 `auto` 自动选源，再尝试 ModelScope 与 Hugging Face。界面状态会保留当前策略和最终成功方式，完整命令输出写入 DeepSee 状态目录下的 MinerU 安装日志。源码 ZIP 仍需要兼容 Python（或已校验的便携 UV）来安装依赖，并需要联网取得 Python 依赖和模型文件，因此它不是包含模型的完全离线包。
+
+策略依据 MinerU 官方的[安装指南](https://opendatalab.github.io/MinerU/zh/quick_start/)、[扩展模块说明](https://opendatalab.github.io/MinerU/quick_start/extension_modules/)与[模型源策略](https://opendatalab.github.io/MinerU/usage/model_source/)。
+高级部署可以通过 `.env.example` 中的 `OPENDS_MINERU_*` 配置扩展包版本、PyPI 镜像、模型源、源码 ZIP、源码 extra 与单条命令超时；普通用户无需填写。
+
 ### 模型目录
 
 侧栏的“深见”面板只保留四列：打开、模型、来源、能力。
@@ -149,6 +164,7 @@ pnpm run pack:release        # 构建并生成可发布 tarball
 - `host/codex-provider.js`：构建时生成的可选择模型 Codex provider
 - `scripts/install-plugin.mjs`：Web + Headless 一键安装
 - `scripts/folder-install.mjs`：将解压的 ZIP 持久化后执行兜底安装
+- `scripts/mineru-install-strategies.mjs`：可扩展的 Python、UV、镜像、便携包与源码 ZIP 策略
 - `scripts/runtime-discovery.mjs`：启动扫描、旧状态迁移与注册表生成
 - `scripts/prime-preset.mjs`：基于当前 Harness 标准 preset 生成 Prime
 - `scripts/uninstall-plugin.mjs`：标准卸载并保留 `$DSH_HOME/deepsee`

@@ -1,64 +1,325 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+} from "node:fs";
+import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
 import { findExecutable } from "./runtime-locator.mjs";
+import { resolveExecutableInvocation } from "./npx-command.mjs";
+import {
+  conciseInstallError,
+  discoverCompatiblePythonRuntimes,
+  mineruModelSources,
+  mineruPackageSources,
+  MINERU_PACKAGE_SPEC,
+  MINERU_SOURCE_ZIP_URL,
+  portableUvAsset,
+} from "./mineru-install-strategies.mjs";
 import { managedMinerUExecutable, managedMinerURoot, writeMinerUState } from "./mineru-manager.mjs";
 
 const root = process.argv[2];
 if (!root || process.env.OPENDS_MINERU_INSTALL !== "1") process.exit(2);
 
-function run(command, args, env) {
-  const result = spawnSync(command, args, {
+const startedAt = new Date().toISOString();
+const attempts = [];
+const commandTimeoutMs = Number(process.env.OPENDS_MINERU_COMMAND_TIMEOUT_MS) || 90 * 60 * 1000;
+const packageSpec = process.env.OPENDS_MINERU_PACKAGE_SPEC?.trim() || MINERU_PACKAGE_SPEC;
+const sourceExtra = process.env.OPENDS_MINERU_SOURCE_EXTRA?.trim() || "core";
+const sourceZipUrl = process.env.OPENDS_MINERU_SOURCE_ZIP?.trim() || MINERU_SOURCE_ZIP_URL;
+const toolRoot = managedMinerURoot(root);
+const venv = join(toolRoot, ".venv");
+const python = process.platform === "win32" ? join(venv, "Scripts", "python.exe") : join(venv, "bin", "python");
+const env = {
+  ...process.env,
+  PIP_DISABLE_PIP_VERSION_CHECK: "1",
+  UV_CACHE_DIR: join(toolRoot, "cache", "uv"),
+  MODELSCOPE_CACHE: join(toolRoot, "model-cache"),
+  HF_HOME: join(toolRoot, "model-cache", "huggingface"),
+  MINERU_TOOLS_CONFIG_JSON: join(toolRoot, "mineru.json"),
+};
+
+function writeProgress(message, extra = {}) {
+  writeMinerUState(root, {
+    status: "installing",
+    pid: process.pid,
+    startedAt,
+    message,
+    attempts,
+    ...extra,
+  });
+}
+
+function safeRemove(target) {
+  const relation = relative(toolRoot, target);
+  if (!relation || relation === ".." || relation.startsWith(`..\\`) || relation.startsWith("../") || isAbsolute(relation)) {
+    throw new Error(`拒绝清理 MinerU 管理目录之外的路径：${target}`);
+  }
+  rmSync(target, { recursive: true, force: true });
+}
+
+function run(command, args, label, runEnv = env) {
+  const invocation = resolveExecutableInvocation(command, args);
+  const result = spawnSync(invocation.command, invocation.args, {
     cwd: root,
-    env,
+    env: runEnv,
     stdio: "inherit",
     windowsHide: true,
-    timeout: 90 * 60 * 1000,
+    timeout: commandTimeoutMs,
   });
-  if (result.status !== 0) throw new Error(`${args.slice(0, 2).join(" ")} 执行失败（exit ${result.status ?? "unknown"}）。`);
+  if (result.error) throw new Error(`${label}无法启动：${result.error.message}`);
+  if (result.status !== 0) throw new Error(`${label}失败（exit ${result.status ?? "unknown"}）。`);
+}
+
+function runPython(runtime, args, label) {
+  run(runtime.command, [...runtime.prefixArgs, ...args], label);
+}
+
+function attempt(label, action) {
+  const record = { label, status: "running", startedAt: new Date().toISOString() };
+  attempts.push(record);
+  writeProgress(`正在尝试：${label}`, { strategy: label });
+  try {
+    const value = action();
+    record.status = "success";
+    record.completedAt = new Date().toISOString();
+    writeProgress(`${label}已完成，正在继续验证…`, { strategy: label });
+    return value;
+  } catch (error) {
+    record.status = "failed";
+    record.completedAt = new Date().toISOString();
+    record.message = conciseInstallError(error);
+    console.error(`[DeepSee MinerU] ${label}: ${record.message}`);
+    writeProgress(`${label}未成功，正在自动切换下一种方式…`, { strategy: label });
+    return undefined;
+  }
+}
+
+function resetVenv() {
+  if (existsSync(venv)) safeRemove(venv);
+  mkdirSync(toolRoot, { recursive: true });
+}
+
+function uvInstall(uv, source, installSpec = packageSpec) {
+  resetVenv();
+  run(uv, ["venv", "--managed-python", "--python", "3.12", venv], "创建 MinerU Python 环境");
+  const args = ["pip", "install", "--python", python, "-U", installSpec];
+  if (source.indexUrl) args.push("--index-url", source.indexUrl);
+  run(uv, args, `通过 ${source.label} 安装 MinerU`);
+  return { python, method: `UV · ${source.label}` };
+}
+
+function pythonInstall(runtime, source, installSpec = packageSpec) {
+  resetVenv();
+  runPython(runtime, ["-m", "venv", venv], "创建 MinerU Python 环境");
+  const pipIndex = source.indexUrl ? ["--index-url", source.indexUrl] : [];
+  run(python, ["-m", "pip", "install", "--upgrade", "pip", ...pipIndex], `通过 ${source.label} 更新 pip`);
+  run(python, ["-m", "pip", "install", "-U", installSpec, ...pipIndex], `通过 ${source.label} 安装 MinerU`);
+  return { python, method: `Python/pip · ${source.label}` };
+}
+
+function downloadFile(url, target, pythonRuntime) {
+  mkdirSync(dirname(target), { recursive: true });
+  const partial = `${target}.partial`;
+  rmSync(partial, { force: true });
+  try {
+    const curl = findExecutable("curl");
+    if (curl) {
+      run(curl, ["--location", "--fail", "--retry", "2", "--connect-timeout", "30", "--output", partial, url], `下载 ${basename(target)}`);
+    } else if (process.platform === "win32" && (findExecutable("powershell") || findExecutable("powershell.exe"))) {
+      const powershell = findExecutable("powershell") || findExecutable("powershell.exe");
+      const script = "& { param([string]$url,[string]$output) $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $output }";
+      run(powershell, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script, url, partial], `下载 ${basename(target)}`);
+    } else if (pythonRuntime) {
+      runPython(pythonRuntime, [
+        "-c",
+        "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])",
+        url,
+        partial,
+      ], `下载 ${basename(target)}`);
+    } else {
+      throw new Error("没有可用的 curl、PowerShell 或 Python 下载器。");
+    }
+    renameSync(partial, target);
+  } finally {
+    rmSync(partial, { force: true });
+  }
+}
+
+function extractArchive(archive, destination, archiveType, pythonRuntime) {
+  if (existsSync(destination)) safeRemove(destination);
+  mkdirSync(destination, { recursive: true });
+  if (archiveType === "zip") {
+    if (process.platform === "win32" && (findExecutable("powershell") || findExecutable("powershell.exe"))) {
+      const powershell = findExecutable("powershell") || findExecutable("powershell.exe");
+      const script = "& { param([string]$archive,[string]$destination) Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force }";
+      run(powershell, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script, archive, destination], `解压 ${basename(archive)}`);
+      return;
+    }
+    if (pythonRuntime) {
+      runPython(pythonRuntime, ["-m", "zipfile", "-e", archive, destination], `解压 ${basename(archive)}`);
+      return;
+    }
+    const unzip = findExecutable("unzip");
+    if (unzip) {
+      run(unzip, ["-o", archive, "-d", destination], `解压 ${basename(archive)}`);
+      return;
+    }
+    throw new Error("没有可用的 ZIP 解压工具。");
+  }
+  const tar = findExecutable("tar");
+  if (!tar) throw new Error("没有可用的 tar 解压工具。");
+  run(tar, ["-xzf", archive, "-C", destination], `解压 ${basename(archive)}`);
+}
+
+function findFile(rootDirectory, name, depth = 4) {
+  if (depth < 0 || !existsSync(rootDirectory)) return undefined;
+  for (const entry of readdirSync(rootDirectory, { withFileTypes: true })) {
+    const path = join(rootDirectory, entry.name);
+    if (entry.isFile() && entry.name.toLowerCase() === name.toLowerCase()) return path;
+    if (entry.isDirectory()) {
+      const nested = findFile(path, name, depth - 1);
+      if (nested) return nested;
+    }
+  }
+  return undefined;
+}
+
+function verifySha256(archive, checksumFile) {
+  const expected = readFileSync(checksumFile, "utf8").match(/\b[a-fA-F0-9]{64}\b/)?.[0]?.toLowerCase();
+  if (!expected) throw new Error("便携 UV 校验文件格式无效。");
+  const actual = createHash("sha256").update(readFileSync(archive)).digest("hex");
+  if (actual !== expected) throw new Error("便携 UV 压缩包 SHA-256 校验失败。");
+}
+
+function installPortableUv(pythonRuntime) {
+  const asset = portableUvAsset();
+  if (!asset) throw new Error(`当前平台暂不支持便携 UV：${process.platform}/${process.arch}`);
+  const bootstrapRoot = join(toolRoot, "bootstrap", "uv");
+  const archive = join(toolRoot, "downloads", asset.fileName);
+  const checksum = `${archive}.sha256`;
+  downloadFile(asset.url, archive, pythonRuntime);
+  downloadFile(asset.checksumUrl, checksum, pythonRuntime);
+  verifySha256(archive, checksum);
+  extractArchive(archive, bootstrapRoot, asset.archiveType, pythonRuntime);
+  const executable = findFile(bootstrapRoot, asset.executableName);
+  if (!executable) throw new Error("便携 UV 解压完成，但未找到可执行文件。");
+  if (process.platform !== "win32") chmodSync(executable, 0o755);
+  run(executable, ["--version"], "验证便携 UV");
+  return executable;
+}
+
+function downloadMinerUSource(pythonRuntime) {
+  const archive = join(toolRoot, "downloads", "MinerU-source.zip");
+  const sourceRoot = join(toolRoot, "source");
+  downloadFile(sourceZipUrl, archive, pythonRuntime);
+  extractArchive(archive, sourceRoot, "zip", pythonRuntime);
+  const pyproject = findFile(sourceRoot, "pyproject.toml", 3);
+  if (!pyproject) throw new Error("官方源码 ZIP 中没有找到 pyproject.toml。");
+  return dirname(pyproject);
+}
+
+function modelDownloaderPath() {
+  return process.platform === "win32"
+    ? join(venv, "Scripts", "mineru-models-download.exe")
+    : join(venv, "bin", "mineru-models-download");
+}
+
+function installPackage() {
+  mkdirSync(toolRoot, { recursive: true });
+  const sources = mineruPackageSources();
+  const pythonRuntimes = discoverCompatiblePythonRuntimes();
+  let uv = findExecutable("uv");
+  let installed;
+
+  if (uv) {
+    for (const source of sources) {
+      installed = attempt(`系统 UV · ${source.label}`, () => uvInstall(uv, source));
+      if (installed) return { ...installed, uv, pythonRuntimes };
+    }
+  }
+
+  for (const runtime of pythonRuntimes) {
+    for (const source of sources) {
+      installed = attempt(`${runtime.label} ${runtime.version} · ${source.label}`, () => pythonInstall(runtime, source));
+      if (installed) return { ...installed, uv, pythonRuntimes };
+    }
+  }
+
+  uv = attempt("下载并校验便携 UV 压缩包", () => installPortableUv(pythonRuntimes[0]));
+  if (uv) {
+    for (const source of sources) {
+      installed = attempt(`便携 UV · ${source.label}`, () => uvInstall(uv, source));
+      if (installed) return { ...installed, uv, pythonRuntimes };
+    }
+  }
+
+  const archivePython = existsSync(python)
+    ? { command: python, prefixArgs: [], label: "DeepSee managed Python" }
+    : pythonRuntimes[0];
+  const sourceRoot = attempt("下载并解压 MinerU 官方源码 ZIP", () => downloadMinerUSource(archivePython));
+  if (!sourceRoot) return undefined;
+  for (const source of sources) {
+    if (uv) {
+      installed = attempt(`源码 ZIP · UV · ${source.label}`, () => uvInstall(uv, source, `${sourceRoot}[${sourceExtra}]`));
+    } else if (pythonRuntimes[0]) {
+      installed = attempt(`源码 ZIP · Python/pip · ${source.label}`, () => pythonInstall(pythonRuntimes[0], source, `${sourceRoot}[${sourceExtra}]`));
+    } else {
+      attempt("处理 MinerU 官方源码 ZIP", () => { throw new Error("源码已下载，但电脑上没有兼容 Python，且便携 UV 无法启动。"); });
+      break;
+    }
+    if (installed) return { ...installed, uv, pythonRuntimes };
+  }
+  return undefined;
 }
 
 try {
-  const uv = findExecutable("uv");
-  if (!uv) throw new Error("未找到 uv。");
-  const toolRoot = managedMinerURoot(root);
-  const venv = join(toolRoot, ".venv");
-  mkdirSync(toolRoot, { recursive: true });
-  const env = {
-    ...process.env,
-    UV_CACHE_DIR: join(root, ".opends-tools", ".uv-cache"),
-    MODELSCOPE_CACHE: join(toolRoot, "model-cache"),
-    MINERU_TOOLS_CONFIG_JSON: join(toolRoot, "mineru.json"),
-  };
-  const python = process.platform === "win32" ? join(venv, "Scripts", "python.exe") : join(venv, "bin", "python");
-  run(uv, [
-    "venv",
-    ...(existsSync(python) ? ["--clear"] : []),
-    "--managed-python",
-    "--python", "3.12",
-    venv,
-  ], env);
-  run(uv, ["pip", "install", "--python", python, "-U", "mineru[all]"], env);
+  writeProgress("正在检测已有 UV、Python 与可用下载源…", { strategy: "自动检测" });
+  const installed = installPackage();
   const executable = managedMinerUExecutable(root);
-  if (!existsSync(executable)) throw new Error("安装完成但未找到 mineru 可执行文件。");
-  run(executable, ["--version"], env);
-  const modelDownloader = process.platform === "win32"
-    ? join(venv, "Scripts", "mineru-models-download.exe")
-    : join(venv, "bin", "mineru-models-download");
+  if (!installed || !existsSync(executable)) throw new Error("所有自动安装方式均未生成可用的 mineru 可执行文件。");
+  run(executable, ["--version"], "验证 MinerU");
+  const modelDownloader = modelDownloaderPath();
   if (!existsSync(modelDownloader)) throw new Error("安装完成但未找到 MinerU 模型下载器。");
-  run(modelDownloader, ["--source", "modelscope", "--model_type", "pipeline"], env);
+
+  let modelsReady = false;
+  for (const source of mineruModelSources()) {
+    const result = attempt(`下载 pipeline 模型 · ${source}`, () => {
+      run(modelDownloader, ["--source", source, "--model_type", "pipeline"], `通过 ${source} 下载 MinerU 模型`);
+      return true;
+    });
+    if (result) {
+      modelsReady = true;
+      break;
+    }
+  }
+  if (!modelsReady) throw new Error("MinerU 已安装，但所有模型下载源均未完成；可以稍后点击重试。");
+
   writeMinerUState(root, {
     status: "ready",
+    installed: true,
+    startedAt,
     completedAt: new Date().toISOString(),
-    message: "MinerU 已安装；首次解析时可能按 MinerU 配置下载模型。",
+    installMethod: installed.method,
+    attempts,
+    message: `MinerU 已通过 ${installed.method} 安装，可用于文档 OCR 与版面解析。`,
   });
 } catch (error) {
+  const lastFailures = attempts.filter((item) => item.status === "failed").slice(-3).map((item) => item.label).join("、");
   writeMinerUState(root, {
     status: "error",
+    installed: false,
+    startedAt,
     completedAt: new Date().toISOString(),
-    message: error instanceof Error ? error.message : String(error),
+    attempts,
+    message: `MinerU 自动安装未完成${lastFailures ? `（最后尝试：${lastFailures}）` : ""}。${conciseInstallError(error)}`,
   });
   process.exitCode = 1;
 }
