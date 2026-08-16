@@ -78,7 +78,7 @@ npx --yes github:WUBING2023/deepsee uninstall
 
 打开 DeepSee 面板时，会自动从官方 `WUBING2023/deepsee` 仓库进行低频缓存检查，默认最多每六小时一次。检查器会先解析并锁定官方 commit，保证版本清单与 ZIP 始终来自同一个不可变的源码版本。发现更高的语义版本后，面板才显示简洁的 **升级** 入口；点击一次即可下载该 commit 的 GitHub ZIP，校验包名、版本、安装来源和预构建 Host 文件，然后复用同一套安全目录安装器，自动升级 `web` 与 `headless` 两个 profile。模型设置、路由、凭据和 MinerU 状态不会被覆盖。面板显示 **重启生效** 后重启 Harness 即可。
 
-DeepSee 不会静默强制安装：检查是自动的，升级由用户点击确认。下载或某个 profile 安装失败时，当前版本仍可继续使用，并可在面板重试；详细日志保存在 `$DSH_HOME/deepsee/.opends-update`。
+DeepSee 不会静默强制安装：检查是自动的，升级由用户点击确认。后台安装器针对旧电脑把每个 profile 的单次上限放宽到 30 分钟并保留自动重试，同时避免坏网络下永久卡住。下载或某个 profile 安装失败时，当前版本仍可继续使用，并可在面板重试；详细日志保存在 `$DSH_HOME/deepsee/.opends-update`。
 
 ## 安装后发生什么
 

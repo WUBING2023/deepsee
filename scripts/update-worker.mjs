@@ -139,7 +139,7 @@ try {
     "install",
     "--from-folder",
     "--timeout-ms",
-    "0",
+    "1800000",
     "--retries",
     "2",
     "--force",

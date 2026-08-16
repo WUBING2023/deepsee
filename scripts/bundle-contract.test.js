@@ -71,6 +71,7 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(updateWorker).toContain("deepSeeUpdateArchiveUrl");
     expect(updateManager).toContain("DEEPSEE_UPDATE_REF_URL");
     expect(updateWorker).toContain('"--from-folder"');
+    expect(updateWorker).toContain('"1800000"');
     expect(updateWorker).toContain('"--force"');
     expect(updateWorker).toContain("validateDeepSeeManifest");
   });
