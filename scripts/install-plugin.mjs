@@ -93,7 +93,7 @@ function runDsh(argv, profile, actionLabel = `Installing ${profile} profile`) {
   const runners = resolveDshRunners(argv);
   const profileStoreDir = resolveProfileStoreDir(profile);
   const profileEnv = profileStoreDir
-    ? { ...env, npm_config_store_dir: profileStoreDir }
+    ? { ...env, pnpm_config_store_dir: profileStoreDir }
     : env;
   if (profileStoreDir) {
     console.log(`[DeepSee] Reusing the existing ${profile} pnpm store: ${profileStoreDir}`);
@@ -146,6 +146,13 @@ for (const profile of options.profiles) {
   if (before.current && !options.force) {
     console.log(`[DeepSee] ${profile} profile already has DeepSee ${manifest.version}; skipping.`);
     continue;
+  }
+  if (before.registered && options.force) {
+    runDsh(
+      ["plugin", "--profile", profile, "remove", manifest.name],
+      profile,
+      `Refreshing ${profile} profile`,
+    );
   }
   runDsh(["plugin", "--profile", profile, "add", spec], profile);
   const after = inspectProfileInstall(dshHome, profile, manifest.name, manifest.version);

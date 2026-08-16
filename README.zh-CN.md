@@ -44,7 +44,7 @@ npx --yes github:WUBING2023/deepsee web
 
 | 能力 | 实际体验 |
 | --- | --- |
-| **真正可执行的识图** | 上传图片后，DeepSee 会交给选定的多模态模型或 MinerU OCR，再把观察结果交回 DeepSeek。对话中会标明真正的视觉读取者。 |
+| **真正可执行的识图** | 上传图片后，DeepSee 会交给选定的多模态模型，或 MinerU、PaddleOCR、RapidOCR，再把观察结果交回 DeepSeek。 |
 | **统一模型目录** | Harness API 模型与通过验证的本地 CLI 会出现在同一个简洁矩阵中，显示可用性和擅长能力。 |
 | **快速初始化** | 自动选择首个可用视觉模型，并沿用 Codex/Claude 桌面端或 CLI 与已有 `AGENTS.md`、`CLAUDE.md` 或 `agent.md` 指令。 |
 | **原生配置体验** | 插件就在 Harness 侧栏内，通过同源接口工作；模型和凭据仍归 Harness 管理。 |
@@ -54,7 +54,7 @@ npx --yes github:WUBING2023/deepsee web
 在 DeepSee 首选项中选择一种读取方式：
 
 - **模型**：选择 Harness 中确认支持图片输入的模型。
-- **OCR**：使用 MinerU 读取文档文字与版面。安装时会显示简单的阶段进度条，并按需尝试已有环境、`uv`、Python + `venv`、校验过的便携 UV，最后再尝试源码 ZIP。DeepSee 管理的环境可在同一位置卸载，系统中原有的 MinerU 不会被删除。
+- **OCR**：在三种隔离、可安装、可卸载的本地引擎中选择。MinerU 适合复杂 PDF、表格与公式；PaddleOCR 适合多语言图片和扫描件；RapidOCR 适合截图、票据与低资源 CPU。开始下载时界面会临时显示这行对比。系统已有安装不会被 DeepSee 删除。
 
 视觉路线完成读取后，DeepSeek 会拿到观察结果并继续正常对话。纯文本模型不会再被界面伪装成“已经看过图片”。
 
@@ -68,7 +68,7 @@ DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验
 | Codex Desktop / CLI | 是 | 是 | 复用验证通过的内置 App Server 或 CLI，可选择支持的模型档位。 |
 | Claude Desktop + Claude Code | 是 | CLI 验证后可用 | 只有桌面端时可从 DeepSee 打开；自动 Workflow 仍需要 Claude Code CLI。 |
 | Kimi CLI、OpenCode、Ollama | 是 | 暂不支持 | 会如实显示扫描结果；没有稳定 Harness 适配器时不会伪装成可执行路线。 |
-| MinerU | 是 | 仅 OCR | 位于首选项中的视觉工具，不混入通用模型矩阵。 |
+| MinerU / PaddleOCR / RapidOCR | 是 | 仅 OCR | 位于首选项中的视觉工具，不混入通用模型矩阵。 |
 
 ### Workflow 与 Prime
 
@@ -81,7 +81,7 @@ DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验
 flowchart LR
     U["用户"] --> H["DeepSeek Harness"]
     H --> D["DeepSee"]
-    D -->|"图片"| V["视觉模型或 MinerU"]
+    D -->|"图片"| V["视觉模型或本地 OCR"]
     D -->|"任务"| R["Harness API、Codex 或 Claude"]
     V -->|"观察结果"| H
     R -->|"执行结果"| H

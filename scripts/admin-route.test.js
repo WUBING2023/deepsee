@@ -59,6 +59,7 @@ describe("embedded DeepSee Host route", () => {
     const state = await response.json();
     expect(state).toMatchObject({ version: 1, routes: [], preferences: {} });
     expect(state.tools.mineru).toBeTruthy();
+    expect(state.tools.ocr.catalog.map((tool) => tool.id)).toEqual(["mineru", "paddleocr", "rapidocr"]);
     expect(state.update).toMatchObject({ currentVersion: manifest.version });
   });
 

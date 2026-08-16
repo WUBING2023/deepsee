@@ -17,6 +17,7 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.dsh.bundle.patch).toBe("./cordis.patch.yml");
     expect(manifest.dsh.client.platform).toBe("web");
     expect(manifest.files).toContain("dist");
+    expect(manifest.files).toContain("scripts/*.py");
     expect(manifest.files).toContain("cordis.patch.yml");
     expect(manifest.scripts.prepare).toBeUndefined();
     expect(manifest.scripts.prepack).toBeUndefined();
@@ -52,8 +53,9 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain("inspectProfileInstall");
     expect(installer).toContain("stageFolderPackage");
     expect(installer).toContain("resolveProfileStoreDir");
-    expect(installer).toContain("npm_config_store_dir");
+    expect(installer).toContain("pnpm_config_store_dir");
     expect(installer).toContain("profileUsesPackage");
+    expect(installer).toContain("before.registered && options.force");
     expect(installer).toContain('"remove", legacyPackage');
     expect(installer).toContain('NO_UPDATE_NOTIFIER: "1"');
     expect(installPolicy).toContain('args.includes("--from-folder")');

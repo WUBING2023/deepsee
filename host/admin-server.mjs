@@ -10,7 +10,7 @@ import {
   updateRegistryRoute,
 } from "../scripts/registry-state.mjs";
 import { discoverDeepSeeRuntimes, discoverWorkspaceInstructions, resolveDeepSeePaths } from "../scripts/runtime-discovery.mjs";
-import { getMinerUStatus, startMinerUInstall, uninstallMinerU } from "../scripts/mineru-manager.mjs";
+import { getOCRStatus, getOCRToolsState, startOCRInstall, uninstallOCR } from "../scripts/ocr-manager.mjs";
 import {
   checkDeepSeeUpdate,
   getDeepSeeUpdateStatus,
@@ -94,7 +94,10 @@ export function createDeepSeeAdminHandler(options = {}) {
         desktopApps: registry.desktopApps || [],
         instructions: discoverWorkspaceInstructions(options.cwd || process.cwd()),
       },
-      tools: { mineru: getMinerUStatus(stateRoot) },
+      tools: {
+        ocr: getOCRToolsState(stateRoot),
+        mineru: getOCRStatus(stateRoot, "mineru"),
+      },
       update: getDeepSeeUpdateStatus(stateRoot, packageRoot),
     };
   };
@@ -151,11 +154,18 @@ export function createDeepSeeAdminHandler(options = {}) {
       }
       if (req.method === "POST" && path === "/v1/tools/mineru/install") {
         await readJson(req);
-        return send(res, 202, { tool: startMinerUInstall(stateRoot) });
+        return send(res, 202, { tool: startOCRInstall(stateRoot, "mineru") });
       }
       if (req.method === "POST" && path === "/v1/tools/mineru/uninstall") {
         await readJson(req);
-        return send(res, 200, { tool: uninstallMinerU(stateRoot) });
+        return send(res, 200, { tool: uninstallOCR(stateRoot, "mineru") });
+      }
+      const ocrAction = path.match(/^\/v1\/tools\/ocr\/(mineru|paddleocr|rapidocr)\/(install|uninstall)$/);
+      if (req.method === "POST" && ocrAction) {
+        await readJson(req);
+        const [, id, action] = ocrAction;
+        const tool = action === "install" ? startOCRInstall(stateRoot, id) : uninstallOCR(stateRoot, id);
+        return send(res, action === "install" ? 202 : 200, { tool });
       }
       if (req.method === "POST" && path === "/v1/update/check") {
         await readJson(req);

@@ -23,7 +23,8 @@ DeepSee 是集成层，不是另一套 Agent 框架。它补充视觉预处理�
 | Runtime 扫描 | `scripts/runtime-discovery.mjs`、`scripts/runtime-health.mjs` | 发现本地 CLI，并验证每条路线能否使用。 |
 | Web UI | `host/client.js` | 渲染原生侧栏、模型矩阵、视觉首选项和升级状态。 |
 | 同源接口 | `host/admin-server.mjs` | 在 Harness WebServer 中提供 `/api/deepsee`。 |
-| 视觉适配 | `src/vision.ts`、`src/vision-adapter.ts`、`src/ocr.ts` | 选择视觉模型或 MinerU，把观察结果交回基模。 |
+| 视觉适配 | `src/vision.ts`、`src/vision-adapter.ts`、`src/ocr.ts` | 选择视觉模型或受管 OCR，把观察结果交回基模。 |
+| OCR 管理 | `scripts/ocr-manager.mjs`、`scripts/ocr-runner.py` | 隔离安装、验证、统一输出与安全卸载 MinerU、PaddleOCR、RapidOCR。 |
 | 子 Agent 路由 | `src/subagent-router.ts` 与 CLI provider | 把 DeepSee route id 映射为 Harness provider/model 或已验证的 CLI。 |
 | 安装 | `scripts/install-plugin.mjs`、`scripts/folder-install.mjs` | 安装 Web + Headless，并支持 ZIP 持久化兜底。 |
 | 升级 | `scripts/update-manager.mjs`、`scripts/update-policy.mjs`、`scripts/update-worker.mjs` | 检查、验证、加锁并续跑用户确认的升级。 |
@@ -48,7 +49,7 @@ sequenceDiagram
     participant User as 用户
     participant Harness
     participant DeepSee
-    participant Reader as 视觉模型 / MinerU
+    participant Reader as 视觉模型 / 本地 OCR
 
     User->>Harness: 提示词 + 图片
     Harness->>DeepSee: 附件与任务上下文
@@ -58,7 +59,7 @@ sequenceDiagram
     Harness-->>User: 基模生成最终回答
 ```
 
-被选中的模型必须在注册表中达到 `full-vision`。OCR 由独立的 `visionMode` 选择，所以 MinerU 不会被表示为通用聊天模型。
+被选中的模型必须在注册表中达到 `full-vision`。OCR 由独立的 `visionMode` 与 `ocrTool` 选择，所以 MinerU、PaddleOCR 和 RapidOCR 都不会被表示为通用聊天模型。三个引擎分别使用隔离目录；统一 Python runner 只输出已识别文字，Host 再把它包装成不受信任的视觉观察。
 
 ## 模型注册表与路由
 
@@ -76,7 +77,7 @@ sequenceDiagram
 
 ## 状态与密钥边界
 
-默认可变状态位于 `$DSH_HOME/deepsee`，包括模型注册表、MinerU 状态和日志、暂存的 ZIP 包与升级状态。生成的 Prime preset 位于 `$DSH_HOME/.agent-presets/prime`，因为这里是 Harness 的发现目录。
+默认可变状态位于 `$DSH_HOME/deepsee`，包括模型注册表、OCR 状态和日志、暂存的 ZIP 包与升级状态。受管 OCR 的 Python 环境与模型缓存位于独立的应用数据目录，卸载时只删除白名单子目录。生成的 Prime preset 位于 `$DSH_HOME/.agent-presets/prime`，因为这里是 Harness 的发现目录。
 
 DeepSee 不会把原始供应商密钥复制到注册表，也不会把凭据引用返回浏览器。API Key 仍由 Harness 管理。旧 `OPENDS_BRIDGE_*` 配置迁移时只迁移供应商元数据与凭据引用，不迁移密钥值。
 

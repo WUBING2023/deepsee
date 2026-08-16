@@ -49,7 +49,7 @@ export interface ModelRegistryPreferences {
   reviewPolicy?: "prefer-different" | "require-different" | "same-allowed";
   primeAutoWorkflow?: boolean;
   visionMode?: "model" | "ocr";
-  ocrTool?: "mineru";
+  ocrTool?: "mineru" | "paddleocr" | "rapidocr";
 }
 
 export interface DesktopApp {

@@ -56,10 +56,13 @@ function copyTree(source, target, label) {
 }
 
 function copyGlob(sourceRoot, targetRoot, pattern) {
-  const directory = assertSafeRelativePath(pattern.slice(0, -"/*.mjs".length));
+  const match = pattern.match(/^(.*)\/\*\.([A-Za-z0-9]+)$/);
+  if (!match) throw new Error(`Unsupported package file pattern: ${pattern}`);
+  const [, directoryValue, extension] = match;
+  const directory = assertSafeRelativePath(directoryValue);
   const sourceDirectory = join(sourceRoot, directory);
   if (!existsSync(sourceDirectory)) throw new Error(`ZIP package is missing required directory: ${directory}`);
-  const files = readdirSync(sourceDirectory).filter((name) => name.endsWith(".mjs"));
+  const files = readdirSync(sourceDirectory).filter((name) => name.endsWith(`.${extension}`));
   if (files.length === 0) throw new Error(`ZIP package contains no ${pattern} files`);
   for (const file of files) copyRelative(sourceRoot, targetRoot, join(directory, file));
 }
@@ -91,7 +94,7 @@ export function stageFolderPackage(sourceRoot, dshHome, manifest) {
   try {
     copyRelative(sourceRoot, staging, "package.json");
     for (const entry of manifest.files ?? []) {
-      if (entry.endsWith("/*.mjs")) copyGlob(sourceRoot, staging, entry);
+      if (/\/\*\.[A-Za-z0-9]+$/.test(entry)) copyGlob(sourceRoot, staging, entry);
       else copyRelative(sourceRoot, staging, entry);
     }
     if (!isCompleteStage(staging, manifest)) {

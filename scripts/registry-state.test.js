@@ -44,6 +44,16 @@ describe("registry preferences", () => {
     });
   });
 
+  it("accepts each supported local OCR and ignores arbitrary tool ids", () => {
+    const root = fixture();
+    updateRegistryPreferences(root, { visionMode: "ocr", ocrTool: "rapidocr" });
+    expect(loadRegistryState(root).preferences).toMatchObject({ visionMode: "ocr", ocrTool: "rapidocr" });
+    updateRegistryPreferences(root, { ocrTool: "../../other" });
+    expect(loadRegistryState(root).preferences.ocrTool).toBe("rapidocr");
+    updateRegistryPreferences(root, { ocrTool: "paddleocr" });
+    expect(loadRegistryState(root).preferences.ocrTool).toBe("paddleocr");
+  });
+
   it("syncs Harness model catalogs without copying credentials and queues AI profiling", () => {
     const root = fixture();
     const result = syncHarnessModels(root, {

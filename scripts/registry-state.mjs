@@ -207,7 +207,7 @@ export function updateRegistryPreferences(root, input) {
     next.visionRouteId = id;
   }
   if (input?.visionMode === "model" || input?.visionMode === "ocr") next.visionMode = input.visionMode;
-  if (input?.ocrTool === "mineru") next.ocrTool = input.ocrTool;
+  if (["mineru", "paddleocr", "rapidocr"].includes(input?.ocrTool)) next.ocrTool = input.ocrTool;
   if (typeof input?.primeAutoWorkflow === "boolean") next.primeAutoWorkflow = input.primeAutoWorkflow;
   registry.preferences = next;
   saveRegistryState(root, registry);

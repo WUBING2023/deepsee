@@ -44,7 +44,7 @@ Already have DeepSeek Harness configured? DeepSee reuses its providers, model ID
 
 | Capability | What it feels like |
 | --- | --- |
-| **Vision that actually runs** | Attach an image and DeepSee sends it to the selected multimodal model or MinerU OCR, then returns the observation to DeepSeek. The conversation identifies the real visual reader. |
+| **Vision that actually runs** | Attach an image and DeepSee sends it to a selected multimodal model, MinerU, PaddleOCR, or RapidOCR, then returns the observation to DeepSeek. |
 | **One model directory** | Harness API models and verified local CLIs appear in one compact matrix with their availability and strengths. |
 | **Fast initialization** | The first ready visual model is selected automatically; Codex/Claude Desktop or CLI and existing `AGENTS.md`, `CLAUDE.md`, or `agent.md` instructions are reused. |
 | **Native configuration** | The plugin lives in the Harness sidebar and uses same-origin routes. Models and credentials remain owned by Harness. |
@@ -54,7 +54,7 @@ Already have DeepSeek Harness configured? DeepSee reuses its providers, model ID
 Choose one reader in DeepSee preferences:
 
 - **Model** — any Harness model whose adapter confirms image input support.
-- **OCR** — MinerU for document text and layout extraction. DeepSee shows a simple stage progress bar while trying an existing environment, `uv`, Python + `venv`, a verified portable UV package, or a source ZIP fallback. The managed environment can be removed from the same control; system-managed MinerU installs are never deleted.
+- **OCR** — choose an isolated, installable, and removable local engine. MinerU targets complex PDFs, tables, and formulas; PaddleOCR targets multilingual images and scans; RapidOCR targets screenshots, receipts, and low-resource CPUs. A one-line comparison appears while a download is active. DeepSee never removes system-managed installs.
 
 The base DeepSeek model receives the visual observation and continues the conversation normally. A text-only model is never presented as if it had read the image itself.
 
@@ -68,7 +68,7 @@ DeepSee scans the machine at startup, verifies what can really run, and keeps un
 | Codex Desktop / CLI | Yes | Yes | Reuses the verified bundled App Server or CLI; supported model variants are selectable. |
 | Claude Desktop + Claude Code | Yes | Yes when CLI is verified | Desktop-only installs can be opened from DeepSee; automatic Workflow execution still requires Claude Code CLI. |
 | Kimi CLI, OpenCode, Ollama | Yes | Not yet | Shown for honest discovery, but not exposed as runnable routes without a stable Harness adapter. |
-| MinerU | Yes | OCR only | A visual tool in Preferences, not a general-purpose model in the matrix. |
+| MinerU / PaddleOCR / RapidOCR | Yes | OCR only | Visual tools in Preferences, not general-purpose models in the matrix. |
 
 ### Workflow and Prime
 
@@ -81,7 +81,7 @@ DeepSee scans the machine at startup, verifies what can really run, and keeps un
 flowchart LR
     U["You"] --> H["DeepSeek Harness"]
     H --> D["DeepSee"]
-    D -->|"image"| V["Vision model or MinerU"]
+    D -->|"image"| V["Vision model or local OCR"]
     D -->|"task"| R["Harness API, Codex, or Claude"]
     V -->|"observation"| H
     R -->|"result"| H

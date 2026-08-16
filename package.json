@@ -63,6 +63,7 @@
     "host/client.js",
     "host/codex-provider.js",
     "scripts/*.mjs",
+    "scripts/*.py",
     "cordis.patch.yml",
     "README.md",
     "README.zh-CN.md",

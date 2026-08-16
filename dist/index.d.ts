@@ -9,6 +9,7 @@ import "@deepseek-ai/dsh-subagent";
 import "@deepseek-ai/dsh-subprocess";
 import "@deepseek-ai/dsh-tools";
 import { type ModelRegistryFile, type ModelRouteOverride } from "./model-registry.js";
+import { type OCRTool } from "./ocr.js";
 export declare const name = "deepsee";
 export declare const inject: readonly ["attachments", "commands", "llm", "settings", "subagents", "subprocess", "systemPrompt", "tools"];
 export interface Config {
@@ -26,10 +27,11 @@ export interface Config {
     routeOverrides: ModelRouteOverride[];
     primeAutoWorkflow: boolean;
     visionMode: "model" | "ocr";
+    ocrTool: OCRTool;
     ocrExecutable: string;
 }
 export declare const Config: z<Config>;
-export declare function resolveRuntimeConfig(config: Config, registry: ModelRegistryFile, providerIds: ReadonlySet<string>, mineru: {
+export declare function resolveRuntimeConfig(config: Config, registry: ModelRegistryFile, providerIds: ReadonlySet<string>, ocr: {
     status?: string;
     executable?: string;
 }): Config;
@@ -41,3 +43,4 @@ export { VisionBridgeAdapter } from "./vision-adapter.js";
 export { resolveDeepSeeAgentOptions } from "./subagent-router.js";
 export { installCapabilityProfiler, parseCapabilityProfile, requestCapabilityProfile } from "./capability-profiler.js";
 export { describeImagesWithMinerU } from "./ocr.js";
+export { describeImagesWithLocalOCR } from "./ocr.js";

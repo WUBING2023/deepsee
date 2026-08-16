@@ -18,7 +18,7 @@ function createPackage() {
   const manifest = {
     name: "@wubing2023/deepsee",
     version: "0.6.0-test.1",
-    files: ["dist", "scripts/*.mjs", "README.md"],
+    files: ["dist", "scripts/*.mjs", "scripts/*.py", "README.md"],
   };
   mkdirSync(join(root, "dist"), { recursive: true });
   mkdirSync(join(root, "scripts"), { recursive: true });
@@ -26,6 +26,7 @@ function createPackage() {
   writeFileSync(join(root, "dist", "index.js"), "export {};\n");
   writeFileSync(join(root, "scripts", "cli.mjs"), "#!/usr/bin/env node\n");
   writeFileSync(join(root, "scripts", "install-policy.mjs"), "export {};\n");
+  writeFileSync(join(root, "scripts", "ocr-runner.py"), "print('ok')\n");
   writeFileSync(join(root, "README.md"), "# DeepSee\n");
   return { root, manifest };
 }
@@ -41,6 +42,7 @@ describe("extracted ZIP staging", () => {
     expect(relative(dshHome, target)).toBe(join("deepsee", "packages", source.manifest.version));
     expect(existsSync(join(target, "dist", "index.js"))).toBe(true);
     expect(existsSync(join(target, "scripts", "cli.mjs"))).toBe(true);
+    expect(existsSync(join(target, "scripts", "ocr-runner.py"))).toBe(true);
     expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8"))).toMatchObject({
       name: source.manifest.name,
       version: source.manifest.version,

@@ -59,7 +59,7 @@ Get-NetTCPConnection -LocalPort 3080 -ErrorAction SilentlyContinue
 
 1. DeepSee 首选项中已经选择视觉读取器。
 2. 使用 **模型** 时，被选中的 Harness 模型明确声明图片输入，并处于 `ready`。
-3. 使用 **OCR** 时，MinerU 状态为 `ready`。
+3. 使用 **OCR** 时，当前选择的 MinerU、PaddleOCR 或 RapidOCR 状态为 `ready`。
 4. 路线已经打开，Harness 中的供应商凭据仍有效。
 5. 修改模型或插件后已经重启 Harness。
 
@@ -93,13 +93,15 @@ DeepSee 不会只凭命令名称就认为路线可用。先在终端中交互运
 
 不要把订阅 Token 写进 DeepSee 文件。Codex 与 Claude Code 应继续使用各自官方支持的登录方式。
 
-## MinerU 安装失败
+## 本地 OCR 安装失败
 
 界面会保留最终状态，完整安装输出位于：
 
 ```text
 $DSH_HOME/deepsee/.opends-tools/mineru/install.stdout.log
 $DSH_HOME/deepsee/.opends-tools/mineru/install.stderr.log
+$DSH_HOME/deepsee/.opends-tools/ocr/<paddleocr|rapidocr>/install.stdout.log
+$DSH_HOME/deepsee/.opends-tools/ocr/<paddleocr|rapidocr>/install.stderr.log
 ```
 
 重点检查：
@@ -109,8 +111,9 @@ $DSH_HOME/deepsee/.opends-tools/mineru/install.stderr.log
 - 杀毒软件或公司策略可能拦截便携 UV。
 - 当前地区可能无法连接某个 PyPI 或模型源。
 - 隔离环境与模型文件需要足够磁盘空间。
+- Windows 上不要把 `OPENDS_OCR_HOME` 指向含中文或其他非 ASCII 字符的 PaddleOCR 模型路径；删除该覆盖后，DeepSee 会自动选择兼容目录。
 
-高级部署可以使用 `.env.example` 中的 `OPENDS_MINERU_*` 修改包源、镜像、模型源、源码 ZIP、extra 与超时。普通用户应先在界面重试，再考虑修改这些设置。
+高级部署可以使用 `.env.example` 中的 `OPENDS_MINERU_*` 或 `OPENDS_OCR_*` 修改包源、镜像、模型源与超时。普通用户应先在界面重试，再考虑修改这些设置。
 
 ## 升级失败或提示需要手动升级
 
