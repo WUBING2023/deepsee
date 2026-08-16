@@ -6,8 +6,10 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -26,12 +28,18 @@ import {
 
 const moduleRoot = fileURLToPath(new URL("../", import.meta.url));
 export const DEEPSEE_UPDATE_STATE_FILE = ".opends-update/state.json";
+export const DEEPSEE_UPDATE_LOCK_FILE = ".opends-update/update.lock";
 const activeChecks = new Map();
 const runningManifests = new Map();
 let stateWriteSequence = 0;
+const UPDATE_LOCK_STARTUP_GRACE_MS = 30_000;
 
 function statePath(root) {
   return join(root, DEEPSEE_UPDATE_STATE_FILE);
+}
+
+function lockPath(root) {
+  return join(root, DEEPSEE_UPDATE_LOCK_FILE);
 }
 
 function readJson(path, fallback = {}) {
@@ -77,8 +85,11 @@ function publicFields(state, currentVersion) {
 export function writeDeepSeeUpdateState(root, value) {
   const directory = join(root, ".opends-update");
   mkdirSync(directory, { recursive: true });
+  writeAtomicJson(statePath(root), value);
+}
+
+function writeAtomicJson(target, value) {
   stateWriteSequence += 1;
-  const target = statePath(root);
   const temporary = `${target}.${process.pid}.${stateWriteSequence}.tmp`;
   try {
     writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -86,6 +97,74 @@ export function writeDeepSeeUpdateState(root, value) {
   } finally {
     rmSync(temporary, { force: true });
   }
+}
+
+function lockIsFresh(target) {
+  try {
+    return Date.now() - statSync(target).mtimeMs < UPDATE_LOCK_STARTUP_GRACE_MS;
+  } catch {
+    return false;
+  }
+}
+
+function activeDeepSeeUpdateLock(root) {
+  const target = lockPath(root);
+  const existing = readJson(target);
+  return processIsRunning(existing.pid) || lockIsFresh(target) ? existing : undefined;
+}
+
+export function acquireDeepSeeUpdateLock(root) {
+  const directory = join(root, ".opends-update");
+  mkdirSync(directory, { recursive: true });
+  const target = lockPath(root);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const token = randomUUID();
+    let descriptor;
+    try {
+      descriptor = openSync(target, "wx");
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      const existing = activeDeepSeeUpdateLock(root);
+      if (existing) {
+        return { acquired: false, lock: existing };
+      }
+      rmSync(target, { force: true });
+      continue;
+    }
+    try {
+      writeFileSync(descriptor, `${JSON.stringify({ token, pid: process.pid, startedAt: new Date().toISOString() }, null, 2)}\n`, "utf8");
+    } catch (error) {
+      closeSync(descriptor);
+      descriptor = undefined;
+      rmSync(target, { force: true });
+      throw error;
+    }
+    closeSync(descriptor);
+    return { acquired: true, token };
+  }
+  return { acquired: false, lock: readJson(target) };
+}
+
+export function claimDeepSeeUpdateLock(root, token, pid = process.pid) {
+  const target = lockPath(root);
+  const existing = readJson(target);
+  if (!token || existing.token !== token) {
+    throw new Error("DeepSee 升级锁已失效；已停止本次后台升级以避免并发覆盖。");
+  }
+  if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error("DeepSee 升级进程 PID 无效。");
+  writeAtomicJson(target, {
+    ...existing,
+    pid,
+    claimedAt: new Date().toISOString(),
+  });
+}
+
+export function releaseDeepSeeUpdateLock(root, token) {
+  const target = lockPath(root);
+  const existing = readJson(target);
+  if (!token || existing.token !== token) return false;
+  rmSync(target, { force: true });
+  return true;
 }
 
 export function getDeepSeeUpdateStatus(stateRoot, packageRoot) {
@@ -148,6 +227,15 @@ export function getDeepSeeUpdateStatus(stateRoot, packageRoot) {
 
 export async function checkDeepSeeUpdate(stateRoot, packageRoot, options = {}) {
   const manifest = currentManifest(packageRoot);
+  const current = getDeepSeeUpdateStatus(stateRoot, packageRoot);
+  if (["updating", "restart-required"].includes(current.status)) return current;
+  if (activeDeepSeeUpdateLock(stateRoot)) {
+    return {
+      ...current,
+      status: "updating",
+      message: "另一个 DeepSee 升级进程正在运行；版本检查将在升级完成后继续。",
+    };
+  }
   const startedAt = new Date().toISOString();
   writeDeepSeeUpdateState(stateRoot, {
     status: "checking",
@@ -233,27 +321,34 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
 
   const updateRoot = join(stateRoot, ".opends-update");
   mkdirSync(updateRoot, { recursive: true });
-  const stdout = openSync(join(updateRoot, "update.stdout.log"), "a");
-  const stderr = openSync(join(updateRoot, "update.stderr.log"), "a");
+  const lock = acquireDeepSeeUpdateLock(stateRoot);
+  if (!lock.acquired) {
+    throw new Error("另一个 DeepSee 升级进程正在运行；请等待它完成后再试。");
+  }
+  let stdout;
+  let stderr;
   const startedAt = new Date().toISOString();
-  writeDeepSeeUpdateState(stateRoot, {
-    status: "updating",
-    currentVersion: current.currentVersion,
-    latestVersion: current.latestVersion,
-    sourceRef,
-    checkedAt: current.checkedAt,
-    startedAt,
-    message: `正在自动升级到 DeepSee ${current.latestVersion}…`,
-  });
-
   let child;
+  let spawnError;
   try {
+    stdout = openSync(join(updateRoot, "update.stdout.log"), "a");
+    stderr = openSync(join(updateRoot, "update.stderr.log"), "a");
+    writeDeepSeeUpdateState(stateRoot, {
+      status: "updating",
+      currentVersion: current.currentVersion,
+      latestVersion: current.latestVersion,
+      sourceRef,
+      checkedAt: current.checkedAt,
+      startedAt,
+      message: `正在自动升级到 DeepSee ${current.latestVersion}…`,
+    });
     child = (options.spawnImpl || spawn)(process.execPath, [
       options.workerPath || join(moduleRoot, "scripts", "update-worker.mjs"),
       stateRoot,
       dshHome,
       current.latestVersion,
       sourceRef,
+      lock.token,
     ], {
       cwd: stateRoot,
       detached: true,
@@ -261,11 +356,14 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
       stdio: ["ignore", stdout, stderr],
       env: { ...process.env, DSH_HOME: dshHome, DEEPSEE_UPDATE_WORKER: "1" },
     });
+  } catch (error) {
+    spawnError = error;
   } finally {
-    closeSync(stdout);
-    closeSync(stderr);
+    if (stdout !== undefined) closeSync(stdout);
+    if (stderr !== undefined) closeSync(stderr);
   }
   if (!child?.pid) {
+    releaseDeepSeeUpdateLock(stateRoot, lock.token);
     writeDeepSeeUpdateState(stateRoot, {
       status: "error",
       currentVersion: current.currentVersion,
@@ -274,21 +372,12 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
       checkedAt: current.checkedAt,
       startedAt,
       completedAt: new Date().toISOString(),
-      message: "DeepSee 后台升级进程未能启动。",
+      message: `DeepSee 后台升级进程未能启动${spawnError instanceof Error ? `：${spawnError.message}` : "。"}`,
     });
-    throw new Error("DeepSee 后台升级进程未能启动。");
+    throw new Error(`DeepSee 后台升级进程未能启动${spawnError instanceof Error ? `：${spawnError.message}` : "。"}`);
   }
-  writeDeepSeeUpdateState(stateRoot, {
-    status: "updating",
-    currentVersion: current.currentVersion,
-    latestVersion: current.latestVersion,
-    sourceRef,
-    checkedAt: current.checkedAt,
-    startedAt,
-    pid: child.pid,
-    message: `正在自动升级到 DeepSee ${current.latestVersion}…`,
-  });
   child.once("error", (error) => {
+    releaseDeepSeeUpdateLock(stateRoot, lock.token);
     writeDeepSeeUpdateState(stateRoot, {
       status: "error",
       currentVersion: current.currentVersion,

@@ -28,7 +28,12 @@ const publicInstallSpec = manifest.deepsee?.installSpec || `${manifest.name}@${m
 const dshHome = local
   ? join(root, ".dsh")
   : process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || homedir(), ".dsh");
-const env = { ...process.env, DSH_HOME: dshHome };
+const env = {
+  ...process.env,
+  DSH_HOME: dshHome,
+  NO_UPDATE_NOTIFIER: "1",
+  npm_config_update_notifier: "false",
+};
 const options = resolveInstallOptions(args, env);
 
 if (!existsSync(join(root, "dist", "index.js"))) {
@@ -99,8 +104,8 @@ for (const profile of options.profiles) {
   }
   runDsh(["plugin", "--profile", profile, "add", spec], profile);
   const after = inspectProfileInstall(dshHome, profile, manifest.name, manifest.version);
-  if (!after.registered) {
-    throw new Error(`${profile} profile command completed but DeepSee was not registered. Run the installer again with --force.`);
+  if (!after.current) {
+    throw new Error(`${profile} profile command completed but DeepSee ${manifest.version} was not activated (found ${after.installedVersion ?? after.dependency ?? "nothing"}). Re-run the same command to resume safely.`);
   }
   console.log(`[DeepSee] ${profile} profile ready (${after.installedVersion ?? after.dependency}).`);
 }

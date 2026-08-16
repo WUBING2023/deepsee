@@ -1,13 +1,16 @@
 import { EventEmitter } from "node:events";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  acquireDeepSeeUpdateLock,
   checkDeepSeeUpdate,
+  claimDeepSeeUpdateLock,
   getDeepSeeUpdateStatus,
   queueDeepSeeUpdateCheck,
+  releaseDeepSeeUpdateLock,
   startDeepSeeUpdate,
   writeDeepSeeUpdateState,
 } from "./update-manager.mjs";
@@ -44,12 +47,12 @@ afterEach(() => {
 describe("DeepSee update manager", () => {
   it("detects an available official version without changing the package", async () => {
     const root = fixture();
-    const fetchImpl = updateFetch("0.6.0-alpha.9");
+    const fetchImpl = updateFetch("0.6.0-alpha.10");
     const status = await checkDeepSeeUpdate(root, packageRoot, { fetchImpl });
     expect(status).toMatchObject({
       status: "available",
       currentVersion: currentManifest.version,
-      latestVersion: "0.6.0-alpha.9",
+      latestVersion: "0.6.0-alpha.10",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(JSON.parse(readFileSync(join(root, ".opends-update", "state.json"), "utf8"))).toMatchObject({ sourceRef });
@@ -67,7 +70,7 @@ describe("DeepSee update manager", () => {
   it("turns invalid remote metadata into a retryable error", async () => {
     const root = fixture();
     const status = await checkDeepSeeUpdate(root, packageRoot, {
-      fetchImpl: updateFetch("0.6.0-alpha.9", { name: "@attacker/lookalike" }),
+      fetchImpl: updateFetch("0.6.0-alpha.10", { name: "@attacker/lookalike" }),
     });
     expect(status.status).toBe("error");
     expect(status.message).toContain("包身份");
@@ -75,19 +78,19 @@ describe("DeepSee update manager", () => {
 
   it("starts one detached automatic installer only after a verified check", async () => {
     const root = fixture();
-    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: updateFetch("0.6.0-alpha.9") });
+    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: updateFetch("0.6.0-alpha.10") });
     const child = Object.assign(new EventEmitter(), { pid: process.pid, unref: vi.fn() });
     const spawnImpl = vi.fn(() => child);
     const status = startDeepSeeUpdate(root, packageRoot, root, {
       spawnImpl,
       workerPath: join(root, "worker.mjs"),
     });
-    expect(status).toMatchObject({ status: "updating", latestVersion: "0.6.0-alpha.9" });
+    expect(status).toMatchObject({ status: "updating", latestVersion: "0.6.0-alpha.10" });
     expect(spawnImpl).toHaveBeenCalledWith(process.execPath, expect.arrayContaining([
       join(root, "worker.mjs"),
       root,
       root,
-      "0.6.0-alpha.9",
+      "0.6.0-alpha.10",
       sourceRef,
     ]), expect.objectContaining({ detached: true, windowsHide: true }));
     expect(child.unref).toHaveBeenCalled();
@@ -96,14 +99,14 @@ describe("DeepSee update manager", () => {
   it("requires a manual install when a future update protocol is not supported", async () => {
     const root = fixture();
     const status = await checkDeepSeeUpdate(root, packageRoot, {
-      fetchImpl: updateFetch("0.6.0-alpha.9", {
+      fetchImpl: updateFetch("0.6.0-alpha.10", {
         deepsee: {
           ...currentManifest.deepsee,
           update: { protocol: 2, minimumUpdaterVersion: currentManifest.version },
         },
       }),
     });
-    expect(status).toMatchObject({ status: "manual-required", latestVersion: "0.6.0-alpha.9" });
+    expect(status).toMatchObject({ status: "manual-required", latestVersion: "0.6.0-alpha.10" });
     expect(status.message).toContain("更新协议 2");
     expect(() => startDeepSeeUpdate(root, packageRoot, root)).toThrow("没有已验证");
   });
@@ -111,11 +114,11 @@ describe("DeepSee update manager", () => {
   it("atomically replaces update state and leaves no temporary file", () => {
     const root = fixture();
     writeDeepSeeUpdateState(root, { status: "current", checkedAt: "2026-08-16T00:00:00.000Z" });
-    writeDeepSeeUpdateState(root, { status: "available", latestVersion: "0.6.0-alpha.9" });
+    writeDeepSeeUpdateState(root, { status: "available", latestVersion: "0.6.0-alpha.10" });
     const directory = join(root, ".opends-update");
     expect(JSON.parse(readFileSync(join(directory, "state.json"), "utf8"))).toEqual({
       status: "available",
-      latestVersion: "0.6.0-alpha.9",
+      latestVersion: "0.6.0-alpha.10",
     });
     expect(readdirSync(directory).filter((name) => name.endsWith(".tmp"))).toEqual([]);
   });
@@ -140,7 +143,7 @@ describe("DeepSee update manager", () => {
     writeFileSync(join(installedPackage, "package.json"), JSON.stringify(currentManifest));
     expect(getDeepSeeUpdateStatus(root, installedPackage).currentVersion).toBe(currentManifest.version);
 
-    const nextVersion = "0.6.0-alpha.9";
+    const nextVersion = "0.6.0-alpha.10";
     writeFileSync(join(installedPackage, "package.json"), JSON.stringify({ ...currentManifest, version: nextVersion }));
     writeDeepSeeUpdateState(root, {
       status: "restart-required",
@@ -154,5 +157,59 @@ describe("DeepSee update manager", () => {
       currentVersion: currentManifest.version,
       latestVersion: nextVersion,
     });
+  });
+
+  it("serializes update workers across Harness processes and hands lock ownership to the worker", () => {
+    const root = fixture();
+    const first = acquireDeepSeeUpdateLock(root);
+    expect(first.acquired).toBe(true);
+    expect(acquireDeepSeeUpdateLock(root)).toMatchObject({ acquired: false });
+    expect(() => claimDeepSeeUpdateLock(root, "wrong-token", process.pid)).toThrow("锁已失效");
+    expect(claimDeepSeeUpdateLock(root, first.token, process.pid)).toBeUndefined();
+    expect(releaseDeepSeeUpdateLock(root, first.token)).toBe(true);
+    const next = acquireDeepSeeUpdateLock(root);
+    expect(next.acquired).toBe(true);
+    expect(releaseDeepSeeUpdateLock(root, next.token)).toBe(true);
+  });
+
+  it("releases the cross-process lock when the worker cannot be spawned", async () => {
+    const root = fixture();
+    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: updateFetch("0.6.0-alpha.10") });
+    expect(() => startDeepSeeUpdate(root, packageRoot, root, {
+      spawnImpl: () => { throw new Error("spawn failed"); },
+    })).toThrow("spawn failed");
+    const retry = acquireDeepSeeUpdateLock(root);
+    expect(retry.acquired).toBe(true);
+    expect(releaseDeepSeeUpdateLock(root, retry.token)).toBe(true);
+  });
+
+  it("recovers an abandoned lock after the startup grace period", () => {
+    const root = fixture();
+    const directory = join(root, ".opends-update");
+    mkdirSync(directory, { recursive: true });
+    const target = join(directory, "update.lock");
+    writeFileSync(target, JSON.stringify({ token: "abandoned", pid: 2147483647 }));
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(target, old, old);
+    const recovered = acquireDeepSeeUpdateLock(root);
+    expect(recovered.acquired).toBe(true);
+    expect(releaseDeepSeeUpdateLock(root, recovered.token)).toBe(true);
+  });
+
+  it("does not let a concurrent version check overwrite an acquired update lock", async () => {
+    const root = fixture();
+    writeDeepSeeUpdateState(root, {
+      status: "available",
+      currentVersion: currentManifest.version,
+      latestVersion: "0.6.0-alpha.10",
+      sourceRef,
+    });
+    const lock = acquireDeepSeeUpdateLock(root);
+    const fetchImpl = updateFetch("0.6.0-alpha.10");
+    const status = await checkDeepSeeUpdate(root, packageRoot, { fetchImpl });
+    expect(status).toMatchObject({ status: "updating", latestVersion: "0.6.0-alpha.10" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(JSON.parse(readFileSync(join(root, ".opends-update", "state.json"), "utf8"))).toMatchObject({ status: "available" });
+    expect(releaseDeepSeeUpdateLock(root, lock.token)).toBe(true);
   });
 });

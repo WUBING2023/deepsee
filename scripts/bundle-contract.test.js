@@ -24,8 +24,10 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.scripts.build).toBeUndefined();
     expect(manifest.scripts["build:plugin"]).toContain("tsc -p tsconfig.build.json");
     expect(manifest.name).toBe("@wubing2023/deepsee");
-    expect(manifest.dependencies["@deepseek-ai/dsh-sdk-protocol"]).toBe("0.1.0-rc.6");
+    expect(manifest.dependencies["@deepseek-ai/dsh-sdk-protocol"]).toBe("^0.1.0-rc.6");
     expect(manifest.peerDependencies["@deepseek-ai/dsh-sdk-protocol"]).toBeUndefined();
+    expect(manifest.peerDependencies["@deepseek-ai/dsh"]).toBe("^0.1.0-rc.6");
+    expect(manifest.engines.node).toBe(">=24");
     expect(manifest.deepsee.installSpec).toBe("github:WUBING2023/deepsee#main");
     expect(manifest.deepsee.update).toEqual({ protocol: 1, minimumUpdaterVersion: "0.6.0-alpha.6" });
     expect(patch).toContain("name: '@wubing2023/deepsee'");
@@ -42,6 +44,7 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain("runWithRetries");
     expect(installer).toContain("inspectProfileInstall");
     expect(installer).toContain("stageFolderPackage");
+    expect(installer).toContain('NO_UPDATE_NOTIFIER: "1"');
     expect(installPolicy).toContain('args.includes("--from-folder")');
     expect(folderInstaller).toContain('join(dshHome, "deepsee", "packages")');
     expect(installer).not.toContain("timeout: 180_000");
@@ -73,7 +76,9 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(updateManager).toContain("DEEPSEE_UPDATE_REF_URL");
     expect(updateWorker).toContain('"--from-folder"');
     expect(updateWorker).toContain('"1800000"');
-    expect(updateWorker).toContain('"--force"');
+    expect(updateWorker).not.toContain('"--force"');
+    expect(updateManager).toContain("acquireDeepSeeUpdateLock");
+    expect(updateWorker).toContain("claimDeepSeeUpdateLock");
     expect(updateWorker).toContain("validateDeepSeeManifest");
   });
 });

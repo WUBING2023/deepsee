@@ -12,7 +12,11 @@ import {
 import { basename, isAbsolute, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
 import { findExecutable } from "./runtime-locator.mjs";
-import { writeDeepSeeUpdateState } from "./update-manager.mjs";
+import {
+  claimDeepSeeUpdateLock,
+  releaseDeepSeeUpdateLock,
+  writeDeepSeeUpdateState,
+} from "./update-manager.mjs";
 import {
   DEEPSEE_PACKAGE_NAME,
   deepSeeUpdateArchiveUrl,
@@ -20,9 +24,9 @@ import {
   validateDeepSeeSourceRef,
 } from "./update-policy.mjs";
 
-const [stateRoot, dshHome, expectedVersion, sourceRefValue] = process.argv.slice(2);
-if (!stateRoot || !dshHome || !expectedVersion || !sourceRefValue) {
-  throw new Error("DeepSee update worker requires stateRoot, DSH_HOME, expectedVersion and sourceRef.");
+const [stateRoot, dshHome, expectedVersion, sourceRefValue, lockToken] = process.argv.slice(2);
+if (!stateRoot || !dshHome || !expectedVersion || !sourceRefValue || !lockToken) {
+  throw new Error("DeepSee update worker requires stateRoot, DSH_HOME, expectedVersion, sourceRef and lock token.");
 }
 const sourceRef = validateDeepSeeSourceRef(sourceRefValue);
 const archiveUrl = deepSeeUpdateArchiveUrl(sourceRef);
@@ -39,6 +43,8 @@ const priorState = (() => {
   }
 })();
 const startedAt = priorState.startedAt || new Date().toISOString();
+
+claimDeepSeeUpdateLock(stateRoot, lockToken, process.pid);
 
 function safeRemove(target) {
   const relation = relative(updateRoot, target);
@@ -120,6 +126,16 @@ function findPackageRoot(directory, depth = 3) {
 }
 
 try {
+  writeDeepSeeUpdateState(stateRoot, {
+    ...priorState,
+    status: "updating",
+    currentVersion: priorState.currentVersion,
+    latestVersion: expectedVersion,
+    sourceRef,
+    startedAt,
+    pid: process.pid,
+    message: `正在自动升级到 DeepSee ${expectedVersion}…`,
+  });
   console.log(`[DeepSee] Downloading verified commit ${sourceRef}`);
   await downloadArchive();
   extractArchive();
@@ -142,7 +158,6 @@ try {
     "1800000",
     "--retries",
     "2",
-    "--force",
   ], "安装 DeepSee 更新");
 
   writeDeepSeeUpdateState(stateRoot, {
@@ -171,4 +186,5 @@ try {
   rmSync(partial, { force: true });
   if (existsSync(workRoot)) safeRemove(workRoot);
   rmSync(archive, { force: true });
+  releaseDeepSeeUpdateLock(stateRoot, lockToken);
 }

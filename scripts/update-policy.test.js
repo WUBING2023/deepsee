@@ -12,7 +12,7 @@ import {
 
 const manifest = {
   name: "@wubing2023/deepsee",
-  version: "0.6.0-alpha.8",
+  version: "0.6.0-alpha.9",
   main: "./dist/index.js",
   deepsee: {
     installSpec: "github:WUBING2023/deepsee#main",
@@ -49,9 +49,9 @@ describe("DeepSee update policy", () => {
   });
 
   it("fails closed when a future package requires a newer update protocol", () => {
-    expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.8", manifest)).toEqual({ compatible: true });
+    expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.9", manifest)).toEqual({ compatible: true });
     expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.5", manifest)).toMatchObject({ compatible: false });
-    expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.8", {
+    expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.9", {
       ...manifest,
       deepsee: { ...manifest.deepsee, update: { protocol: 2 } },
     })).toMatchObject({ compatible: false });
