@@ -1,19 +1,27 @@
 import { createServer } from "node:http";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDeepSeeAdminHandler, DEEPSEE_API_PREFIX, installDeepSeeAdminRoute } from "../host/admin-server.mjs";
 
 const servers = [];
+const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))));
 });
 
-async function fixture() {
+async function fixture(options = {}) {
   const root = mkdtempSync(join(tmpdir(), "deepsee-admin-"));
-  const handler = createDeepSeeAdminHandler({ packageRoot: root, stateRoot: root, dshHome: root });
+  const handler = createDeepSeeAdminHandler({
+    packageRoot,
+    stateRoot: root,
+    dshHome: root,
+    disableUpdateCheck: true,
+    ...options,
+  });
   const server = createServer(handler);
   servers.push(server);
   await new Promise((resolve, reject) => {
@@ -49,6 +57,21 @@ describe("embedded DeepSee Host route", () => {
     const state = await response.json();
     expect(state).toMatchObject({ version: 1, routes: [], preferences: {} });
     expect(state.tools.mineru).toBeTruthy();
+    expect(state.update).toMatchObject({ currentVersion: "0.6.0-alpha.6" });
+  });
+
+  it("checks the official update manifest through the same-origin route", async () => {
+    const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
+    const base = await fixture({
+      updateFetch: async () => ({ ok: true, status: 200, json: async () => ({ ...manifest, version: "0.6.0-alpha.7" }) }),
+    });
+    const response = await fetch(`${base}${DEEPSEE_API_PREFIX}/v1/update/check`, {
+      method: "POST",
+      headers: { origin: base, "content-type": "application/json" },
+      body: "{}",
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ update: { status: "available", latestVersion: "0.6.0-alpha.7" } });
   });
 
   it("rejects cross-origin browser requests", async () => {

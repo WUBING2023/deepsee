@@ -74,6 +74,12 @@ pnpm run start:web
 npx --yes github:WUBING2023/deepsee uninstall
 ```
 
+### 检查更新与自动升级
+
+打开 DeepSee 面板时，会自动从官方 `WUBING2023/deepsee` 仓库进行低频缓存检查，默认最多每六小时一次。发现更高的语义版本后，面板才显示简洁的 **升级** 入口；点击一次即可下载官方 GitHub ZIP，校验包名、版本、安装来源和预构建 Host 文件，然后复用同一套安全目录安装器，自动升级 `web` 与 `headless` 两个 profile。模型设置、路由、凭据和 MinerU 状态不会被覆盖。面板显示 **重启生效** 后重启 Harness 即可。
+
+DeepSee 不会静默强制安装：检查是自动的，升级由用户点击确认。下载或某个 profile 安装失败时，当前版本仍可继续使用，并可在面板重试；详细日志保存在 `$DSH_HOME/deepsee/.opends-update`。
+
 ## 安装后发生什么
 
 - 标准 bundle 清单 `cordis.patch.yml` 加载 DeepSee Host、Web 客户端和可选 Codex provider。
@@ -164,6 +170,8 @@ pnpm run pack:release        # 构建并生成可发布 tarball
 - `host/codex-provider.js`：构建时生成的可选择模型 Codex provider
 - `scripts/install-plugin.mjs`：Web + Headless 一键安装
 - `scripts/folder-install.mjs`：将解压的 ZIP 持久化后执行兜底安装
+- `scripts/update-manager.mjs`：缓存版本检查与后台升级生命周期
+- `scripts/update-worker.mjs`：校验官方 ZIP 并升级 Web + Headless
 - `scripts/mineru-install-strategies.mjs`：可扩展的 Python、UV、镜像、便携包与源码 ZIP 策略
 - `scripts/runtime-discovery.mjs`：启动扫描、旧状态迁移与注册表生成
 - `scripts/prime-preset.mjs`：基于当前 Harness 标准 preset 生成 Prime

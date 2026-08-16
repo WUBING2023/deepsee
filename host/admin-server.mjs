@@ -11,6 +11,12 @@ import {
 } from "../scripts/registry-state.mjs";
 import { discoverDeepSeeRuntimes, resolveDeepSeePaths } from "../scripts/runtime-discovery.mjs";
 import { getMinerUStatus, startMinerUInstall } from "../scripts/mineru-manager.mjs";
+import {
+  checkDeepSeeUpdate,
+  getDeepSeeUpdateStatus,
+  queueDeepSeeUpdateCheck,
+  startDeepSeeUpdate,
+} from "../scripts/update-manager.mjs";
 
 export const DEEPSEE_API_PREFIX = "/api/deepsee";
 
@@ -68,6 +74,7 @@ export function createDeepSeeAdminHandler(options = {}) {
   const state = () => ({
     ...publicRegistryState(stateRoot),
     tools: { mineru: getMinerUStatus(stateRoot) },
+    update: getDeepSeeUpdateStatus(stateRoot, packageRoot),
   });
 
   return async (req, res) => {
@@ -75,6 +82,9 @@ export function createDeepSeeAdminHandler(options = {}) {
       if (!requestIsSameOrigin(req)) return send(res, 403, { error: "origin_not_allowed" });
       const path = routePath(req);
       if (req.method === "GET" && path === "/v1/models") {
+        if (!options.disableUpdateCheck) {
+          void queueDeepSeeUpdateCheck(stateRoot, packageRoot, { fetchImpl: options.updateFetch });
+        }
         return send(res, 200, state());
       }
       if (req.method !== "GET" && req.method !== "POST") {
@@ -121,10 +131,23 @@ export function createDeepSeeAdminHandler(options = {}) {
         await readJson(req);
         return send(res, 202, { tool: startMinerUInstall(stateRoot) });
       }
+      if (req.method === "POST" && path === "/v1/update/check") {
+        await readJson(req);
+        const update = await checkDeepSeeUpdate(stateRoot, packageRoot, { fetchImpl: options.updateFetch });
+        return send(res, 200, { update });
+      }
+      if (req.method === "POST" && path === "/v1/update/install") {
+        await readJson(req);
+        const update = startDeepSeeUpdate(stateRoot, packageRoot, dshHome, {
+          spawnImpl: options.updateSpawn,
+          workerPath: options.updateWorkerPath,
+        });
+        return send(res, 202, { update });
+      }
       return send(res, 404, { error: "not_found" });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const status = /请求|模型|路线|Runtime|API|供应商|安装|不存在|无效/.test(message) ? 400 : 500;
+      const status = /请求|模型|路线|Runtime|API|供应商|安装|更新|升级|不存在|无效/.test(message) ? 400 : 500;
       return send(res, status, { error: message });
     }
   };

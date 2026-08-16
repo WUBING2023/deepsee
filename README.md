@@ -74,6 +74,12 @@ Uninstall the plugin while preserving model preferences and local tool state:
 npx --yes github:WUBING2023/deepsee uninstall
 ```
 
+### Updates
+
+Opening the DeepSee panel performs a cached update check against the official `WUBING2023/deepsee` repository (at most once every six hours by default). When a newer semantic version is available, the compact **Upgrade** action downloads the official GitHub ZIP, verifies the package name, version, install source, and prebuilt Host files, then reuses the same safe folder installer for both `web` and `headless` profiles. Model settings, routes, credentials, and MinerU state are not replaced. Restart Harness after the panel reports **Restart to apply**.
+
+DeepSee never silently installs an update: checks are automatic and upgrades are one click. If a download or profile install fails, the current version stays usable and the panel offers a retry; details remain under `$DSH_HOME/deepsee/.opends-update`.
+
 ## What installation adds
 
 - A standard DSH bundle declared by `cordis.patch.yml` for Web and Headless.
@@ -164,6 +170,8 @@ For migration compatibility, the internal settings namespace, tool IDs, and some
 - `host/codex-provider.js` — generated Codex provider with model selection
 - `scripts/install-plugin.mjs` — one-command Web + Headless installer
 - `scripts/folder-install.mjs` — durable extracted-ZIP staging for fallback installation
+- `scripts/update-manager.mjs` — cached version checks and detached upgrade lifecycle
+- `scripts/update-worker.mjs` — verified official-ZIP download and dual-profile upgrade
 - `scripts/mineru-install-strategies.mjs` — extensible Python, UV, mirror, portable archive, and source-ZIP policy
 - `scripts/runtime-discovery.mjs` — startup scanning, migration, and registry generation
 - `scripts/prime-preset.mjs` — Prime preset generation from the current Harness release

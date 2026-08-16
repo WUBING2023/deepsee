@@ -9,6 +9,8 @@ const installPolicy = readFileSync(new URL("./install-policy.mjs", import.meta.u
 const folderInstaller = readFileSync(new URL("./folder-install.mjs", import.meta.url), "utf8");
 const mineruManager = readFileSync(new URL("./mineru-manager.mjs", import.meta.url), "utf8");
 const mineruWorker = readFileSync(new URL("./install-mineru-worker.mjs", import.meta.url), "utf8");
+const updateManager = readFileSync(new URL("./update-manager.mjs", import.meta.url), "utf8");
+const updateWorker = readFileSync(new URL("./update-worker.mjs", import.meta.url), "utf8");
 
 describe("standard DeepSeek Harness bundle", () => {
   it("declares a distributable bundle and Web client", () => {
@@ -61,5 +63,14 @@ describe("standard DeepSeek Harness bundle", () => {
     const strategyFlow = mineruWorker.slice(mineruWorker.indexOf("function installPackage"));
     expect(strategyFlow.indexOf("系统 UV")).toBeLessThan(strategyFlow.indexOf("便携 UV"));
     expect(strategyFlow.indexOf("便携 UV")).toBeLessThan(strategyFlow.indexOf("官方源码 ZIP"));
+  });
+
+  it("checks and installs updates through the verified ZIP installer", () => {
+    expect(updateManager).toContain("queueDeepSeeUpdateCheck");
+    expect(updateManager).toContain("startDeepSeeUpdate");
+    expect(updateWorker).toContain("DEEPSEE_UPDATE_ARCHIVE_URL");
+    expect(updateWorker).toContain('"--from-folder"');
+    expect(updateWorker).toContain('"--force"');
+    expect(updateWorker).toContain("validateDeepSeeManifest");
   });
 });

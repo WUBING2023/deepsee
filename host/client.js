@@ -261,6 +261,7 @@ window.__ModuleLoader__.load({
       const [localRoutes, setLocalRoutes] = useState(liveRoutes);
       const [preferences, setPreferences] = useState({ primeAutoWorkflow: config.primeAutoWorkflow !== false });
       const [mineru, setMineru] = useState({ status: "not-installed", installed: false, message: "正在读取…" });
+      const [update, setUpdate] = useState({ status: "idle", message: "尚未检查更新。" });
       const [message, setMessage] = useState("");
       const [verifying, setVerifying] = useState(false);
       const [serviceReady, setServiceReady] = useState(false);
@@ -281,6 +282,7 @@ window.__ModuleLoader__.load({
         }
         if (state.preferences && typeof state.preferences === "object") setPreferences(state.preferences);
         if (state.tools?.mineru) setMineru(state.tools.mineru);
+        if (state.update && typeof state.update === "object") setUpdate(state.update);
       };
 
       const requestAdmin = async (path, options = {}) => {
@@ -332,10 +334,14 @@ window.__ModuleLoader__.load({
       }, []);
 
       useEffect(() => {
-        if (mineru.status !== "installing" && !profiling) return undefined;
+        if (mineru.status !== "installing" && !profiling && !["checking", "updating"].includes(update.status)) return undefined;
         const timer = setInterval(loadState, 2000);
         return () => clearInterval(timer);
-      }, [mineru.status, profiling]);
+      }, [mineru.status, profiling, update.status]);
+
+      useEffect(() => {
+        if (update.status === "restart-required") setMessage(update.message || "DeepSee 已升级；重启 Harness 后生效。");
+      }, [update.status]);
 
       const saveRouteFields = async (route, fields) => {
         const before = localRoutes;
@@ -408,6 +414,31 @@ window.__ModuleLoader__.load({
         }
       };
 
+      const checkUpdate = async () => {
+        setUpdate((current) => ({ ...current, status: "checking", message: "正在检查 DeepSee 更新…" }));
+        try {
+          const result = await requestAdmin("/v1/update/check", { method: "POST", body: "{}" });
+          setUpdate(result.update);
+          if (result.update?.status === "available" || result.update?.status === "error") {
+            setMessage(result.update.message || "版本检查完成。");
+          }
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : "版本检查失败。");
+          await loadState();
+        }
+      };
+
+      const installUpdate = async () => {
+        try {
+          const result = await requestAdmin("/v1/update/install", { method: "POST", body: "{}" });
+          setUpdate(result.update);
+          setMessage(result.update?.message || "DeepSee 已开始后台升级；可以关闭窗口，升级会继续。");
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : "DeepSee 升级启动失败。");
+          await loadState();
+        }
+      };
+
       const matrix = createElement(Fragment, null,
         createElement("div", { className: "opends-prime", title: "每次启动会验证 CLI。不可用路线保持关闭；双击能力可修正路由描述。" },
           createElement("strong", null, "模型"),
@@ -463,6 +494,19 @@ window.__ModuleLoader__.load({
       const preferredPrimary = preferences.primaryRouteId || primaryOptions[0]?.id || "";
       const preferredVision = preferences.visionRouteId || visionOptions[0]?.id || "";
       const visionMode = preferences.visionMode === "ocr" ? "ocr" : "model";
+      const updateAvailable = update.status === "available";
+      const updateBusy = update.status === "checking" || update.status === "updating";
+      const updateLabel = update.status === "checking"
+        ? "检查中…"
+        : update.status === "updating"
+          ? "升级中…"
+          : update.status === "restart-required"
+            ? "重启生效"
+            : updateAvailable
+              ? `升级 ${update.latestVersion || ""}`.trim()
+              : update.status === "error"
+                ? "重试更新"
+                : "更新";
       const preferencesPanel = createElement("section", { className: "opends-preferences", "aria-label": "深见 DeepSee 首选项" },
         createElement("div", { className: "opends-pref-row", title: "Prime 与视觉桥的最终回答模型；更改后在下次 Harness 启动时应用。" },
           createElement("div", { className: "opends-pref-label" }, "主模型"),
@@ -499,6 +543,13 @@ window.__ModuleLoader__.load({
         createElement("div", { className: "opends-page-head" },
           createElement("h1", { className: "opends-page-title", title: "模型选择会在下次 Harness 启动时应用。" }, "模型与首选项"),
           createElement("div", { className: "opends-head-actions" },
+            createElement("button", {
+              className: `opends-button${updateAvailable || update.status === "updating" || update.status === "restart-required" ? "" : " secondary"}`,
+              type: "button",
+              title: update.message || `当前版本 ${update.currentVersion || "未知"}`,
+              disabled: !serviceReady || updateBusy || update.status === "restart-required",
+              onClick: updateAvailable ? installUpdate : checkUpdate,
+            }, updateLabel),
             createElement("button", { className: "opends-button secondary", type: "button", title: "重新检查本机 CLI、登录与 Harness 适配状态", disabled: verifying || !serviceReady, onClick: verifyRuntimes }, verifying ? "验证中…" : "验证"),
             createElement("button", { className: "opends-button", type: "button", title: "使用 Harness 已保存的凭证，并可获取供应商模型列表", onClick: exitToNativeModels }, "+ 添加模型"),
           ),

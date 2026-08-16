@@ -50,4 +50,11 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).toContain("MinerU · 重试");
     expect(clientSource).toContain("自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP");
   });
+
+  it("offers cached version checks and one-click automatic upgrades", () => {
+    expect(clientSource).toContain('requestAdmin("/v1/update/check"');
+    expect(clientSource).toContain('requestAdmin("/v1/update/install"');
+    expect(clientSource).toContain('"重试更新"');
+    expect(clientSource).toContain('"重启生效"');
+  });
 });
