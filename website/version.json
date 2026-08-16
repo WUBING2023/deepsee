@@ -1,0 +1,24 @@
+{
+  "version": "0.6.0-alpha.13",
+  "channel": "public-alpha",
+  "tag": "v0.6.0-alpha.13",
+  "assetName": "deepsee-0.6.0-alpha.13.tgz",
+  "sizeBytes": 109011,
+  "sha256": "d46adfd4db5067975ecc63af5092446ec31dd7b7a00b7352b5a86229bcf72db9",
+  "downloadUrl": "https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.13/deepsee-0.6.0-alpha.13.tgz",
+  "sha256Url": "https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.13/deepsee-0.6.0-alpha.13.tgz.sha256",
+  "releaseUrl": "https://github.com/WUBING2023/deepsee/releases/tag/v0.6.0-alpha.13",
+  "sourceUrl": "https://github.com/WUBING2023/deepsee/tree/v0.6.0-alpha.13",
+  "installCommand": "npx --yes github:WUBING2023/deepsee install",
+  "requirements": {
+    "node": ">=24",
+    "harness": "0.1.0-rc.6",
+    "platforms": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ]
+  },
+  "license": "MIT",
+  "generatedAt": "2026-08-16T15:51:45.451Z"
+}

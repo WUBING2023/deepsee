@@ -46,7 +46,7 @@ npx --yes github:WUBING2023/deepsee web
 | --- | --- |
 | **真正可执行的识图** | 上传图片后，DeepSee 会交给选定的多模态模型或 MinerU OCR，再把观察结果交回 DeepSeek。对话中会标明真正的视觉读取者。 |
 | **统一模型目录** | Harness API 模型与通过验证的本地 CLI 会出现在同一个简洁矩阵中，显示可用性和擅长能力。 |
-| **轻量任务路由** | `/workflow` 与 Prime 可以按能力选择模型，而不是让基模包办所有步骤。 |
+| **快速初始化** | 自动选择首个可用视觉模型，并沿用 Codex/Claude CLI 与已有 `AGENTS.md`、`CLAUDE.md` 或 `agent.md` 指令。 |
 | **原生配置体验** | 插件就在 Harness 侧栏内，通过同源接口工作；模型和凭据仍归 Harness 管理。 |
 
 ### 视觉：模型或 OCR

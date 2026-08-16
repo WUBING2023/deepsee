@@ -30,9 +30,11 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.deepsee.harnessRuntime).toBe("0.1.0-rc.6");
     expect(manifest.engines.node).toBe(">=24");
     expect(manifest.deepsee.installSpec).toBe("github:WUBING2023/deepsee#main");
+    expect(manifest.deepsee.legacyPackageAliases).toContain("deepsee-harness");
     expect(manifest.deepsee.update).toEqual({ protocol: 1, minimumUpdaterVersion: "0.6.0-alpha.6" });
     expect(patch).toContain("name: '@wubing2023/deepsee'");
     expect(patch).toContain("name: '@wubing2023/deepsee/codex'");
+    expect(patch).toContain("instructionFileCandidates: [AGENTS.md, CLAUDE.md, agent.md]");
   });
 
   it("installs through the official plugin manager for both profiles", () => {
@@ -49,6 +51,10 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain("runWithRetries");
     expect(installer).toContain("inspectProfileInstall");
     expect(installer).toContain("stageFolderPackage");
+    expect(installer).toContain("resolveProfileStoreDir");
+    expect(installer).toContain("npm_config_store_dir");
+    expect(installer).toContain("profileUsesPackage");
+    expect(installer).toContain('"remove", legacyPackage');
     expect(installer).toContain('NO_UPDATE_NOTIFIER: "1"');
     expect(installPolicy).toContain('args.includes("--from-folder")');
     expect(folderInstaller).toContain('join(dshHome, "deepsee", "packages")');

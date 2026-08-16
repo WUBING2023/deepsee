@@ -124,6 +124,24 @@ export function syncHarnessModels(root, input) {
     ...registry.routes.filter((route) => route?.source !== "harness"),
     ...harnessRoutes,
   ];
+  const ready = (id) => registry.routes.find((route) => (
+    route?.id === id && route.status === "ready" && route.enabled !== false
+  ));
+  if (!ready(registry.preferences?.primaryRouteId)) {
+    const primary = registry.routes.find((route) => (
+      route?.status === "ready" && route.enabled !== false && (route.source === "harness" || route.source === "api")
+    ));
+    if (primary) registry.preferences.primaryRouteId = primary.id;
+  }
+  if (ready(registry.preferences?.visionRouteId)?.visionLevel !== "full-vision") {
+    const vision = registry.routes.find((route) => (
+      route?.status === "ready" && route.enabled !== false && route.visionLevel === "full-vision"
+    ));
+    if (vision) {
+      registry.preferences.visionRouteId = vision.id;
+      registry.preferences.visionMode = "model";
+    }
+  }
   saveRegistryState(root, registry);
   return { state: publicRegistryState(root), synced: harnessRoutes.length };
 }

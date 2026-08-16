@@ -9,7 +9,7 @@ import {
   updateRegistryPreferences,
   updateRegistryRoute,
 } from "../scripts/registry-state.mjs";
-import { discoverDeepSeeRuntimes, resolveDeepSeePaths } from "../scripts/runtime-discovery.mjs";
+import { discoverDeepSeeRuntimes, discoverWorkspaceInstructions, resolveDeepSeePaths } from "../scripts/runtime-discovery.mjs";
 import { getMinerUStatus, startMinerUInstall } from "../scripts/mineru-manager.mjs";
 import {
   checkDeepSeeUpdate,
@@ -71,11 +71,27 @@ function routePath(req) {
 export function createDeepSeeAdminHandler(options = {}) {
   const paths = resolveDeepSeePaths(options);
   const { packageRoot, stateRoot, dshHome } = paths;
-  const state = () => ({
-    ...publicRegistryState(stateRoot),
-    tools: { mineru: getMinerUStatus(stateRoot) },
-    update: getDeepSeeUpdateStatus(stateRoot, packageRoot),
-  });
+  const state = () => {
+    const registry = publicRegistryState(stateRoot);
+    const selectedVision = registry.routes.find((route) => (
+      route.id === registry.preferences?.visionRouteId
+      && route.status === "ready"
+      && route.enabled !== false
+      && route.visionLevel === "full-vision"
+    ));
+    return {
+      ...registry,
+      initialization: {
+        vision: selectedVision ? { id: selectedVision.id, name: selectedVision.displayName || selectedVision.model } : null,
+        localRuntimes: registry.routes
+          .filter((route) => route.source === "cli" && route.status === "ready")
+          .map((route) => ({ id: route.id, name: route.displayName || route.model, cliModels: route.cliModels || [] })),
+        instructions: discoverWorkspaceInstructions(options.cwd || process.cwd()),
+      },
+      tools: { mineru: getMinerUStatus(stateRoot) },
+      update: getDeepSeeUpdateStatus(stateRoot, packageRoot),
+    };
+  };
 
   return async (req, res) => {
     try {

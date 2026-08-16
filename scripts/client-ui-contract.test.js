@@ -32,6 +32,14 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).not.toContain('"API Key"');
     expect(clientSource).toContain("api.llm.models({})");
     expect(clientSource).toContain("openNativeModelSettings");
+    expect(clientSource).toContain('requestAdmin("/v1/harness/models"');
+  });
+
+  it("auto-initializes verified runtimes and existing workspace instructions", () => {
+    expect(clientSource).toContain('fetch(`${adminBaseURL}/v1/runtimes/verify`');
+    expect(clientSource).toContain('api.llm.models({})');
+    expect(clientSource).toContain("已自动初始化 ·");
+    expect(clientSource).toContain("AGENTS.md、CLAUDE.md 与 agent.md");
   });
 
   it("uses the plugin Host route instead of a companion port or injected token", () => {

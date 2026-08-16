@@ -1,0 +1,47 @@
+name: Deploy product site
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deepsee-product-site-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Verify the public Release and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./product-release.json').product.version")"
+          TAG="v${VERSION}"
+          ASSET="deepsee-${VERSION}.tgz"
+          mkdir -p .release-check
+          gh release download "$TAG" --pattern "$ASSET" --pattern "${ASSET}.sha256" --dir .release-check
+          (cd .release-check && sha256sum -c "${ASSET}.sha256")
+          node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('website/version.json'));const s=fs.readFileSync('.release-check/${ASSET}.sha256','utf8').trim().split(/\\s+/)[0];if(m.version!=='${VERSION}'||m.sha256!==s)throw new Error('Website manifest does not match the public Release')"
+          node scripts/validate-site.mjs
+
+      - name: Deploy the static directory to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 pages deploy website --project-name deepsee-wubing2023 --branch main

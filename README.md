@@ -46,7 +46,7 @@ Already have DeepSeek Harness configured? DeepSee reuses its providers, model ID
 | --- | --- |
 | **Vision that actually runs** | Attach an image and DeepSee sends it to the selected multimodal model or MinerU OCR, then returns the observation to DeepSeek. The conversation identifies the real visual reader. |
 | **One model directory** | Harness API models and verified local CLIs appear in one compact matrix with their availability and strengths. |
-| **Lightweight routing** | `/workflow` and Prime can choose a model by capability instead of sending every step to the base model. |
+| **Fast initialization** | The first ready visual model is selected automatically; Codex/Claude CLI and existing `AGENTS.md`, `CLAUDE.md`, or `agent.md` instructions are reused. |
 | **Native configuration** | The plugin lives in the Harness sidebar and uses same-origin routes. Models and credentials remain owned by Harness. |
 
 ### Vision: model or OCR

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://deepsee-wubing2023.pages.dev/sitemap.xml

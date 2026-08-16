@@ -1,5 +1,11 @@
 # DeepSee is a normal DSH bundle layer. The plugin itself owns runtime
 # discovery, its same-origin Web route, and the Prime preset lifecycle.
+- id: agent-instructions
+  config:
+    maxBytes: 65536
+    instructionFileCandidates: [AGENTS.md, CLAUDE.md, agent.md]
+    localInstructionFileCandidates: [AGENTS.local.md, CLAUDE.local.md, agent.local.md]
+
 - insert:
     - id: deepsee-codex
       name: '@wubing2023/deepsee/codex'

@@ -17,6 +17,8 @@ node_modules/
 .env
 *.log
 design-demos/
+release/
+.wrangler/
 direction-approved.md
 product-facts.md
 DEEPSEE_COMPETITIVE_RESEARCH_*.md

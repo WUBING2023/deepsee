@@ -1,13 +1,13 @@
 {
   "name": "@wubing2023/deepsee",
-  "version": "0.6.0-alpha.12",
+  "version": "0.6.0-alpha.13",
   "description": "DeepSee — one-command vision and model-routing plugin for DeepSeek Harness",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/WUBING2023/deepsee.git"
   },
-  "homepage": "https://github.com/WUBING2023/deepsee#readme",
+  "homepage": "https://deepsee-wubing2023.pages.dev",
   "bugs": {
     "url": "https://github.com/WUBING2023/deepsee/issues"
   },
@@ -44,6 +44,9 @@
   "deepsee": {
     "installSpec": "github:WUBING2023/deepsee#main",
     "harnessRuntime": "0.1.0-rc.6",
+    "legacyPackageAliases": [
+      "deepsee-harness"
+    ],
     "update": {
       "protocol": 1,
       "minimumUpdaterVersion": "0.6.0-alpha.6"
@@ -77,6 +80,11 @@
   "scripts": {
     "build:plugin": "node ./scripts/clean-dist.mjs && node ./scripts/build-codex-adapter.mjs && tsc -p tsconfig.build.json",
     "pack:release": "pnpm run build:plugin && pnpm pack",
+    "release:build": "pnpm run build:plugin && node ./scripts/build-release.mjs",
+    "release:smoke": "node ./scripts/release-smoke.mjs",
+    "release:verify": "pnpm run typecheck && pnpm test && pnpm run release:build && pnpm run release:smoke && pnpm run site:verify",
+    "release:tag-check": "node ./scripts/verify-release-tag.mjs",
+    "site:verify": "node ./scripts/validate-site.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "setup": "node ./scripts/setup.mjs",

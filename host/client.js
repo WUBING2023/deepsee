@@ -91,6 +91,7 @@ window.__ModuleLoader__.load({
       .opends-message{font-size:12px;color:var(--dsw-alias-label-secondary);margin-right:auto}
       .opends-note{padding:11px 13px;border:1px solid rgba(47,107,255,.18);border-radius:10px;background:rgba(47,107,255,.06);color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1.6}
       .opends-preferences{border-bottom:1px solid rgba(127,127,127,.14)}
+      .opends-init-strip{min-height:36px;display:flex;align-items:center;gap:7px;color:var(--dsw-alias-label-secondary);font-size:11px;border-bottom:1px solid rgba(127,127,127,.12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-init-strip:before{content:"";width:6px;height:6px;border-radius:50%;background:#34a876;flex:none}
       .opends-pref-row{min-height:55px;display:grid;grid-template-columns:180px minmax(240px,1fr);align-items:center;gap:18px;border-top:1px solid rgba(127,127,127,.12)}.opends-pref-row:first-child{border-top:0}
       .opends-pref-label{font-size:13px;font-weight:540;color:var(--dsw-alias-label-primary)}.opends-pref-control{width:min(340px,100%);justify-self:end;border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-pref-action{justify-self:end}.opends-tool-install{min-width:72px}
       .opends-vision-controls{width:min(430px,100%);justify-self:end;display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px}.opends-vision-kind,.opends-vision-target{border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-vision-target{width:100%;min-width:0}
@@ -262,6 +263,7 @@ window.__ModuleLoader__.load({
       const [preferences, setPreferences] = useState({ primeAutoWorkflow: config.primeAutoWorkflow !== false });
       const [mineru, setMineru] = useState({ status: "not-installed", installed: false, message: "正在读取…" });
       const [update, setUpdate] = useState({ status: "idle", message: "尚未检查更新。" });
+      const [initialization, setInitialization] = useState({ vision: null, localRuntimes: [], instructions: { files: [] } });
       const [message, setMessage] = useState("");
       const [verifying, setVerifying] = useState(false);
       const [serviceReady, setServiceReady] = useState(false);
@@ -283,6 +285,7 @@ window.__ModuleLoader__.load({
         if (state.preferences && typeof state.preferences === "object") setPreferences(state.preferences);
         if (state.tools?.mineru) setMineru(state.tools.mineru);
         if (state.update && typeof state.update === "object") setUpdate(state.update);
+        if (state.initialization && typeof state.initialization === "object") setInitialization(state.initialization);
       };
 
       const requestAdmin = async (path, options = {}) => {
@@ -542,6 +545,12 @@ window.__ModuleLoader__.load({
         ),
       );
 
+      const initializedParts = [
+        initialization.vision?.name ? `视觉 ${initialization.vision.name}` : "",
+        ...(initialization.localRuntimes || []).map((runtime) => runtime.name),
+        ...(initialization.instructions?.files || []).map((file) => file.name),
+      ].filter(Boolean);
+
       return createElement("div", { className: "opends-body" },
         createElement("div", { className: "opends-page-head" },
           createElement("h1", { className: "opends-page-title", title: "模型选择会在下次 Harness 启动时应用。" }, "模型与首选项"),
@@ -557,6 +566,10 @@ window.__ModuleLoader__.load({
             createElement("button", { className: "opends-button", type: "button", title: "使用 Harness 已保存的凭证，并可获取供应商模型列表", onClick: exitToNativeModels }, "+ 添加模型"),
           ),
         ),
+        initializedParts.length > 0 && createElement("div", {
+          className: "opends-init-strip",
+          title: "本地 Runtime 已验证；AGENTS.md、CLAUDE.md 与 agent.md 由 Harness 工作区指令加载器直接使用。",
+        }, `已自动初始化 · ${initializedParts.join(" · ")}`),
         preferencesPanel,
         matrix,
         (message || snapshot.status === "loading" || !snapshot.writable) && createElement("div", { className: "opends-footer-actions" },
@@ -593,12 +606,37 @@ window.__ModuleLoader__.load({
       return createElement(DeepSeeSettings, { scope, api, exitToNativeModels: () => openNativeModelSettings(close) });
     }
 
-    function VisionOnboarding({ complete, openSection }) {
+    function VisionOnboarding({ complete, openSection, api }) {
       const [ready, setReady] = useState(null);
       useEffect(() => {
         let active = true;
-        fetch(`${adminBaseURL}/v1/models`)
-          .then((response) => response.ok ? response.json() : Promise.reject(new Error("not ready")))
+        const initialize = async () => {
+          let state;
+          const verified = await fetch(`${adminBaseURL}/v1/runtimes/verify`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: "{}",
+          });
+          if (verified.ok) state = (await verified.json()).state;
+          if (api?.llm?.models) {
+            const catalog = await api.llm.models({});
+            if (catalog?.result?.ok) {
+              const synced = await fetch(`${adminBaseURL}/v1/harness/models`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(catalog.result.value),
+              });
+              if (synced.ok) state = (await synced.json()).state;
+            }
+          }
+          if (!state) {
+            const response = await fetch(`${adminBaseURL}/v1/models`);
+            if (!response.ok) throw new Error("not ready");
+            state = await response.json();
+          }
+          return state;
+        };
+        initialize()
           .then((state) => {
             if (!active) return;
             const modelReady = Array.isArray(state.routes) && state.routes.some((route) => route.enabled !== false && route.status === "ready" && route.visionLevel === "full-vision");
@@ -654,6 +692,7 @@ window.__ModuleLoader__.load({
         name: "settings.onboarding",
         id: "opends-vision",
         order: 30,
+        inject: () => ({ api }),
       }, VisionOnboarding));
     }
 

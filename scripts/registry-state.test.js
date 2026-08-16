@@ -52,7 +52,7 @@ describe("registry preferences", () => {
         name: "DeepSeek",
         models: [
           { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", reasoning: { efforts: [] } },
-          { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro" },
+          { id: "vision-pro", name: "Vision Pro", description: "Multimodal vision and image understanding" },
         ],
       }],
       failures: [],
@@ -67,6 +67,11 @@ describe("registry preferences", () => {
       id: "harness:deepseek-official:deepseek-v4-flash",
       runtimeProvider: "deepseek-official",
       profileStatus: "pending",
+    });
+    expect(result.state.preferences).toMatchObject({
+      primaryRouteId: "api:kimi:v",
+      visionRouteId: "api:kimi:v",
+      visionMode: "model",
     });
   });
 

@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { homedir } from "node:os";
 import { DEFAULT_DEEPSEEK_SELECTION, readBridgeState, readModelSelection } from "./model-selection.mjs";
 import { findExecutable } from "./runtime-locator.mjs";
@@ -13,6 +13,52 @@ const LEGACY_STATE_FILES = [
   ".opends-bridge.json",
   ".opends-runtime-hub.json",
 ];
+
+export const WORKSPACE_INSTRUCTION_CANDIDATES = Object.freeze([
+  "AGENTS.md",
+  "CLAUDE.md",
+  "agent.md",
+  "AGENTS.local.md",
+  "CLAUDE.local.md",
+  "agent.local.md",
+]);
+
+export function discoverWorkspaceInstructions(cwd = process.cwd()) {
+  const workspace = resolve(cwd);
+  let projectRoot = workspace;
+  while (dirname(projectRoot) !== projectRoot && !existsSync(join(projectRoot, ".git"))) {
+    projectRoot = dirname(projectRoot);
+  }
+  if (!existsSync(join(projectRoot, ".git"))) projectRoot = workspace;
+  const directories = [];
+  for (let directory = workspace; ; directory = dirname(directory)) {
+    directories.unshift(directory);
+    if (directory === projectRoot || dirname(directory) === directory) break;
+  }
+  const files = [];
+  for (const directory of directories) {
+    for (const name of WORKSPACE_INSTRUCTION_CANDIDATES) {
+      const path = join(directory, name);
+      try {
+        const details = statSync(path);
+        if (!details.isFile() || details.size === 0 || details.size > 1024 * 1024) continue;
+        files.push({
+          name,
+          path: relative(projectRoot, path).replaceAll("\\", "/") || name,
+          scope: relative(projectRoot, directory).replaceAll("\\", "/") || ".",
+          local: name.toLowerCase().includes(".local."),
+        });
+      } catch {
+        // Missing, inaccessible, and transient files stay out of the public summary.
+      }
+    }
+  }
+  return {
+    projectRoot: projectRoot === workspace ? "." : relative(workspace, projectRoot).replaceAll("\\", "/") || ".",
+    files,
+    active: files.length > 0,
+  };
+}
 
 function defaultDshHome(env = process.env) {
   return resolve(env.DSH_HOME || join(homedir(), ".dsh"));
