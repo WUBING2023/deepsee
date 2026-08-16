@@ -18,10 +18,12 @@ import {
   compareSemVer,
   deepSeeUpdateManifestUrl,
   DEEPSEE_RELEASE_URL,
+  DEEPSEE_UPDATE_ATOM_URL,
   DEFAULT_UPDATE_ERROR_RETRY_MS,
   DEEPSEE_UPDATE_REF_URL,
   DEFAULT_UPDATE_CHECK_INTERVAL_MS,
   updateIsStale,
+  parseDeepSeeAtomSourceRef,
   validateDeepSeeManifest,
   validateDeepSeeSourceRef,
 } from "./update-policy.mjs";
@@ -225,6 +227,32 @@ export function getDeepSeeUpdateStatus(stateRoot, packageRoot) {
   return publicFields(state, currentVersion);
 }
 
+async function resolveLatestDeepSeeSourceRef(fetchImpl, manifest, options) {
+  const request = (accept) => ({
+    headers: { accept, "user-agent": `DeepSee/${manifest.version}` },
+    redirect: "follow",
+    cache: "no-store",
+    signal: options.signal || AbortSignal.timeout(options.timeoutMs || 15_000),
+  });
+  let apiFailure;
+  try {
+    const response = await fetchImpl(options.refUrl || DEEPSEE_UPDATE_REF_URL, request("application/vnd.github+json"));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return validateDeepSeeSourceRef((await response.json()).sha);
+  } catch (error) {
+    apiFailure = error instanceof Error ? error.message : String(error);
+  }
+
+  try {
+    const response = await fetchImpl(options.atomUrl || DEEPSEE_UPDATE_ATOM_URL, request("application/atom+xml"));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return parseDeepSeeAtomSourceRef(await response.text());
+  } catch (error) {
+    const atomFailure = error instanceof Error ? error.message : String(error);
+    throw new Error(`GitHub API 不可用（${apiFailure}）；官方提交订阅也不可用（${atomFailure}）。`);
+  }
+}
+
 export async function checkDeepSeeUpdate(stateRoot, packageRoot, options = {}) {
   const manifest = currentManifest(packageRoot);
   const current = getDeepSeeUpdateStatus(stateRoot, packageRoot);
@@ -246,19 +274,12 @@ export async function checkDeepSeeUpdate(stateRoot, packageRoot, options = {}) {
   try {
     const fetchImpl = options.fetchImpl || globalThis.fetch;
     if (typeof fetchImpl !== "function") throw new Error("当前 Node.js Runtime 不支持联网检查更新。");
-    const signal = options.signal || AbortSignal.timeout(options.timeoutMs || 15_000);
-    const headers = { accept: "application/vnd.github+json", "user-agent": `DeepSee/${manifest.version}` };
-    const refResponse = await fetchImpl(options.refUrl || DEEPSEE_UPDATE_REF_URL, {
-      headers,
-      redirect: "follow",
-      signal,
-    });
-    if (!refResponse.ok) throw new Error(`GitHub 提交接口返回 HTTP ${refResponse.status}`);
-    const sourceRef = validateDeepSeeSourceRef((await refResponse.json()).sha);
+    const sourceRef = await resolveLatestDeepSeeSourceRef(fetchImpl, manifest, options);
     const response = await fetchImpl(options.manifestUrl || deepSeeUpdateManifestUrl(sourceRef), {
       headers: { accept: "application/json", "user-agent": `DeepSee/${manifest.version}` },
       redirect: "follow",
-      signal,
+      cache: "no-store",
+      signal: options.signal || AbortSignal.timeout(options.timeoutMs || 15_000),
     });
     if (!response.ok) throw new Error(`GitHub 返回 HTTP ${response.status}`);
     const latest = validateDeepSeeManifest(await response.json());

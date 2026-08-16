@@ -4,6 +4,7 @@ import {
   compareSemVer,
   deepSeeUpdateArchiveUrl,
   deepSeeUpdateManifestUrl,
+  parseDeepSeeAtomSourceRef,
   parseSemVer,
   updateIsStale,
   validateDeepSeeManifest,
@@ -12,7 +13,7 @@ import {
 
 const manifest = {
   name: "@wubing2023/deepsee",
-  version: "0.6.0-alpha.9",
+  version: "0.6.0-alpha.10",
   main: "./dist/index.js",
   deepsee: {
     installSpec: "github:WUBING2023/deepsee#main",
@@ -46,12 +47,14 @@ describe("DeepSee update policy", () => {
     expect(deepSeeUpdateArchiveUrl(ref)).toContain(`/archive/${ref}.zip`);
     expect(() => validateDeepSeeSourceRef("main")).toThrow("SHA");
     expect(validateDeepSeeSourceRef("b".repeat(64))).toBe("b".repeat(64));
+    expect(parseDeepSeeAtomSourceRef(`<feed><entry><id>tag:github.com,2008:Grit::Commit/${ref}</id></entry></feed>`)).toBe(ref);
+    expect(() => parseDeepSeeAtomSourceRef("<feed></feed>")).toThrow("commit SHA");
   });
 
   it("fails closed when a future package requires a newer update protocol", () => {
-    expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.9", manifest)).toEqual({ compatible: true });
+    expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.10", manifest)).toEqual({ compatible: true });
     expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.5", manifest)).toMatchObject({ compatible: false });
-    expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.9", {
+    expect(assessDeepSeeUpdateCompatibility("0.6.0-alpha.10", {
       ...manifest,
       deepsee: { ...manifest.deepsee, update: { protocol: 2 } },
     })).toMatchObject({ compatible: false });

@@ -47,12 +47,12 @@ afterEach(() => {
 describe("DeepSee update manager", () => {
   it("detects an available official version without changing the package", async () => {
     const root = fixture();
-    const fetchImpl = updateFetch("0.6.0-alpha.10");
+    const fetchImpl = updateFetch("0.6.0-alpha.11");
     const status = await checkDeepSeeUpdate(root, packageRoot, { fetchImpl });
     expect(status).toMatchObject({
       status: "available",
       currentVersion: currentManifest.version,
-      latestVersion: "0.6.0-alpha.10",
+      latestVersion: "0.6.0-alpha.11",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(JSON.parse(readFileSync(join(root, ".opends-update", "state.json"), "utf8"))).toMatchObject({ sourceRef });
@@ -70,27 +70,47 @@ describe("DeepSee update manager", () => {
   it("turns invalid remote metadata into a retryable error", async () => {
     const root = fixture();
     const status = await checkDeepSeeUpdate(root, packageRoot, {
-      fetchImpl: updateFetch("0.6.0-alpha.10", { name: "@attacker/lookalike" }),
+      fetchImpl: updateFetch("0.6.0-alpha.11", { name: "@attacker/lookalike" }),
     });
     expect(status.status).toBe("error");
     expect(status.message).toContain("包身份");
   });
 
+  it("falls back to the official commits Atom feed when the GitHub API is rate-limited", async () => {
+    const root = fixture();
+    const fetchImpl = vi.fn(async (url) => {
+      const value = String(url);
+      if (value.includes("api.github.com")) return { ok: false, status: 403 };
+      if (value.endsWith("main.atom")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => `<feed><entry><id>tag:github.com,2008:Grit::Commit/${sourceRef}</id></entry></feed>`,
+        };
+      }
+      return response("0.6.0-alpha.11");
+    });
+    const status = await checkDeepSeeUpdate(root, packageRoot, { fetchImpl });
+    expect(status).toMatchObject({ status: "available", latestVersion: "0.6.0-alpha.11" });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(readFileSync(join(root, ".opends-update", "state.json"), "utf8"))).toMatchObject({ sourceRef });
+  });
+
   it("starts one detached automatic installer only after a verified check", async () => {
     const root = fixture();
-    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: updateFetch("0.6.0-alpha.10") });
+    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: updateFetch("0.6.0-alpha.11") });
     const child = Object.assign(new EventEmitter(), { pid: process.pid, unref: vi.fn() });
     const spawnImpl = vi.fn(() => child);
     const status = startDeepSeeUpdate(root, packageRoot, root, {
       spawnImpl,
       workerPath: join(root, "worker.mjs"),
     });
-    expect(status).toMatchObject({ status: "updating", latestVersion: "0.6.0-alpha.10" });
+    expect(status).toMatchObject({ status: "updating", latestVersion: "0.6.0-alpha.11" });
     expect(spawnImpl).toHaveBeenCalledWith(process.execPath, expect.arrayContaining([
       join(root, "worker.mjs"),
       root,
       root,
-      "0.6.0-alpha.10",
+      "0.6.0-alpha.11",
       sourceRef,
     ]), expect.objectContaining({ detached: true, windowsHide: true }));
     expect(child.unref).toHaveBeenCalled();
@@ -99,14 +119,14 @@ describe("DeepSee update manager", () => {
   it("requires a manual install when a future update protocol is not supported", async () => {
     const root = fixture();
     const status = await checkDeepSeeUpdate(root, packageRoot, {
-      fetchImpl: updateFetch("0.6.0-alpha.10", {
+      fetchImpl: updateFetch("0.6.0-alpha.11", {
         deepsee: {
           ...currentManifest.deepsee,
           update: { protocol: 2, minimumUpdaterVersion: currentManifest.version },
         },
       }),
     });
-    expect(status).toMatchObject({ status: "manual-required", latestVersion: "0.6.0-alpha.10" });
+    expect(status).toMatchObject({ status: "manual-required", latestVersion: "0.6.0-alpha.11" });
     expect(status.message).toContain("更新协议 2");
     expect(() => startDeepSeeUpdate(root, packageRoot, root)).toThrow("没有已验证");
   });
@@ -114,11 +134,11 @@ describe("DeepSee update manager", () => {
   it("atomically replaces update state and leaves no temporary file", () => {
     const root = fixture();
     writeDeepSeeUpdateState(root, { status: "current", checkedAt: "2026-08-16T00:00:00.000Z" });
-    writeDeepSeeUpdateState(root, { status: "available", latestVersion: "0.6.0-alpha.10" });
+    writeDeepSeeUpdateState(root, { status: "available", latestVersion: "0.6.0-alpha.11" });
     const directory = join(root, ".opends-update");
     expect(JSON.parse(readFileSync(join(directory, "state.json"), "utf8"))).toEqual({
       status: "available",
-      latestVersion: "0.6.0-alpha.10",
+      latestVersion: "0.6.0-alpha.11",
     });
     expect(readdirSync(directory).filter((name) => name.endsWith(".tmp"))).toEqual([]);
   });
@@ -143,7 +163,7 @@ describe("DeepSee update manager", () => {
     writeFileSync(join(installedPackage, "package.json"), JSON.stringify(currentManifest));
     expect(getDeepSeeUpdateStatus(root, installedPackage).currentVersion).toBe(currentManifest.version);
 
-    const nextVersion = "0.6.0-alpha.10";
+    const nextVersion = "0.6.0-alpha.11";
     writeFileSync(join(installedPackage, "package.json"), JSON.stringify({ ...currentManifest, version: nextVersion }));
     writeDeepSeeUpdateState(root, {
       status: "restart-required",
@@ -174,7 +194,7 @@ describe("DeepSee update manager", () => {
 
   it("releases the cross-process lock when the worker cannot be spawned", async () => {
     const root = fixture();
-    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: updateFetch("0.6.0-alpha.10") });
+    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: updateFetch("0.6.0-alpha.11") });
     expect(() => startDeepSeeUpdate(root, packageRoot, root, {
       spawnImpl: () => { throw new Error("spawn failed"); },
     })).toThrow("spawn failed");
@@ -201,13 +221,13 @@ describe("DeepSee update manager", () => {
     writeDeepSeeUpdateState(root, {
       status: "available",
       currentVersion: currentManifest.version,
-      latestVersion: "0.6.0-alpha.10",
+      latestVersion: "0.6.0-alpha.11",
       sourceRef,
     });
     const lock = acquireDeepSeeUpdateLock(root);
-    const fetchImpl = updateFetch("0.6.0-alpha.10");
+    const fetchImpl = updateFetch("0.6.0-alpha.11");
     const status = await checkDeepSeeUpdate(root, packageRoot, { fetchImpl });
-    expect(status).toMatchObject({ status: "updating", latestVersion: "0.6.0-alpha.10" });
+    expect(status).toMatchObject({ status: "updating", latestVersion: "0.6.0-alpha.11" });
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(JSON.parse(readFileSync(join(root, ".opends-update", "state.json"), "utf8"))).toMatchObject({ status: "available" });
     expect(releaseDeepSeeUpdateLock(root, lock.token)).toBe(true);

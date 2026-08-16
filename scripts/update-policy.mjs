@@ -1,6 +1,7 @@
 export const DEEPSEE_PACKAGE_NAME = "@wubing2023/deepsee";
 export const DEEPSEE_UPDATE_PROTOCOL = 1;
 export const DEEPSEE_UPDATE_REF_URL = "https://api.github.com/repos/WUBING2023/deepsee/commits/main";
+export const DEEPSEE_UPDATE_ATOM_URL = "https://github.com/WUBING2023/deepsee/commits/main.atom";
 export const DEEPSEE_RELEASE_URL = "https://github.com/WUBING2023/deepsee";
 export const DEFAULT_UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 export const DEFAULT_UPDATE_ERROR_RETRY_MS = 15 * 60 * 1000;
@@ -9,6 +10,14 @@ export function validateDeepSeeSourceRef(value) {
   const ref = String(value || "").trim().toLowerCase();
   if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(ref)) throw new Error("GitHub 更新提交 SHA 无效。");
   return ref;
+}
+
+export function parseDeepSeeAtomSourceRef(value) {
+  const match = String(value || "").match(
+    /<entry\b[\s\S]*?<id>\s*tag:github\.com,\d+:Grit::Commit\/([a-f0-9]{40}|[a-f0-9]{64})\s*<\/id>/i,
+  );
+  if (!match) throw new Error("GitHub 提交订阅未包含有效的最新 commit SHA。");
+  return validateDeepSeeSourceRef(match[1]);
 }
 
 export function deepSeeUpdateManifestUrl(sourceRef) {
