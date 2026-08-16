@@ -27,6 +27,7 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.dependencies["@deepseek-ai/dsh-sdk-protocol"]).toBe("^0.1.0-rc.6");
     expect(manifest.peerDependencies["@deepseek-ai/dsh-sdk-protocol"]).toBeUndefined();
     expect(manifest.peerDependencies["@deepseek-ai/dsh"]).toBe("^0.1.0-rc.6");
+    expect(manifest.deepsee.harnessRuntime).toBe("0.1.0-rc.6");
     expect(manifest.engines.node).toBe(">=24");
     expect(manifest.deepsee.installSpec).toBe("github:WUBING2023/deepsee#main");
     expect(manifest.deepsee.update).toEqual({ protocol: 1, minimumUpdaterVersion: "0.6.0-alpha.6" });
@@ -39,7 +40,9 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain("for (const profile of options.profiles)");
     expect(installer).toContain('["plugin", "--profile", profile, "add", spec]');
     expect(installer).toContain("manifest.deepsee?.installSpec");
-    expect(installer).toContain('resolveNpxInvocation(["--yes", dshSpec, ...argv])');
+    expect(installer).toContain('"--prefer-offline"');
+    expect(launcher).toContain('findExecutable("dsh")');
+    expect(launcher).toContain('manifest.deepsee?.harnessRuntime');
     expect(installer).toContain("resolveInstallOptions");
     expect(installer).toContain("runWithRetries");
     expect(installer).toContain("inspectProfileInstall");

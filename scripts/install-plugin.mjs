@@ -19,7 +19,7 @@ import {
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const dshBin = join(root, "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js");
-const dshSpec = `@deepseek-ai/dsh@${manifest.peerDependencies["@deepseek-ai/dsh"]}`;
+const dshSpec = `@deepseek-ai/dsh@${manifest.deepsee?.harnessRuntime || manifest.peerDependencies["@deepseek-ai/dsh"]}`;
 const args = process.argv.slice(2);
 const local = args.includes("--local");
 const specIndex = args.indexOf("--spec");
@@ -45,7 +45,7 @@ const spec = explicitSpec || (stagedFolder ? `file:${stagedFolder}` : local ? `f
 
 function resolveDshRunners(argv) {
   const localDsh = existsSync(dshBin);
-  const npx = resolveNpxInvocation(["--yes", dshSpec, ...argv]);
+  const npx = resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, ...argv]);
   if (localDsh) {
     return [{ label: "bundled DSH CLI", command: process.execPath, args: [dshBin, ...argv] }];
   }
