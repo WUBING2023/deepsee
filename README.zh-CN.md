@@ -16,6 +16,22 @@ npx --yes github:WUBING2023/deepsee install
 
 这一条命令会下载预构建插件，并调用受支持的官方 Harness CLI，将 DeepSee 安装到 `web` 和 `headless` profile。它不下载 DeepSee 开发工具，不修改 Harness 的 `node_modules`，不会写手工 shim，也不会启动独立伴随服务。
 
+安装器已针对旧电脑和慢网络处理：每个 profile 每次最多等待 15 分钟，并自动重试一次。重复运行同一命令会跳过已经安装当前 DeepSee 版本的 profile，因此可以安全续装。
+
+网络特别慢时，可以关闭 DeepSee 安装器自身的超时限制，同时保留底层包管理器的错误输出：
+
+```powershell
+npx --yes github:WUBING2023/deepsee install --timeout-ms 0
+```
+
+恢复与定向安装：
+
+```powershell
+npx --yes github:WUBING2023/deepsee install --profile headless  # 只安装一个 profile
+npx --yes github:WUBING2023/deepsee install --retries 3         # 增加瞬时失败重试次数
+npx --yes github:WUBING2023/deepsee install --force             # 强制重装当前版本
+```
+
 安装后按原生方式启动 Harness：
 
 ```powershell
@@ -35,7 +51,7 @@ pnpm run start:web
 卸载并保留模型目录、首选项和 MinerU 状态：
 
 ```powershell
-deepsee uninstall
+npx --yes github:WUBING2023/deepsee uninstall
 ```
 
 ## 安装后发生什么
@@ -91,10 +107,10 @@ Headless 没有 WebServer 服务，DeepSee 会跳过同源管理路由，但 Run
 ## 常用命令
 
 ```powershell
-deepsee install              # 标准一键安装 Web + Headless
-deepsee uninstall            # 标准卸载，保留用户状态
-deepsee doctor               # 检查 bundle、Runtime 与配置，不输出密钥
-deepsee web                  # 交给官方 dsh 启动 Web profile
+npx --yes github:WUBING2023/deepsee install    # 一键安装 Web + Headless
+npx --yes github:WUBING2023/deepsee uninstall  # 卸载并保留用户状态
+npx --yes github:WUBING2023/deepsee doctor     # 检查 bundle、Runtime 与配置
+npx --yes github:WUBING2023/deepsee web        # 启动官方 DSH Web profile
 
 pnpm run typecheck           # 开发：类型检查
 pnpm test                    # 开发：完整回归

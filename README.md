@@ -16,6 +16,22 @@ npx --yes github:WUBING2023/deepsee install
 
 That single command downloads the prebuilt plugin and uses the supported official Harness CLI to install DeepSee into both the `web` and `headless` profiles. It does not download DeepSee development tooling, patch Harness `node_modules`, create manual shims, or run a companion service.
 
+The installer is designed for first-time downloads on older machines and slower networks. Each profile gets up to 15 minutes per attempt and one automatic retry. Re-running the same command safely resumes installation by skipping profiles that already contain the current DeepSee version.
+
+For an especially slow connection, disable the installer deadline while retaining the underlying package-manager diagnostics:
+
+```powershell
+npx --yes github:WUBING2023/deepsee install --timeout-ms 0
+```
+
+Useful recovery options:
+
+```powershell
+npx --yes github:WUBING2023/deepsee install --profile headless  # Install only one profile
+npx --yes github:WUBING2023/deepsee install --retries 3         # Retry transient failures
+npx --yes github:WUBING2023/deepsee install --force             # Reinstall the current version
+```
+
 Then start Harness normally:
 
 ```powershell
@@ -35,7 +51,7 @@ The default Web URL is [http://127.0.0.1:3080/](http://127.0.0.1:3080/).
 Uninstall the plugin while preserving model preferences and local tool state:
 
 ```powershell
-deepsee uninstall
+npx --yes github:WUBING2023/deepsee uninstall
 ```
 
 ## What installation adds
@@ -91,10 +107,10 @@ Headless has no WebServer, so DeepSee skips the same-origin management route whi
 ## Commands
 
 ```powershell
-deepsee install              # Install into Web and Headless
-deepsee uninstall            # Uninstall and preserve user state
-deepsee doctor               # Check bundle, runtimes, and config without printing secrets
-deepsee web                  # Start the official DSH Web profile
+npx --yes github:WUBING2023/deepsee install    # Install into Web and Headless
+npx --yes github:WUBING2023/deepsee uninstall  # Uninstall and preserve user state
+npx --yes github:WUBING2023/deepsee doctor     # Check bundle, runtimes, and config
+npx --yes github:WUBING2023/deepsee web        # Start the official DSH Web profile
 
 pnpm run typecheck           # Development type check
 pnpm test                    # Full regression suite

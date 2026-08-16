@@ -5,6 +5,7 @@ const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.
 const patch = readFileSync(new URL("../cordis.patch.yml", import.meta.url), "utf8");
 const launcher = readFileSync(new URL("../host/bin.mjs", import.meta.url), "utf8");
 const installer = readFileSync(new URL("./install-plugin.mjs", import.meta.url), "utf8");
+const installPolicy = readFileSync(new URL("./install-policy.mjs", import.meta.url), "utf8");
 
 describe("standard DeepSeek Harness bundle", () => {
   it("declares a distributable bundle and Web client", () => {
@@ -26,10 +27,16 @@ describe("standard DeepSeek Harness bundle", () => {
   });
 
   it("installs through the official plugin manager for both profiles", () => {
-    expect(installer).toContain('["web", "headless"]');
+    expect(installPolicy).toContain('["web", "headless"]');
+    expect(installer).toContain("for (const profile of options.profiles)");
     expect(installer).toContain('["plugin", "--profile", profile, "add", spec]');
     expect(installer).toContain("manifest.deepsee?.installSpec");
     expect(installer).toContain('resolveNpxInvocation(["--yes", dshSpec, ...argv])');
+    expect(installer).toContain("resolveInstallOptions");
+    expect(installer).toContain("runWithRetries");
+    expect(installer).toContain("inspectProfileInstall");
+    expect(installer).not.toContain("timeout: 180_000");
+    expect(readFileSync(new URL("./cli.mjs", import.meta.url), "utf8")).toContain("Installation failed / 安装失败");
     expect(installer).not.toContain("installProfileShim");
   });
 
