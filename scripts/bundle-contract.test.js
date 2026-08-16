@@ -68,7 +68,8 @@ describe("standard DeepSeek Harness bundle", () => {
   it("checks and installs updates through the verified ZIP installer", () => {
     expect(updateManager).toContain("queueDeepSeeUpdateCheck");
     expect(updateManager).toContain("startDeepSeeUpdate");
-    expect(updateWorker).toContain("DEEPSEE_UPDATE_ARCHIVE_URL");
+    expect(updateWorker).toContain("deepSeeUpdateArchiveUrl");
+    expect(updateManager).toContain("DEEPSEE_UPDATE_REF_URL");
     expect(updateWorker).toContain('"--from-folder"');
     expect(updateWorker).toContain('"--force"');
     expect(updateWorker).toContain("validateDeepSeeManifest");

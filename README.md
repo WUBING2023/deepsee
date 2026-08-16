@@ -76,7 +76,7 @@ npx --yes github:WUBING2023/deepsee uninstall
 
 ### Updates
 
-Opening the DeepSee panel performs a cached update check against the official `WUBING2023/deepsee` repository (at most once every six hours by default). When a newer semantic version is available, the compact **Upgrade** action downloads the official GitHub ZIP, verifies the package name, version, install source, and prebuilt Host files, then reuses the same safe folder installer for both `web` and `headless` profiles. Model settings, routes, credentials, and MinerU state are not replaced. Restart Harness after the panel reports **Restart to apply**.
+Opening the DeepSee panel performs a cached update check against the official `WUBING2023/deepsee` repository (at most once every six hours by default). The checker first resolves and pins the current official commit, so the manifest and ZIP always come from the same immutable source revision. When a newer semantic version is available, the compact **Upgrade** action downloads that commit's GitHub ZIP, verifies the package name, version, install source, and prebuilt Host files, then reuses the same safe folder installer for both `web` and `headless` profiles. Model settings, routes, credentials, and MinerU state are not replaced. Restart Harness after the panel reports **Restart to apply**.
 
 DeepSee never silently installs an update: checks are automatic and upgrades are one click. If a download or profile install fails, the current version stays usable and the panel offers a retry; details remain under `$DSH_HOME/deepsee/.opends-update`.
 

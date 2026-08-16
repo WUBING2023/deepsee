@@ -4,11 +4,13 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
   compareSemVer,
+  deepSeeUpdateManifestUrl,
   DEEPSEE_RELEASE_URL,
-  DEEPSEE_UPDATE_MANIFEST_URL,
+  DEEPSEE_UPDATE_REF_URL,
   DEFAULT_UPDATE_CHECK_INTERVAL_MS,
   updateIsStale,
   validateDeepSeeManifest,
+  validateDeepSeeSourceRef,
 } from "./update-policy.mjs";
 
 const moduleRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -132,10 +134,19 @@ export async function checkDeepSeeUpdate(stateRoot, packageRoot, options = {}) {
   try {
     const fetchImpl = options.fetchImpl || globalThis.fetch;
     if (typeof fetchImpl !== "function") throw new Error("当前 Node.js Runtime 不支持联网检查更新。");
-    const response = await fetchImpl(options.manifestUrl || DEEPSEE_UPDATE_MANIFEST_URL, {
+    const signal = options.signal || AbortSignal.timeout(options.timeoutMs || 15_000);
+    const headers = { accept: "application/vnd.github+json", "user-agent": `DeepSee/${manifest.version}` };
+    const refResponse = await fetchImpl(options.refUrl || DEEPSEE_UPDATE_REF_URL, {
+      headers,
+      redirect: "follow",
+      signal,
+    });
+    if (!refResponse.ok) throw new Error(`GitHub 提交接口返回 HTTP ${refResponse.status}`);
+    const sourceRef = validateDeepSeeSourceRef((await refResponse.json()).sha);
+    const response = await fetchImpl(options.manifestUrl || deepSeeUpdateManifestUrl(sourceRef), {
       headers: { accept: "application/json", "user-agent": `DeepSee/${manifest.version}` },
       redirect: "follow",
-      signal: options.signal || AbortSignal.timeout(options.timeoutMs || 15_000),
+      signal,
     });
     if (!response.ok) throw new Error(`GitHub 返回 HTTP ${response.status}`);
     const latest = validateDeepSeeManifest(await response.json());
@@ -145,6 +156,7 @@ export async function checkDeepSeeUpdate(stateRoot, packageRoot, options = {}) {
       status: available ? "available" : "current",
       currentVersion: manifest.version,
       latestVersion: latest.version,
+      sourceRef,
       checkedAt,
       message: available
         ? `DeepSee ${latest.version} 可以升级。`
@@ -186,6 +198,8 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
   if (current.status !== "available" || !current.latestVersion) {
     throw new Error("当前没有已验证的 DeepSee 新版本；请先检查更新。");
   }
+  const verifiedState = readJson(statePath(stateRoot));
+  const sourceRef = validateDeepSeeSourceRef(verifiedState.sourceRef);
 
   const updateRoot = join(stateRoot, ".opends-update");
   mkdirSync(updateRoot, { recursive: true });
@@ -196,6 +210,7 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
     status: "updating",
     currentVersion: current.currentVersion,
     latestVersion: current.latestVersion,
+    sourceRef,
     checkedAt: current.checkedAt,
     startedAt,
     message: `正在自动升级到 DeepSee ${current.latestVersion}…`,
@@ -208,6 +223,7 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
       stateRoot,
       dshHome,
       current.latestVersion,
+      sourceRef,
     ], {
       cwd: stateRoot,
       detached: true,
@@ -224,6 +240,7 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
       status: "error",
       currentVersion: current.currentVersion,
       latestVersion: current.latestVersion,
+      sourceRef,
       checkedAt: current.checkedAt,
       startedAt,
       completedAt: new Date().toISOString(),
@@ -235,6 +252,7 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
     status: "updating",
     currentVersion: current.currentVersion,
     latestVersion: current.latestVersion,
+    sourceRef,
     checkedAt: current.checkedAt,
     startedAt,
     pid: child.pid,
@@ -245,6 +263,7 @@ export function startDeepSeeUpdate(stateRoot, packageRoot, dshHome, options = {}
       status: "error",
       currentVersion: current.currentVersion,
       latestVersion: current.latestVersion,
+      sourceRef,
       checkedAt: current.checkedAt,
       startedAt,
       completedAt: new Date().toISOString(),

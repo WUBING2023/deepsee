@@ -14,6 +14,7 @@ import {
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 const currentManifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
 const temporaryRoots = [];
+const sourceRef = "a".repeat(40);
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "deepsee-update-"));
@@ -29,6 +30,12 @@ function response(version, overrides = {}) {
   };
 }
 
+function updateFetch(version, overrides = {}) {
+  return vi.fn(async (url) => String(url).includes("/commits/")
+    ? { ok: true, status: 200, json: async () => ({ sha: sourceRef }) }
+    : response(version, overrides));
+}
+
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -36,30 +43,30 @@ afterEach(() => {
 describe("DeepSee update manager", () => {
   it("detects an available official version without changing the package", async () => {
     const root = fixture();
-    const fetchImpl = vi.fn(async () => response("0.6.0-alpha.7"));
+    const fetchImpl = updateFetch("0.6.0-alpha.7");
     const status = await checkDeepSeeUpdate(root, packageRoot, { fetchImpl });
     expect(status).toMatchObject({
       status: "available",
       currentVersion: currentManifest.version,
       latestVersion: "0.6.0-alpha.7",
     });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(readFileSync(join(root, ".opends-update", "state.json"), "utf8"))).not.toHaveProperty("pid");
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(readFileSync(join(root, ".opends-update", "state.json"), "utf8"))).toMatchObject({ sourceRef });
   });
 
   it("reports current and caches automatic checks", async () => {
     const root = fixture();
-    const fetchImpl = vi.fn(async () => response(currentManifest.version));
+    const fetchImpl = updateFetch(currentManifest.version);
     await checkDeepSeeUpdate(root, packageRoot, { fetchImpl });
     expect(getDeepSeeUpdateStatus(root, packageRoot).status).toBe("current");
     expect(queueDeepSeeUpdateCheck(root, packageRoot, { fetchImpl })).toBeUndefined();
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("turns invalid remote metadata into a retryable error", async () => {
     const root = fixture();
     const status = await checkDeepSeeUpdate(root, packageRoot, {
-      fetchImpl: async () => response("0.6.0-alpha.7", { name: "@attacker/lookalike" }),
+      fetchImpl: updateFetch("0.6.0-alpha.7", { name: "@attacker/lookalike" }),
     });
     expect(status.status).toBe("error");
     expect(status.message).toContain("包身份");
@@ -67,7 +74,7 @@ describe("DeepSee update manager", () => {
 
   it("starts one detached automatic installer only after a verified check", async () => {
     const root = fixture();
-    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: async () => response("0.6.0-alpha.7") });
+    await checkDeepSeeUpdate(root, packageRoot, { fetchImpl: updateFetch("0.6.0-alpha.7") });
     const child = Object.assign(new EventEmitter(), { pid: process.pid, unref: vi.fn() });
     const spawnImpl = vi.fn(() => child);
     const status = startDeepSeeUpdate(root, packageRoot, root, {
@@ -80,6 +87,7 @@ describe("DeepSee update manager", () => {
       root,
       root,
       "0.6.0-alpha.7",
+      sourceRef,
     ]), expect.objectContaining({ detached: true, windowsHide: true }));
     expect(child.unref).toHaveBeenCalled();
   });

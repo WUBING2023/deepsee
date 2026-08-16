@@ -15,14 +15,17 @@ import { findExecutable } from "./runtime-locator.mjs";
 import { writeDeepSeeUpdateState } from "./update-manager.mjs";
 import {
   DEEPSEE_PACKAGE_NAME,
-  DEEPSEE_UPDATE_ARCHIVE_URL,
+  deepSeeUpdateArchiveUrl,
   validateDeepSeeManifest,
+  validateDeepSeeSourceRef,
 } from "./update-policy.mjs";
 
-const [stateRoot, dshHome, expectedVersion] = process.argv.slice(2);
-if (!stateRoot || !dshHome || !expectedVersion) {
-  throw new Error("DeepSee update worker requires stateRoot, DSH_HOME and expectedVersion.");
+const [stateRoot, dshHome, expectedVersion, sourceRefValue] = process.argv.slice(2);
+if (!stateRoot || !dshHome || !expectedVersion || !sourceRefValue) {
+  throw new Error("DeepSee update worker requires stateRoot, DSH_HOME, expectedVersion and sourceRef.");
 }
+const sourceRef = validateDeepSeeSourceRef(sourceRefValue);
+const archiveUrl = deepSeeUpdateArchiveUrl(sourceRef);
 
 const updateRoot = join(stateRoot, ".opends-update");
 const archive = join(updateRoot, "downloads", `deepsee-${expectedVersion}.zip`);
@@ -60,7 +63,7 @@ function run(command, args, label) {
 async function downloadArchive() {
   mkdirSync(join(updateRoot, "downloads"), { recursive: true });
   rmSync(partial, { force: true });
-  const response = await fetch(DEEPSEE_UPDATE_ARCHIVE_URL, {
+  const response = await fetch(archiveUrl, {
     headers: { accept: "application/zip", "user-agent": `DeepSee-Updater/${expectedVersion}` },
     redirect: "follow",
     signal: AbortSignal.timeout(10 * 60_000),
@@ -117,7 +120,7 @@ function findPackageRoot(directory, depth = 3) {
 }
 
 try {
-  console.log(`[DeepSee] Downloading ${DEEPSEE_UPDATE_ARCHIVE_URL}`);
+  console.log(`[DeepSee] Downloading verified commit ${sourceRef}`);
   await downloadArchive();
   extractArchive();
   const packageRoot = findPackageRoot(workRoot);
@@ -146,6 +149,7 @@ try {
     status: "restart-required",
     currentVersion: priorState.currentVersion,
     latestVersion: expectedVersion,
+    sourceRef,
     checkedAt: priorState.checkedAt,
     startedAt,
     completedAt: new Date().toISOString(),
@@ -156,6 +160,7 @@ try {
     status: "error",
     currentVersion: priorState.currentVersion,
     latestVersion: expectedVersion,
+    sourceRef,
     checkedAt: priorState.checkedAt,
     startedAt,
     completedAt: new Date().toISOString(),

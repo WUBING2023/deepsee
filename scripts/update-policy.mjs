@@ -1,8 +1,21 @@
 export const DEEPSEE_PACKAGE_NAME = "@wubing2023/deepsee";
-export const DEEPSEE_UPDATE_MANIFEST_URL = "https://raw.githubusercontent.com/WUBING2023/deepsee/main/package.json";
-export const DEEPSEE_UPDATE_ARCHIVE_URL = "https://github.com/WUBING2023/deepsee/archive/refs/heads/main.zip";
+export const DEEPSEE_UPDATE_REF_URL = "https://api.github.com/repos/WUBING2023/deepsee/commits/main";
 export const DEEPSEE_RELEASE_URL = "https://github.com/WUBING2023/deepsee";
 export const DEFAULT_UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+export function validateDeepSeeSourceRef(value) {
+  const ref = String(value || "").trim().toLowerCase();
+  if (!/^[a-f0-9]{40}$/.test(ref)) throw new Error("GitHub 更新提交 SHA 无效。");
+  return ref;
+}
+
+export function deepSeeUpdateManifestUrl(sourceRef) {
+  return `https://raw.githubusercontent.com/WUBING2023/deepsee/${validateDeepSeeSourceRef(sourceRef)}/package.json`;
+}
+
+export function deepSeeUpdateArchiveUrl(sourceRef) {
+  return `https://github.com/WUBING2023/deepsee/archive/${validateDeepSeeSourceRef(sourceRef)}.zip`;
+}
 
 function parseIdentifier(value) {
   if (/^\d+$/.test(value)) return { numeric: true, value: Number(value) };

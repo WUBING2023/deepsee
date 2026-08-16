@@ -62,8 +62,11 @@ describe("embedded DeepSee Host route", () => {
 
   it("checks the official update manifest through the same-origin route", async () => {
     const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
+    const sourceRef = "b".repeat(40);
     const base = await fixture({
-      updateFetch: async () => ({ ok: true, status: 200, json: async () => ({ ...manifest, version: "0.6.0-alpha.7" }) }),
+      updateFetch: async (url) => String(url).includes("/commits/")
+        ? ({ ok: true, status: 200, json: async () => ({ sha: sourceRef }) })
+        : ({ ok: true, status: 200, json: async () => ({ ...manifest, version: "0.6.0-alpha.7" }) }),
     });
     const response = await fetch(`${base}${DEEPSEE_API_PREFIX}/v1/update/check`, {
       method: "POST",
