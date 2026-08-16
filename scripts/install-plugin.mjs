@@ -45,7 +45,7 @@ const spec = explicitSpec || (stagedFolder ? `file:${stagedFolder}` : local ? `f
 
 function resolveDshRunners(argv) {
   const localDsh = existsSync(dshBin);
-  const npx = resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, ...argv]);
+  const npx = resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, "--", ...argv]);
   if (localDsh) {
     return [{ label: "bundled DSH CLI", command: process.execPath, args: [dshBin, ...argv] }];
   }

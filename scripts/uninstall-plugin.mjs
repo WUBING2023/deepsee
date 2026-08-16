@@ -26,7 +26,7 @@ for (const profile of ["web", "headless"]) {
   if (!current.dependencies?.[manifest.name]) continue;
   const localDsh = existsSync(dshBin);
   const argv = ["plugin", "--profile", profile, "remove", manifest.name];
-  const npx = resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, ...argv]);
+  const npx = resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, "--", ...argv]);
   const result = spawnSync(localDsh ? process.execPath : npx.command, localDsh ? [dshBin, ...argv] : npx.args, {
     cwd: process.cwd(),
     env,

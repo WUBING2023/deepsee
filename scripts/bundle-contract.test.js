@@ -41,6 +41,8 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain('["plugin", "--profile", profile, "add", spec]');
     expect(installer).toContain("manifest.deepsee?.installSpec");
     expect(installer).toContain('"--prefer-offline"');
+    expect(installer).toContain('dshSpec, "--", ...argv');
+    expect(launcher).toContain('dshSpec, "--", ...process.argv.slice(2)');
     expect(launcher).toContain('findExecutable("dsh")');
     expect(launcher).toContain('manifest.deepsee?.harnessRuntime');
     expect(installer).toContain("resolveInstallOptions");

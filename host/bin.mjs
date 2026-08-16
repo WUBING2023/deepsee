@@ -36,7 +36,7 @@ if (existsSync(localDsh)) {
   const installedDsh = findExecutable("dsh");
   const invocation = installedDsh
     ? resolveExecutableInvocation(installedDsh, process.argv.slice(2))
-    : resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, ...process.argv.slice(2)]);
+    : resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, "--", ...process.argv.slice(2)]);
   const result = spawnSync(invocation.command, invocation.args, {
     env: {
       ...process.env,
