@@ -94,14 +94,14 @@ describe("DeepSee install policy", () => {
       dependencies: { "@wubing2023/deepsee": "github:WUBING2023/deepsee#main" },
       dsh: { profile: { bundles: ["@wubing2023/deepsee"] } },
     }));
-    writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ version: "0.6.0-alpha.7" }));
+    writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ version: "0.6.0-alpha.8" }));
 
-    expect(inspectProfileInstall(root, "web", "@wubing2023/deepsee", "0.6.0-alpha.7")).toMatchObject({
+    expect(inspectProfileInstall(root, "web", "@wubing2023/deepsee", "0.6.0-alpha.8")).toMatchObject({
       current: true,
       registered: true,
-      installedVersion: "0.6.0-alpha.7",
+      installedVersion: "0.6.0-alpha.8",
     });
-    expect(inspectProfileInstall(root, "web", "@wubing2023/deepsee", "0.6.0-alpha.8")).toMatchObject({
+    expect(inspectProfileInstall(root, "web", "@wubing2023/deepsee", "0.6.0-alpha.9")).toMatchObject({
       current: false,
       registered: true,
     });

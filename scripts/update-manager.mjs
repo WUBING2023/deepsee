@@ -27,6 +27,7 @@ import {
 const moduleRoot = fileURLToPath(new URL("../", import.meta.url));
 export const DEEPSEE_UPDATE_STATE_FILE = ".opends-update/state.json";
 const activeChecks = new Map();
+const runningManifests = new Map();
 let stateWriteSequence = 0;
 
 function statePath(root) {
@@ -44,7 +45,10 @@ function readJson(path, fallback = {}) {
 }
 
 function currentManifest(packageRoot) {
-  return validateDeepSeeManifest(readJson(join(packageRoot, "package.json")));
+  if (runningManifests.has(packageRoot)) return runningManifests.get(packageRoot);
+  const manifest = validateDeepSeeManifest(readJson(join(packageRoot, "package.json")));
+  runningManifests.set(packageRoot, manifest);
+  return manifest;
 }
 
 function processIsRunning(pid) {
