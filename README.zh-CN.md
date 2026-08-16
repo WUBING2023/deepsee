@@ -1,189 +1,137 @@
-# 深见 DeepSee
+<h1 align="center">深见 DeepSee</h1>
 
-[English](README.md) · [简体中文](README.zh-CN.md)
+<p align="center"><strong>让 DeepSeek Harness 看见，也让合适的模型做合适的事。</strong></p>
 
-DeepSeek Harness 的一行安装视觉与模型路由插件。
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-DeepSee 以标准 DSH bundle 的插件形式安装在 DeepSeek Harness 之上。它不替换 Harness 的 Loop、Goal、Plan 或 Workflow，只补充三件事：视觉读取、模型能力目录、轻量多模型路由。
+<p align="center">
+  <img alt="MIT 许可证" src="https://img.shields.io/badge/license-MIT-111827?style=flat-square">
+  <img alt="Node.js 24 或更高版本" src="https://img.shields.io/badge/Node.js-24%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white">
+  <img alt="DeepSeek Harness 0.1.0-rc.6" src="https://img.shields.io/badge/DeepSeek_Harness-0.1.0--rc.6-4f46e5?style=flat-square">
+</p>
 
-## 一键安装
+DeepSee 是 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) 的轻量插件。它给纯文本 DeepSeek 模型补上一条真正可用的视觉路线，把电脑上已有的模型整理成可调用的目录，并在 Workflow 中把任务交给更合适的执行者。
 
-直接从 GitHub 一行安装：
+它不会另造一套产品：仍然使用原来的 Web 界面、模型设置，以及 Harness 自带的 Loop、Goal、Plan 和 Workflow。没有第二个控制台，没有伴随服务，也不需要重复填写 API Key。
+
+> [!IMPORTANT]
+> DeepSee 目前处于 Alpha 阶段，目标版本为 DeepSeek Harness `0.1.0-rc.6`。视觉路线、模型目录、Codex/Claude CLI 适配、一键安装与升级流程已经实现；Runtime 支持会保持谨慎，真实边界见下文。
+
+## 一行安装
+
+电脑需要 [Node.js 24 或更高版本](https://nodejs.org/)。在 PowerShell 或终端中运行：
 
 ```powershell
 npx --yes github:WUBING2023/deepsee install
 ```
 
-这一条命令会下载预构建插件，并调用受支持的官方 Harness CLI，将 DeepSee 安装到 `web` 和 `headless` profile。它不下载 DeepSee 开发工具，不修改 Harness 的 `node_modules`，不会写手工 shim，也不会启动独立伴随服务。
-
-安装器已针对旧电脑和慢网络处理：每个 profile 每次最多等待 15 分钟，并自动重试一次。重复运行同一命令会跳过已经安装当前 DeepSee 版本的 profile，因此可以安全续装。
-
-网络特别慢时，可以关闭 DeepSee 安装器自身的超时限制，同时保留底层包管理器的错误输出：
-
-```powershell
-npx --yes github:WUBING2023/deepsee install --timeout-ms 0
-```
-
-恢复与定向安装：
-
-```powershell
-npx --yes github:WUBING2023/deepsee install --profile headless  # 只安装一个 profile
-npx --yes github:WUBING2023/deepsee install --retries 3         # 增加瞬时失败重试次数
-npx --yes github:WUBING2023/deepsee install --force             # 强制重装当前版本
-```
-
-### ZIP 压缩包兜底安装（不再通过 `npx github:` 下载 DeepSee）
-
-如果 GitHub 一行安装超时，请用浏览器下载 [deepsee-main.zip](https://github.com/WUBING2023/deepsee/archive/refs/heads/main.zip) 并解压。进入解压后的 `deepsee-main` 文件夹，在 PowerShell 中依次运行：
-
-```powershell
-node .\scripts\cli.mjs install --from-folder --timeout-ms 0
-node .\scripts\cli.mjs doctor
-node .\scripts\cli.mjs web
-```
-
-这条路线直接使用 ZIP 内已经构建好的文件，不需要执行 `pnpm install`，也不需要源码构建。安装前，DeepSee 会先把插件复制到 `$DSH_HOME\deepsee\packages\<版本>`，所以安装完成后可以删除下载的 ZIP 和解压目录，不会影响插件。电脑上已有 `dsh` 命令时会优先复用；没有时，安装器只会下载锁定版本的官方 Harness CLI。
-
-删除解压目录后，可用下面的命令启动 Harness：
-
-```powershell
-dsh --profile web
-# 如果 dsh 不在 PATH 中：
-npx --yes @deepseek-ai/dsh@0.1.0-rc.6 --profile web
-```
-
-安装后按原生方式启动 Harness：
+然后启动 Harness Web 界面：
 
 ```powershell
 npx --yes github:WUBING2023/deepsee web
 ```
 
-从本仓库开发安装：
+打开 [http://127.0.0.1:3080/](http://127.0.0.1:3080/)，侧栏中会出现原生风格的 DeepSee 面板。
 
-```powershell
-pnpm install
-pnpm run install:plugin
-pnpm run start:web
-```
+如果你已经配置过 DeepSeek Harness，DeepSee 会直接复用已有供应商、模型 ID 和凭据引用。添加或修改 API 模型仍在 Harness 原生的 **设置 → 模型** 页面完成，插件不会要求你再保存一遍 Key。
 
-默认 Web 地址是 [http://127.0.0.1:3080/](http://127.0.0.1:3080/)。
+[首次使用指南 →](docs/GETTING_STARTED.zh-CN.md) · [English guide →](docs/GETTING_STARTED.md)
 
-卸载并保留模型目录、首选项和 MinerU 状态：
+## DeepSee 增加了什么
 
-```powershell
-npx --yes github:WUBING2023/deepsee uninstall
-```
+| 能力 | 实际体验 |
+| --- | --- |
+| **真正可执行的识图** | 上传图片后，DeepSee 会交给选定的多模态模型或 MinerU OCR，再把观察结果交回 DeepSeek。对话中会标明真正的视觉读取者。 |
+| **统一模型目录** | Harness API 模型与通过验证的本地 CLI 会出现在同一个简洁矩阵中，显示可用性和擅长能力。 |
+| **轻量任务路由** | `/workflow` 与 Prime 可以按能力选择模型，而不是让基模包办所有步骤。 |
+| **原生配置体验** | 插件就在 Harness 侧栏内，通过同源接口工作；模型和凭据仍归 Harness 管理。 |
 
-### 检查更新与自动升级
+### 视觉：模型或 OCR
 
-打开 DeepSee 面板时，会自动从官方 `WUBING2023/deepsee` 仓库进行低频缓存检查，默认最多每六小时一次。检查器会先解析并锁定官方 commit；GitHub API 限流或暂时不可用时，会自动改用同仓库的官方 commits Atom feed 获取精确 SHA，保证版本清单与 ZIP 始终来自同一个不可变的源码版本。发现更高的语义版本后，面板才显示简洁的 **升级** 入口；点击一次即可下载该 commit 的 GitHub ZIP，校验包名、版本、安装来源和预构建 Host 文件，然后复用同一套安全目录安装器，自动升级 `web` 与 `headless` 两个 profile。模型设置、路由、凭据和 MinerU 状态不会被覆盖。面板显示 **重启生效** 后重启 Harness 即可。
+在 DeepSee 首选项中选择一种读取方式：
 
-DeepSee 不会静默强制安装：检查是自动的，升级由用户点击确认。后台安装器针对旧电脑把每个 profile 的单次上限放宽到 30 分钟并保留自动重试，同时避免坏网络下永久卡住。跨进程升级锁确保多个 Harness 实例不会同时改写安装目录；如果只完成了一个 profile，重试会跳过已经正确升级的部分，只继续未完成的 profile。下载或安装失败时，当前运行进程仍可继续使用；详细日志保存在 `$DSH_HOME/deepsee/.opends-update`。
+- **模型**：选择 Harness 中确认支持图片输入的模型。
+- **OCR**：使用 MinerU 读取文档文字与版面。DeepSee 可按需尝试已有环境、`uv`、Python + `venv`、校验过的便携 UV，最后再尝试源码 ZIP。
 
-安装前还会检查更新协议兼容性。未来版本如果改变包结构，可以声明更高的更新协议或最低更新器版本；旧版 DeepSee 会保持现有插件可用并显示 **需手动升级**，不会冒险执行不兼容迁移。更新状态采用原子替换；瞬时检查失败会在 15 分钟后自动重试，而不是被六小时缓存长期压住。Harness peer 依赖遵循官方当前使用的兼容 SemVer 范围，允许同一 `0.1.x` API 系列内的后续兼容发行版，同时拒绝未经验证的下一破坏性版本系列。启动、安装和卸载则使用 DeepSee 当前发行版实测过的精确 Harness Runtime，并优先复用本地缓存或已有的 `dsh`，避免每次启动都依赖 registry。
+视觉路线完成读取后，DeepSeek 会拿到观察结果并继续正常对话。纯文本模型不会再被界面伪装成“已经看过图片”。
 
-## 安装后发生什么
+### 模型目录与本地 Runtime
 
-- 标准 bundle 清单 `cordis.patch.yml` 加载 DeepSee Host、Web 客户端和可选 Codex provider。
-- 插件启动时扫描已安装的 Claude Code、Codex、Kimi CLI、OpenCode 和 Ollama；只有通过版本、登录与 Harness 适配验证的路线才能打开。
-- Web 直接使用 Harness 同源路由 `/api/deepsee` 读写模型状态。没有 3091 端口、Bearer 管理 Token 或第二个 Node 进程。
-- 可变状态保存在 `$DSH_HOME/deepsee`，不写进 npm 包目录；升级和卸载不会删除用户配置。
-- DeepSee 自动生成 `$DSH_HOME/.agent-presets/prime`。Preset 目录由 Harness 实时发现，无需修改官方 preset。
-- API Key 仍由 Harness 原生“设置 → 模型”与凭据存储管理。DeepSee 只同步供应商、模型 ID、输入模态和能力描述，不读取或复制 Key。
-- 旧 alpha 的 `OPENDS_BRIDGE_*` 配置可自动迁移到 Harness 的 `llm-pi-ai` 供应商元数据；只保存 Key 的引用，不把 Key 写入 `settings.yaml`。
+DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验证的路线保持可用。能力描述可以通过一条很短的模型请求自动生成，也可以由用户修正。
 
-## 已实现能力
-
-### 视觉读取
-
-在 DeepSee 首选项中选择：
-
-- **模型**：从 Harness 当前已配置且确认支持图片输入的模型中选择。
-- **OCR**：按需安装 MinerU，用于文档文字与版面读取。
-
-图片会先交给所选视觉路线，DeepSeek 再根据识图结果继续回答。界面会提示当前由其他模型识图，不会再把纯文本 DeepSeek 模型显示为最终的视觉执行者。
-
-#### MinerU 自动安装
-
-用户只需点击一次 **MinerU · 安装**。DeepSee 会在独立目录中自动按顺序尝试：
-
-1. 直接复用电脑上已经可用的 MinerU。
-2. 使用已有 `uv`，先连接官方 PyPI，再切换可配置的国内镜像。
-3. 使用已有 Python：Windows 支持 3.10–3.12，Linux/macOS 支持 3.10–3.13；自动创建 `venv` 并通过 `pip` 安装。
-4. 自动下载官方便携 UV 压缩包，校验 SHA-256 后仅保存在 DeepSee 内部，不修改系统安装。
-5. 包安装仍不成功时，下载 MinerU 官方源码 ZIP，解压后从源码安装。
-
-DeepSee 默认安装 `mineru[core]>=3,<4`，因为 OCR 路线明确使用支持纯 CPU 的 `pipeline` 后端，不会为了识字强制安装无关的完整推理后端。Python 包源与模型源分别重试；模型下载先使用 MinerU 的 `auto` 自动选源，再尝试 ModelScope 与 Hugging Face。界面状态会保留当前策略和最终成功方式，完整命令输出写入 DeepSee 状态目录下的 MinerU 安装日志。源码 ZIP 仍需要兼容 Python（或已校验的便携 UV）来安装依赖，并需要联网取得 Python 依赖和模型文件，因此它不是包含模型的完全离线包。
-
-策略依据 MinerU 官方的[安装指南](https://opendatalab.github.io/MinerU/zh/quick_start/)、[扩展模块说明](https://opendatalab.github.io/MinerU/quick_start/extension_modules/)与[模型源策略](https://opendatalab.github.io/MinerU/usage/model_source/)。
-高级部署可以通过 `.env.example` 中的 `OPENDS_MINERU_*` 配置扩展包版本、PyPI 镜像、模型源、源码 ZIP、源码 extra 与单条命令超时；普通用户无需填写。
-
-### 模型目录
-
-侧栏的“深见”面板只保留四列：打开、模型、来源、能力。
-
-- 模型和来源来自 Harness 或启动扫描，不能手工伪造。
-- 能力由模型短请求自动生成，用户可双击修正。
-- CLI 未安装、未登录或缺少适配器时，路线保持关闭。
-- Codex CLI 与 Claude Code 可以选择其已验证的模型档位。
-- “添加模型”直接进入 Harness 原生模型设置，复用已经保存的供应商凭据和模型列表。
+| 路线 | 可发现 | 可由 DeepSee 执行 | 说明 |
+| --- | :---: | :---: | --- |
+| Harness / API 模型 | 是 | 是 | 复用原生供应商、模型设置和子 Agent。 |
+| Codex CLI | 是 | 是 | 验证登录与适配器，可选择支持的模型档位。 |
+| Claude Code | 是 | 是 | 验证登录与适配器，可选择支持的模型档位。 |
+| Kimi CLI、OpenCode、Ollama | 是 | 暂不支持 | 会如实显示扫描结果；没有稳定 Harness 适配器时不会伪装成可执行路线。 |
+| MinerU | 是 | 仅 OCR | 位于首选项中的视觉工具，不混入通用模型矩阵。 |
 
 ### Workflow 与 Prime
 
-- `/workflow <任务>` 显式请求 Harness 原生可见 Workflow。
-- Prime 对简单任务继续使用普通 Loop；只有多条独立工作流、跨能力角色，或已批准且标记为 Workflow 的 Plan 才进入 Workflow。
-- Workflow worker 使用 `opends` provider，把 DeepSee route id 映射为真实 Harness provider/model。
+- `/workflow <任务>` 会显式启动一个可见的 Harness Workflow。
+- Prime 会让小任务继续走普通 Loop；只有确实存在独立工作流、跨能力角色，或已经批准的 Workflow 计划时才进入编排。
 - Harness/API 模型通过原生 `spawn` 子 Agent 执行；Codex 与 Claude Code 通过各自验证过的 CLI provider 执行。
-- 模型目录工具 `opends_list_models` 让主模型按视觉、编码、写作、推理或审查能力选择路线。
+- `opends_list_models` 工具让主模型按视觉、编码、写作、推理、文档或审查能力查看可用路线。
 
-## Web 与 Headless
-
-同一个标准包支持两种 Harness profile：
-
-```powershell
-dsh web
-dsh --profile headless "只回答 OK"
+```mermaid
+flowchart LR
+    U["用户"] --> H["DeepSeek Harness"]
+    H --> D["DeepSee"]
+    D -->|"图片"| V["视觉模型或 MinerU"]
+    D -->|"任务"| R["Harness API、Codex 或 Claude"]
+    V -->|"观察结果"| H
+    R -->|"执行结果"| H
 ```
 
-Headless 没有 WebServer 服务，DeepSee 会跳过同源管理路由，但 Runtime 扫描、视觉路由、模型目录、CLI provider 与 Workflow 策略仍可加载。Web profile 才会挂载 `/api/deepsee` 与侧栏界面。
+## 保持轻量的设计
+
+- 以标准 DSH bundle 安装到 `web` 与 `headless` 两个 profile。
+- 配置接口挂载在同源 `/api/deepsee`；没有 `3091` 端口，也没有第二个 Node.js 进程。
+- 可变状态保存在 `$DSH_HOME/deepsee`，与包目录分离，升级和卸载不会抹掉用户选择。
+- `prime` preset 从当前 Harness 的标准 preset 生成，不修改官方 preset。
+- 只读取供应商元数据和凭据引用，不读取原始 API Key。
+
+[查看架构与扩展点 →](docs/ARCHITECTURE.zh-CN.md)
 
 ## 常用命令
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install    # 一键安装 Web + Headless
-npx --yes github:WUBING2023/deepsee uninstall  # 卸载并保留用户状态
-npx --yes github:WUBING2023/deepsee doctor     # 检查 bundle、Runtime 与配置
-npx --yes github:WUBING2023/deepsee web        # 启动官方 DSH Web profile
-
-pnpm run typecheck           # 开发：类型检查
-pnpm test                    # 开发：完整回归
-pnpm run build:plugin        # 开发：构建 Host 与可选 Codex provider
-pnpm run pack:release        # 构建并生成可发布 tarball
+npx --yes github:WUBING2023/deepsee install    # 安装或安全续装 Web + Headless
+npx --yes github:WUBING2023/deepsee web        # 启动 Harness Web 界面
+npx --yes github:WUBING2023/deepsee doctor     # 检查插件、Runtime 与配置
+npx --yes github:WUBING2023/deepsee uninstall  # 卸载插件并保留用户状态
 ```
 
-兼容期内，内部设置 namespace、工具名和部分状态文件仍使用 `opends-*` / `OPENDS_*`，以便旧安装无损迁移；公开产品、GitHub 仓库、作用域包和命令统一为 DeepSee / `WUBING2023/deepsee` / `@wubing2023/deepsee` / `deepsee`。
+版本检查会低频自动进行，但安装升级一定需要用户在 DeepSee 面板中点击确认。升级器锁定不可变的 Git commit，安装前验证包，并可续跑只完成了一个 profile 的升级。面板显示 **重启生效** 后，再重启 Harness。
 
-## 关键文件
+如果一行安装超时，请使用[压缩包兜底安装](docs/GETTING_STARTED.zh-CN.md#压缩包兜底安装)。Runtime、识图或升级异常可查看[排障指南](docs/TROUBLESHOOTING.zh-CN.md)。
 
-- `cordis.patch.yml`：标准 DSH bundle 层
-- `src/index.ts`：Host 插件、视觉桥、模型目录、Workflow 与 Prime 策略
-- `host/admin-server.mjs`：挂载到 Harness WebServer 的同源配置路由
-- `host/client.js`：DeepSee 侧栏、模型矩阵、视觉/OCR 首选项
-- `host/codex-provider.js`：构建时生成的可选择模型 Codex provider
-- `scripts/install-plugin.mjs`：Web + Headless 一键安装
-- `scripts/folder-install.mjs`：将解压的 ZIP 持久化后执行兜底安装
-- `scripts/update-manager.mjs`：缓存版本检查与后台升级生命周期
-- `scripts/update-policy.mjs`：SemVer、不可变 commit 与未来更新协议门槛
-- `scripts/update-worker.mjs`：校验官方 ZIP 并升级 Web + Headless
-- `scripts/mineru-install-strategies.mjs`：可扩展的 Python、UV、镜像、便携包与源码 ZIP 策略
-- `scripts/runtime-discovery.mjs`：启动扫描、旧状态迁移与注册表生成
-- `scripts/prime-preset.mjs`：基于当前 Harness 标准 preset 生成 Prime
-- `scripts/uninstall-plugin.mjs`：标准卸载并保留 `$DSH_HOME/deepsee`
+## 文档
 
-## 当前兼容边界
+| 指南 | 简体中文 | English |
+| --- | --- | --- |
+| 安装与首次运行 | [快速上手](docs/GETTING_STARTED.zh-CN.md) | [Getting started](docs/GETTING_STARTED.md) |
+| 架构与扩展 | [架构说明](docs/ARCHITECTURE.zh-CN.md) | [Architecture](docs/ARCHITECTURE.md) |
+| 诊断与恢复 | [排障指南](docs/TROUBLESHOOTING.zh-CN.md) | [Troubleshooting](docs/TROUBLESHOOTING.md) |
+| 本地开发 | [参与开发](CONTRIBUTING.zh-CN.md) | [Contributing](CONTRIBUTING.md) |
 
-当前版本面向 DeepSeek Harness `0.1.0-rc.6`。Codex 与 Claude Code 有可执行子 Agent 适配；Kimi CLI、OpenCode 和 Ollama 在没有稳定 Harness 子 Agent 适配器时只显示验证状态，不会被伪装成可执行路线。视觉 API、普通 API 模型和供应商凭据应优先在 Harness 原生模型页配置。
+## 本地开发
+
+```powershell
+pnpm install
+pnpm run typecheck
+pnpm test
+pnpm run build:plugin
+pnpm run install:plugin
+pnpm run start:web
+```
+
+为了让早期安装无损迁移，部分内部 namespace、工具名和状态文件仍使用 `opends-*` / `OPENDS_*`。公开产品、仓库、包和命令统一为 DeepSee、`WUBING2023/deepsee`、`@wubing2023/deepsee` 与 `deepsee`。
 
 ## 许可证
 
-[MIT](LICENSE) © 2026 WUBING2023
+[MIT](LICENSE) © 2026 [WUBING2023](https://github.com/WUBING2023)

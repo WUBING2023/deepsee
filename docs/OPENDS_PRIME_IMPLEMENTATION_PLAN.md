@@ -1,5 +1,8 @@
 # DeepSee Prime 完整实施计划
 
+> [!NOTE]
+> 这是早期产品设计与实施记录，保留用于追溯决策，不代表当前使用说明。当前能力边界请以[中文 README](../README.zh-CN.md)和[架构说明](ARCHITECTURE.zh-CN.md)为准。
+
 ## 当前实施状态（2026-08-14）
 
 目前已完成可发布 Alpha 的轻量主链路：视觉桥、模型注册表与扫描、用户能力/职位覆盖、DeepSee 侧栏、首次视觉引导、显式 `/workflow`、Prime preset、Plan 执行模式约定，以及 API/Harness 路线到原生 Workflow 子 Agent 的统一路由代理。本机当前发现 2 条 `ready` 路线：DeepSeek 主模型与 Kimi 完整视觉 API。
