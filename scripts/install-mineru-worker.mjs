@@ -45,15 +45,23 @@ const env = {
   HF_HOME: join(toolRoot, "model-cache", "huggingface"),
   MINERU_TOOLS_CONFIG_JSON: join(toolRoot, "mineru.json"),
 };
+let progress = 4;
+let phase = "detect";
 
 function writeProgress(message, extra = {}) {
+  if (Number.isFinite(extra.progress)) progress = Math.max(progress, Math.min(99, Number(extra.progress)));
+  if (typeof extra.phase === "string" && extra.phase) phase = extra.phase;
   writeMinerUState(root, {
     status: "installing",
     pid: process.pid,
     startedAt,
+    progress,
+    phase,
     message,
     attempts,
     ...extra,
+    progress,
+    phase,
   });
 }
 
@@ -85,12 +93,16 @@ function runPython(runtime, args, label) {
 function attempt(label, action) {
   const record = { label, status: "running", startedAt: new Date().toISOString() };
   attempts.push(record);
-  writeProgress(`正在尝试：${label}`, { strategy: label });
+  const modelDownload = /pipeline 模型/.test(label);
+  const attemptProgress = modelDownload
+    ? Math.max(progress, 82)
+    : Math.min(66, Math.max(progress + 5, 20));
+  writeProgress(`正在尝试：${label}`, { strategy: label, phase: modelDownload ? "models" : "install", progress: attemptProgress });
   try {
     const value = action();
     record.status = "success";
     record.completedAt = new Date().toISOString();
-    writeProgress(`${label}已完成，正在继续验证…`, { strategy: label });
+    writeProgress(`${label}已完成，正在继续验证…`, { strategy: label, progress: modelDownload ? 96 : Math.min(72, progress + 5) });
     return value;
   } catch (error) {
     record.status = "failed";
@@ -234,6 +246,7 @@ function modelDownloaderPath() {
 
 function installPackage() {
   mkdirSync(toolRoot, { recursive: true });
+  writeProgress("正在检查 UV、Python 与安装源…", { phase: "detect", progress: 10 });
   const sources = mineruPackageSources();
   const pythonRuntimes = discoverCompatiblePythonRuntimes();
   let uv = findExecutable("uv");
@@ -281,14 +294,16 @@ function installPackage() {
 }
 
 try {
-  writeProgress("正在检测已有 UV、Python 与可用下载源…", { strategy: "自动检测" });
+  writeProgress("正在检测已有 UV、Python 与可用下载源…", { strategy: "自动检测", phase: "detect", progress: 6 });
   const installed = installPackage();
   const executable = managedMinerUExecutable(root);
   if (!installed || !existsSync(executable)) throw new Error("所有自动安装方式均未生成可用的 mineru 可执行文件。");
+  writeProgress("MinerU 核心已安装，正在验证可执行文件…", { phase: "verify", progress: 74 });
   run(executable, ["--version"], "验证 MinerU");
   const modelDownloader = modelDownloaderPath();
   if (!existsSync(modelDownloader)) throw new Error("安装完成但未找到 MinerU 模型下载器。");
 
+  writeProgress("正在准备 MinerU pipeline 模型…", { phase: "models", progress: 80 });
   let modelsReady = false;
   for (const source of mineruModelSources()) {
     const result = attempt(`下载 pipeline 模型 · ${source}`, () => {
@@ -307,6 +322,8 @@ try {
     installed: true,
     startedAt,
     completedAt: new Date().toISOString(),
+    progress: 100,
+    phase: "complete",
     installMethod: installed.method,
     attempts,
     message: `MinerU 已通过 ${installed.method} 安装，可用于文档 OCR 与版面解析。`,
@@ -318,6 +335,8 @@ try {
     installed: false,
     startedAt,
     completedAt: new Date().toISOString(),
+    progress,
+    phase: "error",
     attempts,
     message: `MinerU 自动安装未完成${lastFailures ? `（最后尝试：${lastFailures}）` : ""}。${conciseInstallError(error)}`,
   });

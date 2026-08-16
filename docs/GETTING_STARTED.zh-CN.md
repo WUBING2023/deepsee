@@ -57,7 +57,7 @@ DeepSee 只读取 Harness 的供应商元数据与凭据引用。它不会在自
 
 ### 方案 B：MinerU OCR
 
-适合 PDF、扫描件、文档文字、表格与版面提取。点击一次 **MinerU · 安装** 后，DeepSee 会依次尝试：
+适合 PDF、扫描件、文档文字、表格与版面提取。点击一次 **MinerU · 安装** 后，界面会显示简单的阶段进度条，DeepSee 会依次尝试：
 
 1. 已经可用的 MinerU 命令；
 2. 电脑上已有的 `uv`；
@@ -87,10 +87,11 @@ OCR 使用兼容 CPU 的 `pipeline` 后端，安装范围为 `mineru[core]>=3,<4
 
 Harness 应显示一个可见的 Workflow。DeepSee 会把模型目录交给主模型选择，但不会让普通的一步任务强行进入复杂编排。
 
-## 本地 CLI 扫描
+## 桌面端与 CLI 扫描
 
-DeepSee 启动时会扫描 Codex、Claude Code、Kimi CLI、OpenCode 与 Ollama。被扫描到，不等于一定可以执行。
+DeepSee 启动时会扫描 Codex Desktop、Claude Desktop、Codex/Claude Code CLI、Kimi CLI、OpenCode 与 Ollama。被扫描到，不等于一定可以执行。
 
+- Codex Desktop 可以提供其内置 App Server；Claude Desktop 可以直接打开，但自动执行仍需要验证通过的 Claude Code CLI。
 - Codex 与 Claude Code 只有在命令、登录状态、模型选择和适配器都通过验证后才能打开。
 - Kimi CLI、OpenCode 与 Ollama 目前以发现为主；没有稳定 Harness 子 Agent 适配器时不会进入可执行路线。
 - 未登录或验证失败的 CLI 会保持关闭，避免 Workflow 运行到中途才报错。

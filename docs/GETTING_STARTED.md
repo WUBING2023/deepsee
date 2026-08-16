@@ -57,7 +57,7 @@ Use this route for natural-image understanding, charts, screenshots, and questio
 
 ### Option B: MinerU OCR
 
-Use this route for PDFs, scans, document text, tables, and layout. Click **MinerU · Install** once. DeepSee tries, in order:
+Use this route for PDFs, scans, document text, tables, and layout. Click **MinerU · Install** once. A small stage progress bar remains visible while DeepSee tries, in order:
 
 1. an existing compatible MinerU command;
 2. an existing `uv` environment;
@@ -87,10 +87,11 @@ After at least two executable routes are enabled, try:
 
 Harness should show a visible Workflow. DeepSee exposes the model directory to the main model; it does not force a complex Workflow for ordinary one-step requests.
 
-## Local CLI discovery
+## Desktop and CLI discovery
 
-DeepSee scans for Codex, Claude Code, Kimi CLI, OpenCode, and Ollama at startup. Discovery alone does not make a runtime executable.
+DeepSee scans for Codex Desktop, Claude Desktop, Codex/Claude Code CLI, Kimi CLI, OpenCode, and Ollama at startup. Discovery alone does not make a runtime executable.
 
+- Codex Desktop can supply its bundled App Server. Claude Desktop is launchable, but automatic execution still requires a verified Claude Code CLI.
 - Codex and Claude Code can be enabled after the executable, login state, model choice, and adapter pass validation.
 - Kimi CLI, OpenCode, and Ollama are currently discovery-only unless a stable Harness subagent adapter is available.
 - A failed or logged-out CLI remains disabled instead of failing later in a Workflow.

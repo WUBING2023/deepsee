@@ -18,7 +18,7 @@ DeepSee 是 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) 
 它不会另造一套产品：仍然使用原来的 Web 界面、模型设置，以及 Harness 自带的 Loop、Goal、Plan 和 Workflow。没有第二个控制台，没有伴随服务，也不需要重复填写 API Key。
 
 > [!IMPORTANT]
-> DeepSee 目前处于 Alpha 阶段，目标版本为 DeepSeek Harness `0.1.0-rc.6`。视觉路线、模型目录、Codex/Claude CLI 适配、一键安装与升级流程已经实现；Runtime 支持会保持谨慎，真实边界见下文。
+> DeepSee 目前处于 Alpha 阶段，目标版本为 DeepSeek Harness `0.1.0-rc.6`。视觉路线、模型目录、Codex/Claude 桌面端与 CLI 适配、一键安装与升级流程已经实现；Runtime 支持会保持谨慎，真实边界见下文。
 
 ## 一行安装
 
@@ -46,7 +46,7 @@ npx --yes github:WUBING2023/deepsee web
 | --- | --- |
 | **真正可执行的识图** | 上传图片后，DeepSee 会交给选定的多模态模型或 MinerU OCR，再把观察结果交回 DeepSeek。对话中会标明真正的视觉读取者。 |
 | **统一模型目录** | Harness API 模型与通过验证的本地 CLI 会出现在同一个简洁矩阵中，显示可用性和擅长能力。 |
-| **快速初始化** | 自动选择首个可用视觉模型，并沿用 Codex/Claude CLI 与已有 `AGENTS.md`、`CLAUDE.md` 或 `agent.md` 指令。 |
+| **快速初始化** | 自动选择首个可用视觉模型，并沿用 Codex/Claude 桌面端或 CLI 与已有 `AGENTS.md`、`CLAUDE.md` 或 `agent.md` 指令。 |
 | **原生配置体验** | 插件就在 Harness 侧栏内，通过同源接口工作；模型和凭据仍归 Harness 管理。 |
 
 ### 视觉：模型或 OCR
@@ -54,7 +54,7 @@ npx --yes github:WUBING2023/deepsee web
 在 DeepSee 首选项中选择一种读取方式：
 
 - **模型**：选择 Harness 中确认支持图片输入的模型。
-- **OCR**：使用 MinerU 读取文档文字与版面。DeepSee 可按需尝试已有环境、`uv`、Python + `venv`、校验过的便携 UV，最后再尝试源码 ZIP。
+- **OCR**：使用 MinerU 读取文档文字与版面。安装时会显示简单的阶段进度条，并按需尝试已有环境、`uv`、Python + `venv`、校验过的便携 UV，最后再尝试源码 ZIP。
 
 视觉路线完成读取后，DeepSeek 会拿到观察结果并继续正常对话。纯文本模型不会再被界面伪装成“已经看过图片”。
 
@@ -65,8 +65,8 @@ DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验
 | 路线 | 可发现 | 可由 DeepSee 执行 | 说明 |
 | --- | :---: | :---: | --- |
 | Harness / API 模型 | 是 | 是 | 复用原生供应商、模型设置和子 Agent。 |
-| Codex CLI | 是 | 是 | 验证登录与适配器，可选择支持的模型档位。 |
-| Claude Code | 是 | 是 | 验证登录与适配器，可选择支持的模型档位。 |
+| Codex Desktop / CLI | 是 | 是 | 复用验证通过的内置 App Server 或 CLI，可选择支持的模型档位。 |
+| Claude Desktop + Claude Code | 是 | CLI 验证后可用 | 只有桌面端时可从 DeepSee 打开；自动 Workflow 仍需要 Claude Code CLI。 |
 | Kimi CLI、OpenCode、Ollama | 是 | 暂不支持 | 会如实显示扫描结果；没有稳定 Harness 适配器时不会伪装成可执行路线。 |
 | MinerU | 是 | 仅 OCR | 位于首选项中的视觉工具，不混入通用模型矩阵。 |
 

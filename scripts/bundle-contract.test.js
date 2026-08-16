@@ -63,6 +63,13 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).not.toContain("installProfileShim");
   });
 
+  it("allows the Codex provider to reuse a verified Desktop app-server executable", () => {
+    const builder = readFileSync(new URL("./build-codex-adapter.mjs", import.meta.url), "utf8");
+    expect(builder).toContain("resolveDeepSeeCodexExecutable");
+    expect(builder).toContain('item?.id === "cli:codex"');
+    expect(builder).toContain('route?.status === "ready"');
+  });
+
   it("does not start a companion admin server", () => {
     expect(launcher).not.toContain("startDeepSeeAdminServer");
     expect(launcher).not.toContain("OPENDS_ADMIN_PORT");

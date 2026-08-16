@@ -22,6 +22,8 @@ export interface ModelRoute {
   cliModels?: string[];
   /** User-selected CLI model; absence means the CLI's own default. */
   cliModel?: string;
+  /** Installed desktop application associated with this executable route. */
+  desktopAppId?: string;
   enabled: boolean;
   status: ModelStatus;
   capabilities: string[];
@@ -50,6 +52,17 @@ export interface ModelRegistryPreferences {
   ocrTool?: "mineru";
 }
 
+export interface DesktopApp {
+  id: string;
+  name: string;
+  provider: string;
+  version?: string;
+  launchUrl?: string;
+  status: "installed" | "ready";
+  execution: "launch-only" | "runtime";
+  runtimeRouteId?: string;
+}
+
 export interface ModelRouteOverride {
   id: string;
   enabled: boolean;
@@ -64,6 +77,7 @@ export interface ModelRouteOverride {
 export interface ModelRegistryFile {
   version: 1;
   routes: ModelRoute[];
+  desktopApps?: DesktopApp[];
   preferences?: ModelRegistryPreferences;
 }
 
@@ -77,6 +91,8 @@ const SOURCE_VALUES = new Set<ModelSource>(["harness", "api", "cli", "ocr"]);
 const STATUS_VALUES = new Set<ModelStatus>(["ready", "installed", "unavailable", "error"]);
 const VISION_VALUES = new Set<VisionLevel>(["none", "ocr-only", "full-vision"]);
 const DESCRIPTION_VALUES = new Set<DescriptionSource>(["declared", "verified", "inferred", "user"]);
+const DESKTOP_STATUS_VALUES = new Set<DesktopApp["status"]>(["installed", "ready"]);
+const DESKTOP_EXECUTION_VALUES = new Set<DesktopApp["execution"]>(["launch-only", "runtime"]);
 
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -123,6 +139,9 @@ function normalizeRoute(value: unknown): ModelRoute | undefined {
     ...(typeof route.cliModel === "string" && route.cliModel.trim()
       ? { cliModel: route.cliModel.trim().toLowerCase() }
       : {}),
+    ...(typeof route.desktopAppId === "string" && route.desktopAppId.trim()
+      ? { desktopAppId: route.desktopAppId.trim() }
+      : {}),
     enabled: route.enabled !== false,
     status: route.status as ModelStatus,
     capabilities: stringArray(route.capabilities),
@@ -155,6 +174,33 @@ function normalizeRoute(value: unknown): ModelRoute | undefined {
   };
 }
 
+function normalizeDesktopApp(value: unknown): DesktopApp | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const app = value as Partial<DesktopApp>;
+  if (
+    typeof app.id !== "string" || !app.id.trim().startsWith("desktop:")
+    || typeof app.name !== "string" || !app.name.trim()
+    || typeof app.provider !== "string" || !app.provider.trim()
+    || !DESKTOP_STATUS_VALUES.has(app.status as DesktopApp["status"])
+    || !DESKTOP_EXECUTION_VALUES.has(app.execution as DesktopApp["execution"])
+  ) return undefined;
+  const launchUrl = typeof app.launchUrl === "string" && /^(?:codex|claude):\/\//i.test(app.launchUrl.trim())
+    ? app.launchUrl.trim()
+    : undefined;
+  return {
+    id: app.id.trim(),
+    name: app.name.trim(),
+    provider: app.provider.trim(),
+    ...(typeof app.version === "string" && app.version.trim() ? { version: app.version.trim() } : {}),
+    ...(launchUrl ? { launchUrl } : {}),
+    status: app.status as DesktopApp["status"],
+    execution: app.execution as DesktopApp["execution"],
+    ...(typeof app.runtimeRouteId === "string" && app.runtimeRouteId.trim()
+      ? { runtimeRouteId: app.runtimeRouteId.trim() }
+      : {}),
+  };
+}
+
 export function normalizeRegistry(value: unknown): ModelRegistryFile {
   if (typeof value !== "object" || value === null) return { version: 1, routes: [] };
   const input = value as Partial<ModelRegistryFile>;
@@ -166,9 +212,18 @@ export function normalizeRegistry(value: unknown): ModelRegistryFile {
     ids.add(route.id);
     routes.push(route);
   }
+  const desktopApps: DesktopApp[] = [];
+  const desktopIds = new Set<string>();
+  for (const candidate of Array.isArray(input.desktopApps) ? input.desktopApps : []) {
+    const app = normalizeDesktopApp(candidate);
+    if (!app || desktopIds.has(app.id)) continue;
+    desktopIds.add(app.id);
+    desktopApps.push(app);
+  }
   return {
     version: 1,
     routes,
+    ...(desktopApps.length > 0 ? { desktopApps } : {}),
     ...(typeof input.preferences === "object" && input.preferences !== null
       ? { preferences: { ...input.preferences } }
       : {}),

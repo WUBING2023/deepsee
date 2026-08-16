@@ -3,6 +3,8 @@ const SOURCE_VALUES = new Set(["harness", "api", "cli", "ocr"]);
 const STATUS_VALUES = new Set(["ready", "installed", "unavailable", "error"]);
 const VISION_VALUES = new Set(["none", "ocr-only", "full-vision"]);
 const DESCRIPTION_VALUES = new Set(["declared", "verified", "inferred", "user"]);
+const DESKTOP_STATUS_VALUES = new Set(["installed", "ready"]);
+const DESKTOP_EXECUTION_VALUES = new Set(["launch-only", "runtime"]);
 function stringArray(value) {
     if (!Array.isArray(value))
         return [];
@@ -46,6 +48,9 @@ function normalizeRoute(value) {
         ...(typeof route.cliModel === "string" && route.cliModel.trim()
             ? { cliModel: route.cliModel.trim().toLowerCase() }
             : {}),
+        ...(typeof route.desktopAppId === "string" && route.desktopAppId.trim()
+            ? { desktopAppId: route.desktopAppId.trim() }
+            : {}),
         enabled: route.enabled !== false,
         status: route.status,
         capabilities: stringArray(route.capabilities),
@@ -77,6 +82,32 @@ function normalizeRoute(value) {
             : {}),
     };
 }
+function normalizeDesktopApp(value) {
+    if (typeof value !== "object" || value === null)
+        return undefined;
+    const app = value;
+    if (typeof app.id !== "string" || !app.id.trim().startsWith("desktop:")
+        || typeof app.name !== "string" || !app.name.trim()
+        || typeof app.provider !== "string" || !app.provider.trim()
+        || !DESKTOP_STATUS_VALUES.has(app.status)
+        || !DESKTOP_EXECUTION_VALUES.has(app.execution))
+        return undefined;
+    const launchUrl = typeof app.launchUrl === "string" && /^(?:codex|claude):\/\//i.test(app.launchUrl.trim())
+        ? app.launchUrl.trim()
+        : undefined;
+    return {
+        id: app.id.trim(),
+        name: app.name.trim(),
+        provider: app.provider.trim(),
+        ...(typeof app.version === "string" && app.version.trim() ? { version: app.version.trim() } : {}),
+        ...(launchUrl ? { launchUrl } : {}),
+        status: app.status,
+        execution: app.execution,
+        ...(typeof app.runtimeRouteId === "string" && app.runtimeRouteId.trim()
+            ? { runtimeRouteId: app.runtimeRouteId.trim() }
+            : {}),
+    };
+}
 export function normalizeRegistry(value) {
     if (typeof value !== "object" || value === null)
         return { version: 1, routes: [] };
@@ -90,9 +121,19 @@ export function normalizeRegistry(value) {
         ids.add(route.id);
         routes.push(route);
     }
+    const desktopApps = [];
+    const desktopIds = new Set();
+    for (const candidate of Array.isArray(input.desktopApps) ? input.desktopApps : []) {
+        const app = normalizeDesktopApp(candidate);
+        if (!app || desktopIds.has(app.id))
+            continue;
+        desktopIds.add(app.id);
+        desktopApps.push(app);
+    }
     return {
         version: 1,
         routes,
+        ...(desktopApps.length > 0 ? { desktopApps } : {}),
         ...(typeof input.preferences === "object" && input.preferences !== null
             ? { preferences: { ...input.preferences } }
             : {}),

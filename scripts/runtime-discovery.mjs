@@ -6,6 +6,7 @@ import { findExecutable } from "./runtime-locator.mjs";
 import { connectionToRoute, loadConnections } from "./model-connections.mjs";
 import { runtimeDefinitions, verifyRuntime } from "./runtime-health.mjs";
 import { discoverCodexModels } from "./cli-model-catalog.mjs";
+import { discoverDesktopApps, publicDesktopApps } from "./desktop-runtime.mjs";
 
 const LEGACY_STATE_FILES = [
   ".opends-models.json",
@@ -125,7 +126,9 @@ function preserveUserFields(detected, previous) {
     ...((userDescription || verifiedProfile) && Array.isArray(previous.capabilities) ? { capabilities: previous.capabilities } : {}),
     ...(Array.isArray(previous.weaknesses) && previous.weaknesses.length > 0 ? { weaknesses: previous.weaknesses } : {}),
     ...(typeof previous.displayName === "string" && previous.displayName.trim() ? { displayName: previous.displayName.trim() } : {}),
-    ...(typeof previous.sourceLabel === "string" && previous.sourceLabel.trim() ? { sourceLabel: previous.sourceLabel.trim() } : {}),
+    ...(detected.source !== "cli" && typeof previous.sourceLabel === "string" && previous.sourceLabel.trim()
+      ? { sourceLabel: previous.sourceLabel.trim() }
+      : {}),
     ...(preserveProfileStatus && typeof previous.profileStatus === "string" ? { profileStatus: previous.profileStatus } : {}),
     ...((userDescription || verifiedProfile) && typeof previous.profiledAt === "string" ? { profiledAt: previous.profiledAt } : {}),
     ...(preserveProfileStatus && typeof previous.profileError === "string" ? { profileError: previous.profileError } : {}),
@@ -142,6 +145,9 @@ export async function discoverDeepSeeRuntimes(options = {}) {
   const existing = readJson(registryFile, { version: 1, routes: [], preferences: {} });
   const oldRoutes = new Map((Array.isArray(existing.routes) ? existing.routes : []).map((route) => [route.id, route]));
   const routes = [];
+  const desktopApps = Array.isArray(options.desktopApps)
+    ? options.desktopApps
+    : discoverDesktopApps({ env: options.env || process.env });
 
   const settingsPath = join(dshHome, "settings.yaml");
   const settings = existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : "";
@@ -208,7 +214,8 @@ export async function discoverDeepSeeRuntimes(options = {}) {
 
   const runtimeCwd = options.cwd || process.cwd();
   for (const definition of runtimeDefinitions) {
-    const executable = findExecutable(definition.command, { env: options.env || process.env });
+    const desktopApp = desktopApps.find((app) => app.runtimeDefinitionId === definition.id);
+    const executable = findExecutable(definition.command, { env: options.env || process.env }) || desktopApp?.runtimeExecutable;
     if (!executable) continue;
     const health = verifyRuntime(definition, executable, { cwd: runtimeCwd });
     const previous = oldRoutes.get(definition.id);
@@ -236,6 +243,10 @@ export async function discoverDeepSeeRuntimes(options = {}) {
       roles: definition.roles,
       description: definition.description,
       descriptionSource: "inferred",
+      ...(desktopApp ? {
+        desktopAppId: desktopApp.id,
+        sourceLabel: definition.id === "cli:claude-code" ? `${desktopApp.name} + CLI` : desktopApp.name,
+      } : {}),
       visionLevel: "none",
       profileStatus: health.available ? "pending" : "error",
       executable,
@@ -264,6 +275,7 @@ export async function discoverDeepSeeRuntimes(options = {}) {
   const registry = {
     version: 1,
     routes,
+    desktopApps: publicDesktopApps(desktopApps, routes),
     preferences: {
       reviewPolicy: "prefer-different",
       primeAutoWorkflow: true,

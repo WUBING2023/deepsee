@@ -91,10 +91,10 @@ window.__ModuleLoader__.load({
       .opends-message{font-size:12px;color:var(--dsw-alias-label-secondary);margin-right:auto}
       .opends-note{padding:11px 13px;border:1px solid rgba(47,107,255,.18);border-radius:10px;background:rgba(47,107,255,.06);color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1.6}
       .opends-preferences{border-bottom:1px solid rgba(127,127,127,.14)}
-      .opends-init-strip{min-height:36px;display:flex;align-items:center;gap:7px;color:var(--dsw-alias-label-secondary);font-size:11px;border-bottom:1px solid rgba(127,127,127,.12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-init-strip:before{content:"";width:6px;height:6px;border-radius:50%;background:#34a876;flex:none}
+      .opends-init-strip{min-height:36px;display:flex;align-items:center;gap:7px;color:var(--dsw-alias-label-secondary);font-size:11px;border-bottom:1px solid rgba(127,127,127,.12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-init-strip:before{content:"";width:6px;height:6px;border-radius:50%;background:#34a876;flex:none}.opends-init-strip a{color:inherit;text-decoration:none;border-bottom:1px solid rgba(127,127,127,.32)}.opends-init-strip a:hover{color:var(--dsw-alias-label-primary)}
       .opends-pref-row{min-height:55px;display:grid;grid-template-columns:180px minmax(240px,1fr);align-items:center;gap:18px;border-top:1px solid rgba(127,127,127,.12)}.opends-pref-row:first-child{border-top:0}
       .opends-pref-label{font-size:13px;font-weight:540;color:var(--dsw-alias-label-primary)}.opends-pref-control{width:min(340px,100%);justify-self:end;border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-pref-action{justify-self:end}.opends-tool-install{min-width:72px}
-      .opends-vision-controls{width:min(430px,100%);justify-self:end;display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px}.opends-vision-kind,.opends-vision-target{border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-vision-target{width:100%;min-width:0}
+      .opends-vision-controls{width:min(430px,100%);justify-self:end;display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px}.opends-vision-kind,.opends-vision-target{border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-vision-target{width:100%;min-width:0}.opends-mineru-progress{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;color:var(--dsw-alias-label-tertiary);font-size:10px}.opends-mineru-progress progress{width:100%;height:5px;border:0;border-radius:99px;overflow:hidden;background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-bar{background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-value{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-mineru-progress progress::-moz-progress-bar{background:var(--dsw-alias-state-business-primary);border-radius:99px}
       .opends-model-warning{color:#a56a45}
       .opends-status-list{padding-top:6px}.opends-status-row{min-height:52px;display:grid;grid-template-columns:1fr 110px 90px;align-items:center;border-bottom:1px solid rgba(127,127,127,.14);gap:12px;font-size:12px}
       .opends-empty{padding:36px 0;text-align:center;color:var(--dsw-alias-label-tertiary);font-size:12px}
@@ -263,7 +263,7 @@ window.__ModuleLoader__.load({
       const [preferences, setPreferences] = useState({ primeAutoWorkflow: config.primeAutoWorkflow !== false });
       const [mineru, setMineru] = useState({ status: "not-installed", installed: false, message: "正在读取…" });
       const [update, setUpdate] = useState({ status: "idle", message: "尚未检查更新。" });
-      const [initialization, setInitialization] = useState({ vision: null, localRuntimes: [], instructions: { files: [] } });
+      const [initialization, setInitialization] = useState({ vision: null, localRuntimes: [], desktopApps: [], instructions: { files: [] } });
       const [message, setMessage] = useState("");
       const [verifying, setVerifying] = useState(false);
       const [serviceReady, setServiceReady] = useState(false);
@@ -533,7 +533,13 @@ window.__ModuleLoader__.load({
                   visionOptions.length === 0 && createElement("option", { value: "" }, "暂无视觉模型"),
                   visionOptions.map((route) => createElement("option", { key: route.id, value: route.id }, `${routeDisplayName(route)} · ${routeSourceLabel(route)}`)),
                 )
-              : createElement("button", { className: "opends-button secondary opends-vision-target", type: "button", title: mineru.message || "自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP。", disabled: !serviceReady || mineru.status === "ready" || mineru.status === "installing", onClick: installMinerU }, mineru.status === "ready" ? "MinerU · 已就绪" : mineru.status === "installing" ? "MinerU · 安装中…" : mineru.status === "error" ? "MinerU · 重试" : "MinerU · 安装"),
+              : createElement(Fragment, null,
+                  createElement("button", { className: "opends-button secondary opends-vision-target", type: "button", title: mineru.message || "自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP。", disabled: !serviceReady || mineru.status === "ready" || mineru.status === "installing", onClick: installMinerU }, mineru.status === "ready" ? "MinerU · 已就绪" : mineru.status === "installing" ? "MinerU · 安装中…" : mineru.status === "error" ? "MinerU · 重试" : "MinerU · 安装"),
+                  mineru.status === "installing" && createElement("div", { className: "opends-mineru-progress", title: mineru.message || "MinerU 正在后台安装" },
+                    createElement("progress", { max: 100, value: Number.isFinite(mineru.progress) ? mineru.progress : 5, "aria-label": "MinerU 安装进度" }),
+                    createElement("span", null, `${Math.round(Number.isFinite(mineru.progress) ? mineru.progress : 5)}%`),
+                  ),
+                ),
           ),
         ),
         createElement("div", { className: "opends-pref-row", title: "Prime 模式可为复杂任务选择 Harness 原生 Workflow。" },
@@ -545,11 +551,13 @@ window.__ModuleLoader__.load({
         ),
       );
 
+      const desktopRuntimeIds = new Set((initialization.desktopApps || []).map((app) => app.runtimeRouteId).filter(Boolean));
       const initializedParts = [
         initialization.vision?.name ? `视觉 ${initialization.vision.name}` : "",
-        ...(initialization.localRuntimes || []).map((runtime) => runtime.name),
+        ...(initialization.localRuntimes || []).filter((runtime) => !desktopRuntimeIds.has(runtime.id)).map((runtime) => runtime.name),
         ...(initialization.instructions?.files || []).map((file) => file.name),
       ].filter(Boolean);
+      const desktopApps = initialization.desktopApps || [];
 
       return createElement("div", { className: "opends-body" },
         createElement("div", { className: "opends-page-head" },
@@ -566,10 +574,18 @@ window.__ModuleLoader__.load({
             createElement("button", { className: "opends-button", type: "button", title: "使用 Harness 已保存的凭证，并可获取供应商模型列表", onClick: exitToNativeModels }, "+ 添加模型"),
           ),
         ),
-        initializedParts.length > 0 && createElement("div", {
+        (initializedParts.length > 0 || desktopApps.length > 0) && createElement("div", {
           className: "opends-init-strip",
-          title: "本地 Runtime 已验证；AGENTS.md、CLAUDE.md 与 agent.md 由 Harness 工作区指令加载器直接使用。",
-        }, `已自动初始化 · ${initializedParts.join(" · ")}`),
+          title: "桌面端只有在同时验证了 CLI 或 App Server 时才参与自动 Workflow；AGENTS.md、CLAUDE.md 与 agent.md 由 Harness 工作区指令加载器直接使用。",
+        },
+          createElement("span", null, `已自动初始化${initializedParts.length ? ` · ${initializedParts.join(" · ")}` : ""}`),
+          desktopApps.map((app) => createElement(Fragment, { key: app.id },
+            createElement("span", { "aria-hidden": true }, "·"),
+            app.launchUrl
+              ? createElement("a", { href: app.launchUrl, title: app.execution === "runtime" ? `${app.name} 已验证为可调用 Runtime；点击打开桌面端` : `${app.name} 已安装；点击打开。自动 Workflow 仍需对应 CLI 或 App Server` }, `${app.name}${app.execution === "runtime" ? "（可调用）" : "（可打开）"}`)
+              : createElement("span", null, `${app.name}${app.execution === "runtime" ? "（可调用）" : "（已安装）"}`),
+          )),
+        ),
         preferencesPanel,
         matrix,
         (message || snapshot.status === "loading" || !snapshot.writable) && createElement("div", { className: "opends-footer-actions" },

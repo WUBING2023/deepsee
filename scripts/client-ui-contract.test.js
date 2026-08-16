@@ -38,8 +38,16 @@ describe("DeepSee native-style model panel", () => {
   it("auto-initializes verified runtimes and existing workspace instructions", () => {
     expect(clientSource).toContain('fetch(`${adminBaseURL}/v1/runtimes/verify`');
     expect(clientSource).toContain('api.llm.models({})');
-    expect(clientSource).toContain("已自动初始化 ·");
+    expect(clientSource).toContain("已自动初始化");
     expect(clientSource).toContain("AGENTS.md、CLAUDE.md 与 agent.md");
+    expect(clientSource).toContain("initialization.desktopApps");
+    expect(clientSource).toContain("（可调用）");
+  });
+
+  it("shows a simple stage-based MinerU installation progress bar", () => {
+    expect(clientSource).toContain('createElement("progress"');
+    expect(clientSource).toContain('"aria-label": "MinerU 安装进度"');
+    expect(clientSource).toContain("mineru.progress");
   });
 
   it("uses the plugin Host route instead of a companion port or injected token", () => {

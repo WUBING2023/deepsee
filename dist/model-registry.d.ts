@@ -19,6 +19,8 @@ export interface ModelRoute {
     cliModels?: string[];
     /** User-selected CLI model; absence means the CLI's own default. */
     cliModel?: string;
+    /** Installed desktop application associated with this executable route. */
+    desktopAppId?: string;
     enabled: boolean;
     status: ModelStatus;
     capabilities: string[];
@@ -45,6 +47,16 @@ export interface ModelRegistryPreferences {
     visionMode?: "model" | "ocr";
     ocrTool?: "mineru";
 }
+export interface DesktopApp {
+    id: string;
+    name: string;
+    provider: string;
+    version?: string;
+    launchUrl?: string;
+    status: "installed" | "ready";
+    execution: "launch-only" | "runtime";
+    runtimeRouteId?: string;
+}
 export interface ModelRouteOverride {
     id: string;
     enabled: boolean;
@@ -58,6 +70,7 @@ export interface ModelRouteOverride {
 export interface ModelRegistryFile {
     version: 1;
     routes: ModelRoute[];
+    desktopApps?: DesktopApp[];
     preferences?: ModelRegistryPreferences;
 }
 export interface ModelRouteQuery {

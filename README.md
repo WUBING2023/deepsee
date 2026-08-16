@@ -18,7 +18,7 @@ DeepSee is a lightweight plugin for [DeepSeek Harness](https://github.com/deepse
 It stays inside the product you already use: the same Web UI, the same model settings, and the same Harness Loop, Goal, Plan, and Workflow. There is no second dashboard, no companion service, and no need to enter the same API key twice.
 
 > [!IMPORTANT]
-> DeepSee is currently an alpha release and targets DeepSeek Harness `0.1.0-rc.6`. The core visual route, model directory, Codex/Claude CLI adapters, installer, and update flow are implemented; runtime support is intentionally conservative and listed below.
+> DeepSee is currently an alpha release and targets DeepSeek Harness `0.1.0-rc.6`. The core visual route, model directory, Codex/Claude Desktop and CLI adapters, installer, and update flow are implemented; runtime support is intentionally conservative and listed below.
 
 ## Install in one command
 
@@ -46,7 +46,7 @@ Already have DeepSeek Harness configured? DeepSee reuses its providers, model ID
 | --- | --- |
 | **Vision that actually runs** | Attach an image and DeepSee sends it to the selected multimodal model or MinerU OCR, then returns the observation to DeepSeek. The conversation identifies the real visual reader. |
 | **One model directory** | Harness API models and verified local CLIs appear in one compact matrix with their availability and strengths. |
-| **Fast initialization** | The first ready visual model is selected automatically; Codex/Claude CLI and existing `AGENTS.md`, `CLAUDE.md`, or `agent.md` instructions are reused. |
+| **Fast initialization** | The first ready visual model is selected automatically; Codex/Claude Desktop or CLI and existing `AGENTS.md`, `CLAUDE.md`, or `agent.md` instructions are reused. |
 | **Native configuration** | The plugin lives in the Harness sidebar and uses same-origin routes. Models and credentials remain owned by Harness. |
 
 ### Vision: model or OCR
@@ -54,7 +54,7 @@ Already have DeepSeek Harness configured? DeepSee reuses its providers, model ID
 Choose one reader in DeepSee preferences:
 
 - **Model** — any Harness model whose adapter confirms image input support.
-- **OCR** — MinerU for document text and layout extraction. DeepSee can install it on demand through an existing environment, `uv`, Python + `venv`, a verified portable UV package, or a source ZIP fallback.
+- **OCR** — MinerU for document text and layout extraction. DeepSee shows a simple stage progress bar while trying an existing environment, `uv`, Python + `venv`, a verified portable UV package, or a source ZIP fallback.
 
 The base DeepSeek model receives the visual observation and continues the conversation normally. A text-only model is never presented as if it had read the image itself.
 
@@ -65,8 +65,8 @@ DeepSee scans the machine at startup, verifies what can really run, and keeps un
 | Route | Discovered | Executable from DeepSee | Notes |
 | --- | :---: | :---: | --- |
 | Harness / API models | Yes | Yes | Uses native providers, model settings, and subagents. |
-| Codex CLI | Yes | Yes | Login and adapter are verified; supported model variants are selectable. |
-| Claude Code | Yes | Yes | Login and adapter are verified; supported model variants are selectable. |
+| Codex Desktop / CLI | Yes | Yes | Reuses the verified bundled App Server or CLI; supported model variants are selectable. |
+| Claude Desktop + Claude Code | Yes | Yes when CLI is verified | Desktop-only installs can be opened from DeepSee; automatic Workflow execution still requires Claude Code CLI. |
 | Kimi CLI, OpenCode, Ollama | Yes | Not yet | Shown for honest discovery, but not exposed as runnable routes without a stable Harness adapter. |
 | MinerU | Yes | OCR only | A visual tool in Preferences, not a general-purpose model in the matrix. |
 

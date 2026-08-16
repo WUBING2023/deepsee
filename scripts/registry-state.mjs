@@ -31,16 +31,17 @@ function pendingRoles(capabilities) {
 
 export function loadRegistryState(root) {
   const path = join(root, REGISTRY_FILE);
-  if (!existsSync(path)) return { version: 1, routes: [], preferences: {} };
+  if (!existsSync(path)) return { version: 1, routes: [], desktopApps: [], preferences: {} };
   try {
     const value = JSON.parse(readFileSync(path, "utf8"));
     return {
       version: 1,
       routes: Array.isArray(value?.routes) ? value.routes : [],
+      desktopApps: Array.isArray(value?.desktopApps) ? value.desktopApps : [],
       preferences: value?.preferences && typeof value.preferences === "object" ? value.preferences : {},
     };
   } catch {
-    return { version: 1, routes: [], preferences: {} };
+    return { version: 1, routes: [], desktopApps: [], preferences: {} };
   }
 }
 
@@ -49,6 +50,7 @@ export function saveRegistryState(root, registry) {
   writeFileSync(path, `${JSON.stringify({
     version: 1,
     routes: Array.isArray(registry.routes) ? registry.routes : [],
+    desktopApps: Array.isArray(registry.desktopApps) ? registry.desktopApps : [],
     preferences: registry.preferences && typeof registry.preferences === "object" ? registry.preferences : {},
   }, null, 2)}\n`, "utf8");
 }

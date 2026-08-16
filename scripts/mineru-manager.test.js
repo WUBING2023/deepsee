@@ -42,6 +42,8 @@ describe("MinerU manager state", () => {
       status: "ready",
       installed: true,
       managed: true,
+      progress: 100,
+      phase: "complete",
       installMethod: "Python/pip · 国内镜像",
       message: "MinerU 已安装。",
     });
@@ -54,12 +56,16 @@ describe("MinerU manager state", () => {
       pid: process.pid,
       startedAt: new Date().toISOString(),
       strategy: "下载并校验便携 UV 压缩包",
+      progress: 43,
+      phase: "install",
       message: "正在尝试便携运行时。",
       attempts: [{ label: "系统 UV", status: "failed" }],
     });
     expect(getMinerUStatus(root)).toMatchObject({
       status: "installing",
       strategy: "下载并校验便携 UV 压缩包",
+      progress: 43,
+      phase: "install",
       attempts: [{ label: "系统 UV", status: "failed" }],
     });
 
@@ -72,6 +78,7 @@ describe("MinerU manager state", () => {
     expect(getMinerUStatus(root)).toMatchObject({
       status: "error",
       installed: false,
+      phase: "error",
       message: expect.stringContaining("点击重试"),
     });
 
@@ -84,6 +91,7 @@ describe("MinerU manager state", () => {
     expect(getMinerUStatus(root)).toMatchObject({
       status: "error",
       message: "全部策略失败，可以重试。",
+      phase: "error",
       attempts: [{ label: "官方源码 ZIP", status: "failed" }],
     });
   });

@@ -85,7 +85,13 @@ export function createDeepSeeAdminHandler(options = {}) {
         vision: selectedVision ? { id: selectedVision.id, name: selectedVision.displayName || selectedVision.model } : null,
         localRuntimes: registry.routes
           .filter((route) => route.source === "cli" && route.status === "ready")
-          .map((route) => ({ id: route.id, name: route.displayName || route.model, cliModels: route.cliModels || [] })),
+          .map((route) => ({
+            id: route.id,
+            name: route.displayName || route.model,
+            cliModels: route.cliModels || [],
+            ...(route.desktopAppId ? { desktopAppId: route.desktopAppId } : {}),
+          })),
+        desktopApps: registry.desktopApps || [],
         instructions: discoverWorkspaceInstructions(options.cwd || process.cwd()),
       },
       tools: { mineru: getMinerUStatus(stateRoot) },
@@ -141,7 +147,7 @@ export function createDeepSeeAdminHandler(options = {}) {
       if (req.method === "POST" && path === "/v1/runtimes/verify") {
         await readJson(req);
         await discoverDeepSeeRuntimes({ ...paths, cwd: process.cwd() });
-        return send(res, 200, { state: state(), message: "已重新验证 Harness、API 与本机 CLI。" });
+        return send(res, 200, { state: state(), message: "已重新验证 Harness、API、桌面应用与本机 CLI。" });
       }
       if (req.method === "POST" && path === "/v1/tools/mineru/install") {
         await readJson(req);
