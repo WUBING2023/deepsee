@@ -27,6 +27,7 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.dependencies["@deepseek-ai/dsh-sdk-protocol"]).toBe("0.1.0-rc.6");
     expect(manifest.peerDependencies["@deepseek-ai/dsh-sdk-protocol"]).toBeUndefined();
     expect(manifest.deepsee.installSpec).toBe("github:WUBING2023/deepsee#main");
+    expect(manifest.deepsee.update).toEqual({ protocol: 1, minimumUpdaterVersion: "0.6.0-alpha.6" });
     expect(patch).toContain("name: '@wubing2023/deepsee'");
     expect(patch).toContain("name: '@wubing2023/deepsee/codex'");
   });

@@ -495,6 +495,7 @@ window.__ModuleLoader__.load({
       const preferredVision = preferences.visionRouteId || visionOptions[0]?.id || "";
       const visionMode = preferences.visionMode === "ocr" ? "ocr" : "model";
       const updateAvailable = update.status === "available";
+      const updateManual = update.status === "manual-required";
       const updateBusy = update.status === "checking" || update.status === "updating";
       const updateLabel = update.status === "checking"
         ? "检查中…"
@@ -504,9 +505,11 @@ window.__ModuleLoader__.load({
             ? "重启生效"
             : updateAvailable
               ? `升级 ${update.latestVersion || ""}`.trim()
-              : update.status === "error"
-                ? "重试更新"
-                : "更新";
+              : updateManual
+                ? "需手动升级"
+                : update.status === "error"
+                  ? "重试更新"
+                  : "更新";
       const preferencesPanel = createElement("section", { className: "opends-preferences", "aria-label": "深见 DeepSee 首选项" },
         createElement("div", { className: "opends-pref-row", title: "Prime 与视觉桥的最终回答模型；更改后在下次 Harness 启动时应用。" },
           createElement("div", { className: "opends-pref-label" }, "主模型"),
@@ -544,11 +547,11 @@ window.__ModuleLoader__.load({
           createElement("h1", { className: "opends-page-title", title: "模型选择会在下次 Harness 启动时应用。" }, "模型与首选项"),
           createElement("div", { className: "opends-head-actions" },
             createElement("button", {
-              className: `opends-button${updateAvailable || update.status === "updating" || update.status === "restart-required" ? "" : " secondary"}`,
+              className: `opends-button${updateAvailable || updateManual || update.status === "updating" || update.status === "restart-required" ? "" : " secondary"}`,
               type: "button",
               title: update.message || `当前版本 ${update.currentVersion || "未知"}`,
               disabled: !serviceReady || updateBusy || update.status === "restart-required",
-              onClick: updateAvailable ? installUpdate : checkUpdate,
+              onClick: updateAvailable ? installUpdate : updateManual ? () => setMessage(update.message || "此版本需要运行一行安装命令手动升级。") : checkUpdate,
             }, updateLabel),
             createElement("button", { className: "opends-button secondary", type: "button", title: "重新检查本机 CLI、登录与 Harness 适配状态", disabled: verifying || !serviceReady, onClick: verifyRuntimes }, verifying ? "验证中…" : "验证"),
             createElement("button", { className: "opends-button", type: "button", title: "使用 Harness 已保存的凭证，并可获取供应商模型列表", onClick: exitToNativeModels }, "+ 添加模型"),

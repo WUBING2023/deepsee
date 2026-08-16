@@ -80,6 +80,8 @@ Opening the DeepSee panel performs a cached update check against the official `W
 
 DeepSee never silently installs an update: checks are automatic and upgrades are one click. The background installer allows up to 30 minutes per profile attempt on older machines and keeps automatic retries, without remaining stuck forever on a dead connection. If a download or profile install fails, the current version stays usable and the panel offers a retry; details remain under `$DSH_HOME/deepsee/.opends-update`.
 
+Update protocol compatibility is checked before installation. A future package can declare a newer protocol or a minimum updater version; older DeepSee releases then fail closed, keep the current plugin working, and show **Manual upgrade required** instead of attempting an unsafe package-layout migration. Update state is replaced atomically, and transient check failures retry after 15 minutes rather than suppressing checks for the full six-hour cache window.
+
 ## What installation adds
 
 - A standard DSH bundle declared by `cordis.patch.yml` for Web and Headless.
@@ -171,6 +173,7 @@ For migration compatibility, the internal settings namespace, tool IDs, and some
 - `scripts/install-plugin.mjs` — one-command Web + Headless installer
 - `scripts/folder-install.mjs` — durable extracted-ZIP staging for fallback installation
 - `scripts/update-manager.mjs` — cached version checks and detached upgrade lifecycle
+- `scripts/update-policy.mjs` — SemVer, immutable commit, and future update-protocol gates
 - `scripts/update-worker.mjs` — verified official-ZIP download and dual-profile upgrade
 - `scripts/mineru-install-strategies.mjs` — extensible Python, UV, mirror, portable archive, and source-ZIP policy
 - `scripts/runtime-discovery.mjs` — startup scanning, migration, and registry generation

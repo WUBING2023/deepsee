@@ -56,5 +56,6 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).toContain('requestAdmin("/v1/update/install"');
     expect(clientSource).toContain('"重试更新"');
     expect(clientSource).toContain('"重启生效"');
+    expect(clientSource).toContain('"需手动升级"');
   });
 });

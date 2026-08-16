@@ -1,11 +1,22 @@
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
+  assessDeepSeeUpdateCompatibility,
   compareSemVer,
   deepSeeUpdateManifestUrl,
   DEEPSEE_RELEASE_URL,
+  DEFAULT_UPDATE_ERROR_RETRY_MS,
   DEEPSEE_UPDATE_REF_URL,
   DEFAULT_UPDATE_CHECK_INTERVAL_MS,
   updateIsStale,
@@ -16,6 +27,7 @@ import {
 const moduleRoot = fileURLToPath(new URL("../", import.meta.url));
 export const DEEPSEE_UPDATE_STATE_FILE = ".opends-update/state.json";
 const activeChecks = new Map();
+let stateWriteSequence = 0;
 
 function statePath(root) {
   return join(root, DEEPSEE_UPDATE_STATE_FILE);
@@ -61,7 +73,15 @@ function publicFields(state, currentVersion) {
 export function writeDeepSeeUpdateState(root, value) {
   const directory = join(root, ".opends-update");
   mkdirSync(directory, { recursive: true });
-  writeFileSync(statePath(root), `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  stateWriteSequence += 1;
+  const target = statePath(root);
+  const temporary = `${target}.${process.pid}.${stateWriteSequence}.tmp`;
+  try {
+    writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    renameSync(temporary, target);
+  } finally {
+    rmSync(temporary, { force: true });
+  }
 }
 
 export function getDeepSeeUpdateStatus(stateRoot, packageRoot) {
@@ -152,14 +172,18 @@ export async function checkDeepSeeUpdate(stateRoot, packageRoot, options = {}) {
     const latest = validateDeepSeeManifest(await response.json());
     const checkedAt = new Date().toISOString();
     const available = compareSemVer(latest.version, manifest.version) > 0;
+    const compatibility = assessDeepSeeUpdateCompatibility(manifest.version, latest);
+    const status = !available ? "current" : compatibility.compatible ? "available" : "manual-required";
     writeDeepSeeUpdateState(stateRoot, {
-      status: available ? "available" : "current",
+      status,
       currentVersion: manifest.version,
       latestVersion: latest.version,
       sourceRef,
       checkedAt,
       message: available
-        ? `DeepSee ${latest.version} 可以升级。`
+        ? compatibility.compatible
+          ? `DeepSee ${latest.version} 可以升级。`
+          : `${compatibility.reason} 请运行一行安装命令手动升级，现有版本会继续工作。`
         : `DeepSee ${manifest.version} 已是最新版本。`,
     });
   } catch (error) {
@@ -181,7 +205,9 @@ function configuredInterval(env = process.env) {
 export function queueDeepSeeUpdateCheck(stateRoot, packageRoot, options = {}) {
   const current = getDeepSeeUpdateStatus(stateRoot, packageRoot);
   if (["checking", "updating", "restart-required"].includes(current.status)) return undefined;
-  if (!options.force && !updateIsStale(current.checkedAt, Date.now(), options.intervalMs || configuredInterval(options.env))) {
+  const normalInterval = options.intervalMs || configuredInterval(options.env);
+  const interval = current.status === "error" ? Math.min(normalInterval, DEFAULT_UPDATE_ERROR_RETRY_MS) : normalInterval;
+  if (!options.force && !updateIsStale(current.checkedAt, Date.now(), interval)) {
     return undefined;
   }
   const key = statePath(stateRoot);

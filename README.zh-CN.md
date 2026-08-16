@@ -80,6 +80,8 @@ npx --yes github:WUBING2023/deepsee uninstall
 
 DeepSee 不会静默强制安装：检查是自动的，升级由用户点击确认。后台安装器针对旧电脑把每个 profile 的单次上限放宽到 30 分钟并保留自动重试，同时避免坏网络下永久卡住。下载或某个 profile 安装失败时，当前版本仍可继续使用，并可在面板重试；详细日志保存在 `$DSH_HOME/deepsee/.opends-update`。
 
+安装前还会检查更新协议兼容性。未来版本如果改变包结构，可以声明更高的更新协议或最低更新器版本；旧版 DeepSee 会保持现有插件可用并显示 **需手动升级**，不会冒险执行不兼容迁移。更新状态采用原子替换；瞬时检查失败会在 15 分钟后自动重试，而不是被六小时缓存长期压住。
+
 ## 安装后发生什么
 
 - 标准 bundle 清单 `cordis.patch.yml` 加载 DeepSee Host、Web 客户端和可选 Codex provider。
@@ -171,6 +173,7 @@ pnpm run pack:release        # 构建并生成可发布 tarball
 - `scripts/install-plugin.mjs`：Web + Headless 一键安装
 - `scripts/folder-install.mjs`：将解压的 ZIP 持久化后执行兜底安装
 - `scripts/update-manager.mjs`：缓存版本检查与后台升级生命周期
+- `scripts/update-policy.mjs`：SemVer、不可变 commit 与未来更新协议门槛
 - `scripts/update-worker.mjs`：校验官方 ZIP 并升级 Web + Headless
 - `scripts/mineru-install-strategies.mjs`：可扩展的 Python、UV、镜像、便携包与源码 ZIP 策略
 - `scripts/runtime-discovery.mjs`：启动扫描、旧状态迁移与注册表生成

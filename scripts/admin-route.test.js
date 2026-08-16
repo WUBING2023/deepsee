@@ -57,7 +57,7 @@ describe("embedded DeepSee Host route", () => {
     const state = await response.json();
     expect(state).toMatchObject({ version: 1, routes: [], preferences: {} });
     expect(state.tools.mineru).toBeTruthy();
-    expect(state.update).toMatchObject({ currentVersion: "0.6.0-alpha.6" });
+    expect(state.update).toMatchObject({ currentVersion: "0.6.0-alpha.7" });
   });
 
   it("checks the official update manifest through the same-origin route", async () => {
@@ -66,7 +66,7 @@ describe("embedded DeepSee Host route", () => {
     const base = await fixture({
       updateFetch: async (url) => String(url).includes("/commits/")
         ? ({ ok: true, status: 200, json: async () => ({ sha: sourceRef }) })
-        : ({ ok: true, status: 200, json: async () => ({ ...manifest, version: "0.6.0-alpha.7" }) }),
+        : ({ ok: true, status: 200, json: async () => ({ ...manifest, version: "0.6.0-alpha.8" }) }),
     });
     const response = await fetch(`${base}${DEEPSEE_API_PREFIX}/v1/update/check`, {
       method: "POST",
@@ -74,7 +74,7 @@ describe("embedded DeepSee Host route", () => {
       body: "{}",
     });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ update: { status: "available", latestVersion: "0.6.0-alpha.7" } });
+    expect(await response.json()).toMatchObject({ update: { status: "available", latestVersion: "0.6.0-alpha.8" } });
   });
 
   it("rejects cross-origin browser requests", async () => {
