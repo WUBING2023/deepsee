@@ -1,5 +1,5 @@
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, parse, relative, resolve } from "node:path";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -143,8 +143,49 @@ export function getMinerUStatus(root) {
     managed: true,
     progress: 0,
     phase: "idle",
-    message: "未安装；仅在你点击安装后才会下载。",
+    message: state.message || "未安装；仅在你点击安装后才会下载。",
   };
+}
+
+const MANAGED_MINERU_ENTRIES = Object.freeze([
+  ".venv",
+  "bootstrap",
+  "cache",
+  "downloads",
+  "model-cache",
+  "source",
+  "mineru.json",
+]);
+
+export function uninstallMinerU(root) {
+  const current = getMinerUStatus(root);
+  if (current.status === "installing") {
+    throw new Error("MinerU 正在安装，完成或失败后才能卸载。");
+  }
+  if (current.status === "ready" && current.managed === false) {
+    throw new Error("这是系统已有的 MinerU；DeepSee 不会卸载其他程序管理的环境。");
+  }
+  const executable = managedMinerUExecutable(root);
+  if (!existsSync(executable)) return current;
+
+  const toolRoot = resolve(managedMinerURoot(root));
+  const filesystemRoot = parse(toolRoot).root;
+  const depth = relative(filesystemRoot, toolRoot).split(/[\\/]+/).filter(Boolean).length;
+  if (depth < 2 || toolRoot === resolve(root) || toolRoot === resolve(homedir())) {
+    throw new Error("MinerU 管理目录不安全，已拒绝卸载。");
+  }
+  for (const entry of MANAGED_MINERU_ENTRIES) {
+    rmSync(join(toolRoot, entry), { recursive: true, force: true });
+  }
+  writeMinerUState(root, {
+    status: "not-installed",
+    installed: false,
+    progress: 0,
+    phase: "idle",
+    completedAt: new Date().toISOString(),
+    message: "DeepSee 管理的 MinerU 已卸载；系统中的其他 MinerU 安装未受影响。",
+  });
+  return getMinerUStatus(root);
 }
 
 export function startMinerUInstall(root) {

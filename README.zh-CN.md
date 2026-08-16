@@ -54,7 +54,7 @@ npx --yes github:WUBING2023/deepsee web
 在 DeepSee 首选项中选择一种读取方式：
 
 - **模型**：选择 Harness 中确认支持图片输入的模型。
-- **OCR**：使用 MinerU 读取文档文字与版面。安装时会显示简单的阶段进度条，并按需尝试已有环境、`uv`、Python + `venv`、校验过的便携 UV，最后再尝试源码 ZIP。
+- **OCR**：使用 MinerU 读取文档文字与版面。安装时会显示简单的阶段进度条，并按需尝试已有环境、`uv`、Python + `venv`、校验过的便携 UV，最后再尝试源码 ZIP。DeepSee 管理的环境可在同一位置卸载，系统中原有的 MinerU 不会被删除。
 
 视觉路线完成读取后，DeepSeek 会拿到观察结果并继续正常对话。纯文本模型不会再被界面伪装成“已经看过图片”。
 

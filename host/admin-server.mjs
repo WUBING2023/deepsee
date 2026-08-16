@@ -10,7 +10,7 @@ import {
   updateRegistryRoute,
 } from "../scripts/registry-state.mjs";
 import { discoverDeepSeeRuntimes, discoverWorkspaceInstructions, resolveDeepSeePaths } from "../scripts/runtime-discovery.mjs";
-import { getMinerUStatus, startMinerUInstall } from "../scripts/mineru-manager.mjs";
+import { getMinerUStatus, startMinerUInstall, uninstallMinerU } from "../scripts/mineru-manager.mjs";
 import {
   checkDeepSeeUpdate,
   getDeepSeeUpdateStatus,
@@ -153,6 +153,10 @@ export function createDeepSeeAdminHandler(options = {}) {
         await readJson(req);
         return send(res, 202, { tool: startMinerUInstall(stateRoot) });
       }
+      if (req.method === "POST" && path === "/v1/tools/mineru/uninstall") {
+        await readJson(req);
+        return send(res, 200, { tool: uninstallMinerU(stateRoot) });
+      }
       if (req.method === "POST" && path === "/v1/update/check") {
         await readJson(req);
         const update = await checkDeepSeeUpdate(stateRoot, packageRoot, { fetchImpl: options.updateFetch });
@@ -169,7 +173,7 @@ export function createDeepSeeAdminHandler(options = {}) {
       return send(res, 404, { error: "not_found" });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const status = /请求|模型|路线|Runtime|API|供应商|安装|更新|升级|不存在|无效/.test(message) ? 400 : 500;
+      const status = /请求|模型|路线|Runtime|API|供应商|安装|卸载|更新|升级|不存在|无效/.test(message) ? 400 : 500;
       return send(res, status, { error: message });
     }
   };

@@ -54,7 +54,7 @@ Already have DeepSeek Harness configured? DeepSee reuses its providers, model ID
 Choose one reader in DeepSee preferences:
 
 - **Model** — any Harness model whose adapter confirms image input support.
-- **OCR** — MinerU for document text and layout extraction. DeepSee shows a simple stage progress bar while trying an existing environment, `uv`, Python + `venv`, a verified portable UV package, or a source ZIP fallback.
+- **OCR** — MinerU for document text and layout extraction. DeepSee shows a simple stage progress bar while trying an existing environment, `uv`, Python + `venv`, a verified portable UV package, or a source ZIP fallback. The managed environment can be removed from the same control; system-managed MinerU installs are never deleted.
 
 The base DeepSeek model receives the visual observation and continues the conversation normally. A text-only model is never presented as if it had read the image itself.
 

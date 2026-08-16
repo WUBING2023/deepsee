@@ -65,6 +65,8 @@ Use this route for PDFs, scans, document text, tables, and layout. Click **Miner
 4. a checksum-verified portable UV archive kept inside DeepSee;
 5. the official MinerU source ZIP as a final package-install fallback.
 
+When the managed installation is ready, the same control becomes **MinerU · Uninstall**. It removes only DeepSee's virtual environment, caches, downloaded models, and bootstrap files. A MinerU installation found elsewhere on the system is shown as system-managed and cannot be removed by DeepSee.
+
 The OCR route uses the CPU-compatible `pipeline` backend and installs `mineru[core]>=3,<4`. Python packages and model files still require network access. A source ZIP is not a complete offline model bundle.
 
 ## 3. Run a smoke test

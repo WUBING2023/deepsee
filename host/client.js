@@ -417,6 +417,17 @@ window.__ModuleLoader__.load({
         }
       };
 
+      const uninstallMinerU = async () => {
+        if (!window.confirm("仅卸载由 DeepSee 管理的 MinerU、模型缓存与虚拟环境。系统中的其他 MinerU 安装不会被删除。继续吗？")) return;
+        try {
+          const result = await requestAdmin("/v1/tools/mineru/uninstall", { method: "POST", body: "{}" });
+          setMineru(result.tool);
+          setMessage(result.tool?.message || "DeepSee 管理的 MinerU 已卸载。");
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : "MinerU 卸载失败。");
+        }
+      };
+
       const checkUpdate = async () => {
         setUpdate((current) => ({ ...current, status: "checking", message: "正在检查 DeepSee 更新…" }));
         try {
@@ -534,7 +545,17 @@ window.__ModuleLoader__.load({
                   visionOptions.map((route) => createElement("option", { key: route.id, value: route.id }, `${routeDisplayName(route)} · ${routeSourceLabel(route)}`)),
                 )
               : createElement(Fragment, null,
-                  createElement("button", { className: "opends-button secondary opends-vision-target", type: "button", title: mineru.message || "自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP。", disabled: !serviceReady || mineru.status === "ready" || mineru.status === "installing", onClick: installMinerU }, mineru.status === "ready" ? "MinerU · 已就绪" : mineru.status === "installing" ? "MinerU · 安装中…" : mineru.status === "error" ? "MinerU · 重试" : "MinerU · 安装"),
+                  createElement("button", {
+                    className: "opends-button secondary opends-vision-target",
+                    type: "button",
+                    title: mineru.status === "ready" && mineru.managed === false
+                      ? "这是系统已有的 MinerU，DeepSee 不会卸载其他程序管理的环境。"
+                      : mineru.message || "自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP。",
+                    disabled: !serviceReady || mineru.status === "installing" || (mineru.status === "ready" && mineru.managed === false),
+                    onClick: mineru.status === "ready" ? uninstallMinerU : installMinerU,
+                  }, mineru.status === "ready"
+                    ? mineru.managed === false ? "MinerU · 系统安装" : "MinerU · 卸载"
+                    : mineru.status === "installing" ? "MinerU · 安装中…" : mineru.status === "error" ? "MinerU · 重试" : "MinerU · 安装"),
                   mineru.status === "installing" && createElement("div", { className: "opends-mineru-progress", title: mineru.message || "MinerU 正在后台安装" },
                     createElement("progress", { max: 100, value: Number.isFinite(mineru.progress) ? mineru.progress : 5, "aria-label": "MinerU 安装进度" }),
                     createElement("span", null, `${Math.round(Number.isFinite(mineru.progress) ? mineru.progress : 5)}%`),

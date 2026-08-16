@@ -50,6 +50,12 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).toContain("mineru.progress");
   });
 
+  it("can uninstall only the MinerU environment managed by DeepSee", () => {
+    expect(clientSource).toContain('requestAdmin("/v1/tools/mineru/uninstall"');
+    expect(clientSource).toContain("MinerU · 卸载");
+    expect(clientSource).toContain("系统中的其他 MinerU 安装不会被删除");
+  });
+
   it("uses the plugin Host route instead of a companion port or injected token", () => {
     expect(clientSource).toContain('const adminBaseURL = "/api/deepsee"');
     expect(clientSource).not.toContain("3091");
