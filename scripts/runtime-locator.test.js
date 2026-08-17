@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { basename, dirname } from "node:path";
 import { executableCandidates, findExecutable } from "./runtime-locator.mjs";
 
 describe("runtime locator", () => {
@@ -18,11 +19,9 @@ describe("runtime locator", () => {
   });
 
   it("finds the current Node executable from an explicit directory", () => {
-    const directory = process.execPath.slice(0, process.execPath.lastIndexOf("\\"));
-    const name = process.execPath.slice(process.execPath.lastIndexOf("\\") + 1);
-    expect(findExecutable(name, {
-      platform: "win32",
-      pathValue: directory,
+    expect(findExecutable(basename(process.execPath), {
+      platform: process.platform,
+      pathValue: dirname(process.execPath),
     })).toBe(process.execPath);
   });
 });
