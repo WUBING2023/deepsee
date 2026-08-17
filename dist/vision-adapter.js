@@ -71,7 +71,7 @@ export class VisionBridgeAdapter extends LlmAdapter {
             const cacheKey = visionCacheKey(userMessage, config);
             const description = await this.cache.getOrCreate(cacheKey, () => selected.describer
                 ? selected.describer(userMessage, options.signal)
-                : describeImages(this.ctx, userMessage, config, options.signal));
+                : describeImages(this.ctx, userMessage, config, options.signal, options.sessionId));
             messages.push(rewriteWithVisualContext(userMessage, description, config));
         }
         yield* this.runtime.stream({

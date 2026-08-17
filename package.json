@@ -87,6 +87,7 @@
     "release:smoke": "node ./scripts/release-smoke.mjs",
     "release:verify": "pnpm run typecheck && pnpm test && pnpm run release:build && pnpm run release:smoke && pnpm run site:verify",
     "release:tag-check": "node ./scripts/verify-release-tag.mjs",
+    "update:live-smoke": "node ./scripts/update-live-smoke.mjs",
     "site:verify": "node ./scripts/validate-site.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

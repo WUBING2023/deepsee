@@ -1,4 +1,4 @@
-import { type ContentBlock, type LlmRuntime, type UserMessage } from "@deepseek-ai/dsh-llm";
+import { type ContentBlock, type GenerateOptions, type LlmRuntime, type UserMessage } from "@deepseek-ai/dsh-llm";
 export interface VisionBridgeConfig {
     provider: string;
     model: string;
@@ -22,4 +22,4 @@ export declare function visionCacheKey(message: UserMessage, config: Pick<Vision
 export declare function collectVisionInput(content: readonly ContentBlock[]): ContentBlock[];
 export declare function stripImages(content: readonly ContentBlock[]): ContentBlock[];
 export declare function rewriteWithVisualContext(message: UserMessage, description: string, config: Pick<VisionBridgeConfig, "provider" | "model">): UserMessage;
-export declare function describeImages(ctx: VisionCallContext, message: UserMessage, config: VisionBridgeConfig, signal?: AbortSignal): Promise<string>;
+export declare function describeImages(ctx: VisionCallContext, message: UserMessage, config: VisionBridgeConfig, signal?: AbortSignal, sessionId?: GenerateOptions["sessionId"]): Promise<string>;

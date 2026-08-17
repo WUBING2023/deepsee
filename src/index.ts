@@ -132,8 +132,13 @@ export function resolveRuntimeConfig(
   const readyOCRExecutable = useOCR && ocr.status === "ready" ? String(ocr.executable || "") : "";
   return {
     ...config,
-    provider: vision?.runtimeProvider || vision?.provider || config.provider,
-    model: vision?.runtimeModel || vision?.model || config.model,
+    // CLI routes are exposed to the LLM runtime through DeepSee's registered
+    // adapter, not through the native subagent provider used one layer below.
+    // Keep the selected CLI model too: `codex`/`codex-cli` are transport
+    // identities, while the adapter advertises concrete models such as
+    // `gpt-5.6-sol`.
+    provider: vision ? llmProvider(vision) : config.provider,
+    model: vision?.cliModel || vision?.runtimeModel || vision?.model || config.model,
     primaryProvider: primary ? llmProvider(primary) : config.primaryProvider,
     targetProviders: [...new Set([
       ...config.targetProviders,
@@ -443,7 +448,7 @@ function installVisionBridge(ctx: Context, config: Config, resolveConfig?: () =>
               tool: current.ocrTool,
               executable: current.ocrExecutable,
             }, payload.signal)
-          : describeImages(ctx, message, callConfig, payload.signal),
+          : describeImages(ctx, message, callConfig, payload.signal, payload.agent.id),
       );
       messages.push(rewriteWithVisualContext(message, description, callConfig));
     }

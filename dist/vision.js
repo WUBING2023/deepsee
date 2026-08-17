@@ -109,7 +109,7 @@ function failureText(failure) {
     const status = failure.status ? `, HTTP ${failure.status}` : "";
     return `${failure.code}${status}: ${failure.message}`;
 }
-export async function describeImages(ctx, message, config, signal) {
+export async function describeImages(ctx, message, config, signal, sessionId) {
     const request = createUserMessage({
         source: { kind: "plugin", plugin: "opends-bridge" },
         content: [
@@ -129,6 +129,7 @@ export async function describeImages(ctx, message, config, signal) {
             system: VISION_SYSTEM_PROMPT,
             maxTokens: config.maxTokens,
             signal,
+            ...(sessionId ? { sessionId } : {}),
         })) {
             assembler.push(chunk);
         }

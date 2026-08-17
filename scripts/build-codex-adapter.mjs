@@ -17,7 +17,7 @@ source = `import { existsSync, readFileSync } from "node:fs";\nimport { homedir 
 source = replaceRequired(source, "async startThread(cwd, signal) {", "async startThread(cwd, signal, model) {", "startThread signature");
 source = replaceRequired(source,
   'this.transport.request("thread/start", {\n\t\t\tcwd,',
-  'this.transport.request("thread/start", {\n\t\t\tmodel,\n\t\t\tcwd,',
+  'this.transport.request("thread/start", {\n\t\t\tmodel,\n\t\t\tcwd,\n\t\t\tapprovalPolicy: "never",\n\t\t\tsandbox: "workspace-write",\n\t\t\tconfig: {\n\t\t\t\tsandbox_workspace_write: {\n\t\t\t\t\tnetwork_access: false,\n\t\t\t\t\texclude_tmpdir_env_var: true,\n\t\t\t\t\texclude_slash_tmp: true,\n\t\t\t\t\twritable_roots: []\n\t\t\t\t}\n\t\t\t},',
   "thread/start request");
 source = replaceRequired(source,
   "wire.startThread(spec.cwd, request.signal)",

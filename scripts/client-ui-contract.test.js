@@ -69,6 +69,14 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).not.toContain('aria-label": "深见 DeepSee 设置"');
   });
 
+  it("replaces the native fallback gear with a dedicated DeepSee insight glyph", () => {
+    expect(clientSource).toContain("function DeepSeeIcon");
+    expect(clientSource).toContain("installDeepSeeSettingsNavIcon");
+    expect(clientSource).toContain("opends-settings-nav-icon");
+    expect(clientSource).toContain("MutationObserver");
+    expect(clientSource).not.toContain('className: "opends-mark", "aria-hidden": true }, "见"');
+  });
+
   it("allows verified Codex and Claude Code subscription runtimes to become the base model", () => {
     expect(clientSource).toContain('route.source === "harness" || route.source === "api" || route.source === "cli"');
     expect(clientSource).toContain("Codex 与 Claude Code 使用本机已登录的订阅 Runtime");
@@ -147,6 +155,9 @@ describe("DeepSee native-style model panel", () => {
   it("offers cached version checks and one-click automatic upgrades", () => {
     expect(clientSource).toContain('requestAdmin("/v1/update/check"');
     expect(clientSource).toContain('requestAdmin("/v1/update/install"');
+    expect(clientSource).toContain('setMessage(result.update?.message || "版本检查完成。")');
+    expect(clientSource).toContain('? "已是最新"');
+    expect(clientSource).toContain(': "检查更新"');
     expect(clientSource).toContain('"重试更新"');
     expect(clientSource).toContain('"重启生效"');
     expect(clientSource).toContain('"需手动升级"');

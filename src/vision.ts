@@ -3,6 +3,7 @@ import {
   createUserMessage,
   freezeMessage,
   type ContentBlock,
+  type GenerateOptions,
   type LlmFailure,
   type LlmRuntime,
   type UserMessage,
@@ -146,6 +147,7 @@ export async function describeImages(
   message: UserMessage,
   config: VisionBridgeConfig,
   signal?: AbortSignal,
+  sessionId?: GenerateOptions["sessionId"],
 ): Promise<string> {
   const request = createUserMessage({
     source: { kind: "plugin", plugin: "opends-bridge" },
@@ -167,6 +169,7 @@ export async function describeImages(
       system: VISION_SYSTEM_PROMPT,
       maxTokens: config.maxTokens,
       signal,
+      ...(sessionId ? { sessionId } : {}),
     })) {
       assembler.push(chunk);
     }

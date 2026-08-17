@@ -115,7 +115,7 @@ export class VisionBridgeAdapter extends LlmAdapter {
         cacheKey,
         () => selected.describer
           ? selected.describer(userMessage, options.signal)
-          : describeImages(this.ctx as Context, userMessage, config, options.signal),
+          : describeImages(this.ctx as Context, userMessage, config, options.signal, options.sessionId),
       );
       messages.push(rewriteWithVisualContext(userMessage, description, config));
     }

@@ -11,6 +11,7 @@ const mineruManager = readFileSync(new URL("./mineru-manager.mjs", import.meta.u
 const mineruWorker = readFileSync(new URL("./install-mineru-worker.mjs", import.meta.url), "utf8");
 const updateManager = readFileSync(new URL("./update-manager.mjs", import.meta.url), "utf8");
 const updateWorker = readFileSync(new URL("./update-worker.mjs", import.meta.url), "utf8");
+const updateLiveSmoke = readFileSync(new URL("./update-live-smoke.mjs", import.meta.url), "utf8");
 const pluginSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
 describe("standard DeepSeek Harness bundle", () => {
@@ -76,6 +77,13 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(builder).toContain("taskInput(request.prompt, spec.readImage");
     expect(builder).toContain('inputs.push({ type: "image", url:');
     expect(builder).toContain('const inject = ["attachments", "subagents", "subprocess"]');
+    expect(builder).toContain('approvalPolicy: "never"');
+    expect(builder).toContain('sandbox: "workspace-write"');
+    expect(builder).not.toContain('runtimeWorkspaceRoots: [cwd]');
+    expect(builder).toContain('exclude_tmpdir_env_var: true');
+    expect(builder).toContain('exclude_slash_tmp: true');
+    expect(builder).toContain('writable_roots: []');
+    expect(builder).not.toContain('sandbox: "danger-full-access"');
   });
 
   it("does not start a companion admin server", () => {
@@ -106,5 +114,8 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(updateManager).toContain("acquireDeepSeeUpdateLock");
     expect(updateWorker).toContain("claimDeepSeeUpdateLock");
     expect(updateWorker).toContain("validateDeepSeeManifest");
+    expect(manifest.scripts["update:live-smoke"]).toBe("node ./scripts/update-live-smoke.mjs");
+    expect(updateLiveSmoke).toContain('for (const profile of ["web", "headless"])');
+    expect(updateLiveSmoke).toContain('status.status !== "restart-required"');
   });
 });

@@ -15,6 +15,39 @@ const config = {
 } as Config;
 
 describe("live visual reader selection", () => {
+  it("routes a verified Codex visual reader through its DeepSee LLM adapter and concrete model", () => {
+    const registry = {
+      version: 1,
+      routes: [{
+        id: "cli:codex",
+        source: "cli",
+        provider: "openai",
+        runtimeProvider: "codex",
+        model: "codex-cli",
+        cliModel: "gpt-5.6-sol",
+        enabled: true,
+        status: "ready",
+        inputModalities: ["text", "image"],
+        capabilities: ["vision"],
+        weaknesses: [],
+        roles: ["vision"],
+        description: "Codex vision",
+        descriptionSource: "verified",
+        visionLevel: "full-vision",
+      }],
+      preferences: { visionMode: "model", visionRouteId: "cli:codex" },
+    } as ModelRegistryFile;
+
+    const resolved = resolveRuntimeConfig(config, registry, new Set(["deepsee-cli-codex"]), { status: "not-installed" });
+
+    expect(resolved).toMatchObject({
+      provider: "deepsee-cli-codex",
+      model: "gpt-5.6-sol",
+      visionMode: "model",
+      autoVision: true,
+    });
+  });
+
   it("preserves an OCR selection when the tool is unavailable instead of silently routing to a model", () => {
     const registry = {
       version: 1,
