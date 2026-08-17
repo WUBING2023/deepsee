@@ -4,6 +4,7 @@ import { type ModelRoute } from "./model-registry.js";
 export interface CapabilityProfile {
     strengths: string[];
     vision: boolean;
+    visionVerified: boolean;
     capabilities: string[];
     roles: string[];
     description: string;

@@ -11,6 +11,7 @@ const mineruManager = readFileSync(new URL("./mineru-manager.mjs", import.meta.u
 const mineruWorker = readFileSync(new URL("./install-mineru-worker.mjs", import.meta.url), "utf8");
 const updateManager = readFileSync(new URL("./update-manager.mjs", import.meta.url), "utf8");
 const updateWorker = readFileSync(new URL("./update-worker.mjs", import.meta.url), "utf8");
+const pluginSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
 describe("standard DeepSeek Harness bundle", () => {
   it("declares a distributable bundle and Web client", () => {
@@ -36,6 +37,8 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(patch).toContain("name: '@wubing2023/deepsee'");
     expect(patch).toContain("name: '@wubing2023/deepsee/codex'");
     expect(patch).toContain("instructionFileCandidates: [AGENTS.md, CLAUDE.md, agent.md]");
+    expect(patch).toMatch(/id: workflow-worker-thread[\s\S]*?provider: opends/);
+    expect(pluginSource.match(/export const inject = \[([^\]]+)\]/)?.[1]).not.toContain("agentPresets");
   });
 
   it("installs through the official plugin manager for both profiles", () => {

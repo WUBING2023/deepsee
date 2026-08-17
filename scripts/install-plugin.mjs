@@ -69,7 +69,9 @@ if (!existsSync(join(root, "dist", "index.js"))) {
   throw new Error("DeepSee has not been built. Run `pnpm run build:plugin` first.");
 }
 
-const stagedFolder = options.fromFolder ? stageFolderPackage(root, dshHome, manifest) : undefined;
+const stagedFolder = options.fromFolder
+  ? stageFolderPackage(root, dshHome, manifest, { replace: options.force })
+  : undefined;
 const spec = explicitSpec || (stagedFolder ? `file:${stagedFolder}` : local ? `file:${root}` : publicInstallSpec);
 
 function resolveDshRunners(argv) {

@@ -23,6 +23,9 @@ export interface ModelRoute {
     desktopAppId?: string;
     enabled: boolean;
     status: ModelStatus;
+    /** Runtime/catalog-declared modalities used to keep readers and generators distinct. */
+    inputModalities?: string[];
+    outputModalities?: string[];
     capabilities: string[];
     weaknesses: string[];
     roles: string[];
@@ -36,6 +39,11 @@ export interface ModelRoute {
     profileStatus?: "pending" | "profiling" | "ready" | "error";
     profiledAt?: string;
     profileError?: string;
+    /** Machine-readable capability metadata matched from Models.dev. */
+    catalogModelId?: string;
+    catalogSource?: "models.dev";
+    catalogSourceUrl?: string;
+    catalogUpdatedAt?: string;
     /** Short user-facing explanation when startup verification did not pass. */
     statusReason?: string;
 }

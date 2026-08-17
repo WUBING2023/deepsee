@@ -9,6 +9,10 @@ import {
   updateRegistryPreferences,
   updateRegistryRoute,
 } from "../scripts/registry-state.mjs";
+import {
+  getModelCatalogStatus,
+  refreshModelCapabilityCatalog,
+} from "../scripts/model-capability-catalog.mjs";
 import { discoverDeepSeeRuntimes, discoverWorkspaceInstructions, resolveDeepSeePaths } from "../scripts/runtime-discovery.mjs";
 import { getOCRStatus, getOCRToolsState, startOCRInstall, uninstallOCR } from "../scripts/ocr-manager.mjs";
 import {
@@ -99,6 +103,7 @@ export function createDeepSeeAdminHandler(options = {}) {
         mineru: getOCRStatus(stateRoot, "mineru"),
       },
       update: getDeepSeeUpdateStatus(stateRoot, packageRoot),
+      modelCatalog: getModelCatalogStatus(stateRoot),
     };
   };
 
@@ -109,6 +114,12 @@ export function createDeepSeeAdminHandler(options = {}) {
       if (req.method === "GET" && path === "/v1/models") {
         if (!options.disableUpdateCheck) {
           void queueDeepSeeUpdateCheck(stateRoot, packageRoot, { fetchImpl: options.updateFetch });
+        }
+        if (!options.disableCatalogRefresh) {
+          void refreshModelCapabilityCatalog(stateRoot, {
+            fetchImpl: options.catalogFetch,
+            timeoutMs: options.catalogTimeoutMs,
+          }).catch(() => undefined);
         }
         return send(res, 200, state());
       }
@@ -131,7 +142,14 @@ export function createDeepSeeAdminHandler(options = {}) {
         });
       }
       if (req.method === "POST" && path === "/v1/harness/models") {
-        const result = syncHarnessModels(stateRoot, await readJson(req));
+        const input = await readJson(req);
+        if (!options.disableCatalogRefresh) {
+          await refreshModelCapabilityCatalog(stateRoot, {
+            fetchImpl: options.catalogFetch,
+            timeoutMs: options.catalogTimeoutMs,
+          }).catch(() => undefined);
+        }
+        const result = syncHarnessModels(stateRoot, input);
         return send(res, 200, {
           ...result,
           message: `已从 Harness 同步 ${result.synced} 个模型；未读取或复制 API Key。`,

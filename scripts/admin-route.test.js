@@ -22,6 +22,7 @@ async function fixture(options = {}) {
     stateRoot: root,
     dshHome: root,
     disableUpdateCheck: true,
+    disableCatalogRefresh: true,
     ...options,
   });
   const server = createServer(handler);

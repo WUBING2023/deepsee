@@ -76,7 +76,7 @@ function isCompleteStage(target, manifest) {
     && existsSync(join(target, "scripts", "install-policy.mjs"));
 }
 
-export function stageFolderPackage(sourceRoot, dshHome, manifest) {
+export function stageFolderPackage(sourceRoot, dshHome, manifest, options = {}) {
   const packageRoot = join(dshHome, "deepsee", "packages");
   const versionDirectory = assertSafeRelativePath(manifest.version);
   const target = join(packageRoot, versionDirectory);
@@ -84,11 +84,13 @@ export function stageFolderPackage(sourceRoot, dshHome, manifest) {
   if (relation === "" || relation === ".." || relation.startsWith(`..\\`) || relation.startsWith("../") || isAbsolute(relation)) {
     throw new Error("Refusing to stage the ZIP package outside DSH_HOME.");
   }
-  if (isCompleteStage(target, manifest)) return target;
+  if (isCompleteStage(target, manifest) && !options.replace) return target;
 
   mkdirSync(packageRoot, { recursive: true });
   const staging = `${target}.staging-${process.pid}-${Date.now()}`;
+  const backup = `${target}.backup-${process.pid}-${Date.now()}`;
   rmSync(staging, { recursive: true, force: true });
+  rmSync(backup, { recursive: true, force: true });
   mkdirSync(staging, { recursive: true });
 
   try {
@@ -100,10 +102,17 @@ export function stageFolderPackage(sourceRoot, dshHome, manifest) {
     if (!isCompleteStage(staging, manifest)) {
       throw new Error("The extracted ZIP does not contain a complete prebuilt DeepSee package.");
     }
-    rmSync(target, { recursive: true, force: true });
-    renameSync(staging, target);
+    if (existsSync(target)) renameSync(target, backup);
+    try {
+      renameSync(staging, target);
+    } catch (error) {
+      if (!existsSync(target) && existsSync(backup)) renameSync(backup, target);
+      throw error;
+    }
+    rmSync(backup, { recursive: true, force: true });
   } finally {
     rmSync(staging, { recursive: true, force: true });
+    if (existsSync(target)) rmSync(backup, { recursive: true, force: true });
   }
 
   return target;

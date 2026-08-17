@@ -60,7 +60,7 @@ The base DeepSeek model receives the visual observation and continues the conver
 
 ### Model directory and local runtimes
 
-DeepSee scans the machine at startup, verifies what can really run, and keeps unavailable routes disabled. Capability descriptions can be generated with a short model request and corrected by the user.
+DeepSee scans the machine at startup, verifies what can really run, and keeps unavailable routes disabled. Defaults come from actual Harness modalities and the structured [Models.dev](https://models.dev/) catalog, then a short model request adds relative strengths. User corrections always win. [Capability initialization and data sources →](docs/MODEL_CAPABILITIES.md)
 
 | Route | Discovered | Executable from DeepSee | Notes |
 | --- | :---: | :---: | --- |

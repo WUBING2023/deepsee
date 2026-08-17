@@ -1,6 +1,6 @@
 {
   "name": "@wubing2023/deepsee",
-  "version": "0.6.0-alpha.13",
+  "version": "0.6.0-alpha.14",
   "description": "DeepSee — one-command vision and model-routing plugin for DeepSeek Harness",
   "license": "MIT",
   "repository": {
@@ -73,6 +73,8 @@
     "docs/GETTING_STARTED.zh-CN.md",
     "docs/ARCHITECTURE.md",
     "docs/ARCHITECTURE.zh-CN.md",
+    "docs/MODEL_CAPABILITIES.md",
+    "docs/MODEL_CAPABILITIES.zh-CN.md",
     "docs/TROUBLESHOOTING.md",
     "docs/TROUBLESHOOTING.zh-CN.md",
     "LICENSE",
@@ -109,6 +111,7 @@
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-agent-presets": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-attachment": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.6",
@@ -132,6 +135,7 @@
     "@deepseek-ai/cordis": { "optional": true },
     "@deepseek-ai/dsh": { "optional": true },
     "@deepseek-ai/dsh-agent": { "optional": true },
+    "@deepseek-ai/dsh-agent-presets": { "optional": true },
     "@deepseek-ai/dsh-attachment": { "optional": true },
     "@deepseek-ai/dsh-client-ui-conversation": { "optional": true },
     "@deepseek-ai/dsh-client-ui-settings": { "optional": true },

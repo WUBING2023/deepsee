@@ -53,6 +53,8 @@ function normalizeRoute(value) {
             : {}),
         enabled: route.enabled !== false,
         status: route.status,
+        ...(stringArray(route.inputModalities).length > 0 ? { inputModalities: stringArray(route.inputModalities) } : {}),
+        ...(stringArray(route.outputModalities).length > 0 ? { outputModalities: stringArray(route.outputModalities) } : {}),
         capabilities: stringArray(route.capabilities),
         weaknesses: stringArray(route.weaknesses),
         roles: stringArray(route.roles),
@@ -76,6 +78,14 @@ function normalizeRoute(value) {
             : {}),
         ...(typeof route.profileError === "string" && route.profileError.trim()
             ? { profileError: route.profileError.trim() }
+            : {}),
+        ...(typeof route.catalogModelId === "string" && route.catalogModelId.trim()
+            ? { catalogModelId: route.catalogModelId.trim().toLowerCase() }
+            : {}),
+        ...(route.catalogSource === "models.dev" ? { catalogSource: "models.dev" } : {}),
+        ...(route.catalogSourceUrl === "https://models.dev/" ? { catalogSourceUrl: route.catalogSourceUrl } : {}),
+        ...(typeof route.catalogUpdatedAt === "string" && route.catalogUpdatedAt.trim()
+            ? { catalogUpdatedAt: route.catalogUpdatedAt.trim() }
             : {}),
         ...(typeof route.statusReason === "string" && route.statusReason.trim()
             ? { statusReason: route.statusReason.trim() }

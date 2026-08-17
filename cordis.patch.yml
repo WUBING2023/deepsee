@@ -6,6 +6,13 @@
     instructionFileCandidates: [AGENTS.md, CLAUDE.md, agent.md]
     localInstructionFileCandidates: [AGENTS.local.md, CLAUDE.local.md, agent.local.md]
 
+# Route native Harness Workflow children through DeepSee first. The DeepSee
+# provider delegates ordinary API/Harness routes back to `spawn`, while verified
+# CLI routes are handed to their native product providers (Codex/Claude Code).
+- id: workflow-worker-thread
+  config:
+    provider: opends
+
 - insert:
     - id: deepsee-codex
       name: '@wubing2023/deepsee/codex'

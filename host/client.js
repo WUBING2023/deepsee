@@ -175,6 +175,20 @@ window.__ModuleLoader__.load({
         coding: "编码",
         vision: "视觉",
         "long-context": "长上下文",
+        "image-generation": "图像生成",
+        "image-editing": "图像编辑",
+        "audio-input": "音频理解",
+        "audio-generation": "音频生成",
+        "video-input": "视频理解",
+        "video-generation": "视频生成",
+        document: "文档",
+        ocr: "OCR",
+        "structured-output": "结构化输出",
+        writing: "写作",
+        search: "检索",
+        reranking: "重排",
+        embedding: "向量",
+        translation: "翻译",
         local: "本地",
       };
       const canonical = new Set(Object.keys(labels));
@@ -183,7 +197,7 @@ window.__ModuleLoader__.load({
       return visible.map((value) => labels[value] || value).join(" · ");
     }
 
-    function EditableCell({ value, displayValue, placeholder, label, disabled, onSave }) {
+    function EditableCell({ value, displayValue, placeholder, label, help, disabled, onSave }) {
       const [editing, setEditing] = useState(false);
       const [draft, setDraft] = useState(value || "");
       const [saving, setSaving] = useState(false);
@@ -224,7 +238,7 @@ window.__ModuleLoader__.load({
       }
       return createElement("div", {
         className: "opends-edit-cell",
-        title: `${value || placeholder || "未填写"} · 双击编辑`,
+        title: `${help ? `${help} · ` : ""}${value || placeholder || "未填写"} · 双击编辑`,
         tabIndex: disabled ? -1 : 0,
         onDoubleClick: () => !disabled && setEditing(true),
         onKeyDown: (event) => {
@@ -273,7 +287,10 @@ window.__ModuleLoader__.load({
       const [serviceReady, setServiceReady] = useState(false);
       const routes = useMemo(() => localRoutes.filter((route) => route.source !== "ocr"), [localRoutes]);
       const primaryOptions = useMemo(() => routes.filter((route) => (
-        route.status === "ready" && route.enabled !== false && (route.source === "harness" || route.source === "api")
+        route.status === "ready"
+        && route.enabled !== false
+        && (route.source === "harness" || route.source === "api")
+        && (!Array.isArray(route.outputModalities) || route.outputModalities.length === 0 || route.outputModalities.includes("text"))
       )), [routes]);
       const visionOptions = useMemo(() => routes.filter((route) => (
         route.status === "ready" && route.enabled !== false && route.visionLevel === "full-vision"
@@ -506,7 +523,17 @@ window.__ModuleLoader__.load({
                     createElement("td", null,
                       createElement("span", { className: "opends-source-pill" }, routeSourceLabel(route))),
                     createElement("td", null,
-                      createElement(EditableCell, { value: (route.capabilities || []).join(", "), displayValue: route.profileStatus === "pending" || route.profileStatus === "profiling" ? "分析中…" : route.profileStatus === "error" ? "待分析" : capabilityLabel(route.capabilities), label: "能力", disabled: !serviceReady, placeholder: "自动分析", onSave: (value) => saveRouteFields(route, { capabilities: value.split(/[,，]/).map((item) => item.trim()).filter(Boolean) }) })),
+                      createElement(EditableCell, {
+                        value: (route.capabilities || []).join(", "),
+                        displayValue: capabilityLabel(route.capabilities) || (route.profileStatus === "error" ? "待分析" : "分析中…"),
+                        label: "能力",
+                        help: route.catalogSource === "models.dev"
+                          ? `默认能力来自 Models.dev${route.catalogUpdatedAt ? `（${route.catalogUpdatedAt}）` : ""}${route.profileStatus === "pending" || route.profileStatus === "profiling" ? "，正在通过当前 Runtime 复核" : ""}`
+                          : undefined,
+                        disabled: !serviceReady,
+                        placeholder: "自动分析",
+                        onSave: (value) => saveRouteFields(route, { capabilities: value.split(/[,，]/).map((item) => item.trim()).filter(Boolean) }),
+                      })),
                   );
                 })),
               ),

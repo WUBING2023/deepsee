@@ -85,6 +85,63 @@ describe("registry preferences", () => {
     });
   });
 
+  it("initializes modalities from Models.dev without selecting an image-only generator as the base model", () => {
+    const root = fixture();
+    writeFileSync(join(root, ".opends-models.json"), JSON.stringify({ version: 1, routes: [], preferences: {} }));
+    writeFileSync(join(root, ".deepsee-model-catalog.json"), JSON.stringify({
+      version: 1,
+      source: { id: "models.dev" },
+      fetchedAt: "2026-08-17T00:00:00.000Z",
+      models: {
+        "openai/gpt-image-2": {
+          id: "openai/gpt-image-2",
+          name: "GPT Image 2",
+          description: "Image generation and editing model",
+          reasoning: false,
+          toolCall: false,
+          structuredOutput: false,
+          modalities: { input: ["text", "image"], output: ["image"] },
+          limit: {},
+        },
+        "openai/gpt-4o": {
+          id: "openai/gpt-4o",
+          name: "GPT-4o",
+          description: "Multimodal chat model",
+          reasoning: false,
+          toolCall: true,
+          structuredOutput: true,
+          modalities: { input: ["text", "image"], output: ["text"] },
+          limit: { context: 128000 },
+        },
+      },
+    }));
+    const result = syncHarnessModels(root, {
+      groups: [{
+        id: "openai-official",
+        name: "OpenAI",
+        models: [{ id: "gpt-image-2" }, { id: "gpt-4o" }],
+      }],
+    });
+    const generator = result.state.routes.find((route) => route.model === "gpt-image-2");
+    const reader = result.state.routes.find((route) => route.model === "gpt-4o");
+    expect(generator).toMatchObject({
+      capabilities: expect.arrayContaining(["image-generation"]),
+      outputModalities: ["image"],
+      visionLevel: "none",
+      profileStatus: "ready",
+    });
+    expect(generator.capabilities).not.toContain("vision");
+    expect(generator.roles).not.toContain("executor");
+    expect(reader).toMatchObject({
+      capabilities: expect.arrayContaining(["vision", "tools", "structured-output", "long-context"]),
+      outputModalities: ["text"],
+      visionLevel: "full-vision",
+    });
+    expect(result.state.preferences.primaryRouteId).toBe("harness:openai-official:gpt-4o");
+    expect(result.state.preferences.visionRouteId).toBe("harness:openai-official:gpt-4o");
+    expect(() => updateRegistryPreferences(root, { primaryRouteId: "harness:openai-official:gpt-image-2" })).toThrow("主模型类型不符合要求");
+  });
+
   it("syncs the preferred base model into Harness' composite vision selection", () => {
     const root = fixture();
     const dshHome = join(root, ".dsh");

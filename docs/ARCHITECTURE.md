@@ -20,6 +20,7 @@ DeepSee is an integration layer, not a replacement agent framework. It adds visu
 | Bundle | `cordis.patch.yml` | Loads the Host plugin, Web client, and optional Codex provider in supported DSH profiles. |
 | Host | `src/index.ts` | Installs tools, prompts, visual routing, provider mapping, Workflow command, and Prime policy. |
 | Model registry | `src/model-registry.ts`, `scripts/registry-state.mjs` | Normalizes routes, preferences, status, and user-edited capability guidance. |
+| Capability catalog | `scripts/model-capability-catalog.mjs` | Safely caches structured Models.dev modalities and degrades offline. |
 | Runtime discovery | `scripts/runtime-discovery.mjs`, `scripts/runtime-health.mjs` | Finds local CLIs and validates whether each route is usable. |
 | Web UI | `host/client.js` | Renders the native sidebar panel, model matrix, visual preference, and update state. |
 | Same-origin API | `host/admin-server.mjs` | Exposes `/api/deepsee` inside the Harness WebServer. |

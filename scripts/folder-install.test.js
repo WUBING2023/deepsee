@@ -67,6 +67,19 @@ describe("extracted ZIP staging", () => {
     expect(() => stageFolderPackage(source.root, dshHome, nextManifest)).toThrow("complete prebuilt DeepSee package");
   });
 
+  it("atomically refreshes a complete same-version stage when requested", () => {
+    const source = createPackage();
+    const dshHome = mkdtempSync(join(tmpdir(), "deepsee-folder-home-"));
+    temporaryRoots.push(dshHome);
+    const target = stageFolderPackage(source.root, dshHome, source.manifest);
+    writeFileSync(join(target, "stage-marker.txt"), "stale");
+    writeFileSync(join(source.root, "dist", "index.js"), "export const refreshed = true;\n");
+
+    expect(stageFolderPackage(source.root, dshHome, source.manifest, { replace: true })).toBe(target);
+    expect(existsSync(join(target, "stage-marker.txt"))).toBe(false);
+    expect(readFileSync(join(target, "dist", "index.js"), "utf8")).toContain("refreshed = true");
+  });
+
   it("refuses a manifest version that could escape DSH_HOME", () => {
     const source = createPackage();
     const dshHome = mkdtempSync(join(tmpdir(), "deepsee-folder-home-"));

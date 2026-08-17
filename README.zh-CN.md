@@ -60,7 +60,7 @@ npx --yes github:WUBING2023/deepsee web
 
 ### 模型目录与本地 Runtime
 
-DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验证的路线保持可用。能力描述可以通过一条很短的模型请求自动生成，也可以由用户修正。
+DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验证的路线保持可用。能力默认值来自 Harness 实际模态和 [Models.dev](https://models.dev/) 的结构化目录，再通过一条很短的模型请求补充擅长方向；用户修正始终优先。[了解能力初始化与数据来源 →](docs/MODEL_CAPABILITIES.zh-CN.md)
 
 | 路线 | 可发现 | 可由 DeepSee 执行 | 说明 |
 | --- | :---: | :---: | --- |

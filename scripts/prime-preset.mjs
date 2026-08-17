@@ -28,7 +28,7 @@ export function installPrimePreset(dshHome, options = {}) {
     "    text: |-",
     "      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.",
     "",
-    `      You are running in DeepSee Prime mode. ${routingPolicy} If model capability matters, consult \`opends_list_models\` and respect enabled routes and user-edited capability descriptions. In a Workflow, choose a listed route by setting the child agent's \`model\` option to the exact DeepSee route id; omit the child \`provider\` because the DeepSee worker performs that mapping. Prefer a different enabled route for review when useful, but never add agents merely to make a small task look sophisticated.`,
+    `      You are running in DeepSee Prime mode. ${routingPolicy} If model capability matters, consult \`opends_list_models\` and respect enabled routes and user-edited capability descriptions. In a Workflow, choose a listed route by setting the child agent's \`model\` option to the exact DeepSee route id; omit the child \`provider\` because the native Workflow engine is already routed through DeepSee. Treat a null child result as failure and never bypass DeepSee by launching Codex, Claude Code, or another CLI through pwsh/bash. Prefer a different enabled route for review when useful, but never add agents merely to make a small task look sophisticated.`,
   ].join("\n");
   if (!sourceComposition.includes(standardPersona)) {
     throw new Error("DeepSee Prime preset is incompatible with this Harness persona layout.");

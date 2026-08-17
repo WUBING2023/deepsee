@@ -26,6 +26,9 @@ export interface ModelRoute {
   desktopAppId?: string;
   enabled: boolean;
   status: ModelStatus;
+  /** Runtime/catalog-declared modalities used to keep readers and generators distinct. */
+  inputModalities?: string[];
+  outputModalities?: string[];
   capabilities: string[];
   weaknesses: string[];
   roles: string[];
@@ -39,6 +42,11 @@ export interface ModelRoute {
   profileStatus?: "pending" | "profiling" | "ready" | "error";
   profiledAt?: string;
   profileError?: string;
+  /** Machine-readable capability metadata matched from Models.dev. */
+  catalogModelId?: string;
+  catalogSource?: "models.dev";
+  catalogSourceUrl?: string;
+  catalogUpdatedAt?: string;
   /** Short user-facing explanation when startup verification did not pass. */
   statusReason?: string;
 }
@@ -144,6 +152,8 @@ function normalizeRoute(value: unknown): ModelRoute | undefined {
       : {}),
     enabled: route.enabled !== false,
     status: route.status as ModelStatus,
+    ...(stringArray(route.inputModalities).length > 0 ? { inputModalities: stringArray(route.inputModalities) } : {}),
+    ...(stringArray(route.outputModalities).length > 0 ? { outputModalities: stringArray(route.outputModalities) } : {}),
     capabilities: stringArray(route.capabilities),
     weaknesses: stringArray(route.weaknesses),
     roles: stringArray(route.roles),
@@ -167,6 +177,14 @@ function normalizeRoute(value: unknown): ModelRoute | undefined {
       : {}),
     ...(typeof route.profileError === "string" && route.profileError.trim()
       ? { profileError: route.profileError.trim() }
+      : {}),
+    ...(typeof route.catalogModelId === "string" && route.catalogModelId.trim()
+      ? { catalogModelId: route.catalogModelId.trim().toLowerCase() }
+      : {}),
+    ...(route.catalogSource === "models.dev" ? { catalogSource: "models.dev" as const } : {}),
+    ...(route.catalogSourceUrl === "https://models.dev/" ? { catalogSourceUrl: route.catalogSourceUrl } : {}),
+    ...(typeof route.catalogUpdatedAt === "string" && route.catalogUpdatedAt.trim()
+      ? { catalogUpdatedAt: route.catalogUpdatedAt.trim() }
       : {}),
     ...(typeof route.statusReason === "string" && route.statusReason.trim()
       ? { statusReason: route.statusReason.trim() }

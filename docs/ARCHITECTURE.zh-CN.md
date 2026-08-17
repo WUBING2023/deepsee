@@ -20,6 +20,7 @@ DeepSee 是集成层，不是另一套 Agent 框架。它补充视觉预处理�
 | Bundle | `cordis.patch.yml` | 在受支持的 DSH profile 中加载 Host、Web 客户端和可选 Codex provider。 |
 | Host | `src/index.ts` | 安装工具、提示、视觉路由、provider 映射、Workflow 命令与 Prime 策略。 |
 | 模型注册表 | `src/model-registry.ts`、`scripts/registry-state.mjs` | 规范化路线、首选项、状态和用户修正的能力描述。 |
+| 能力目录 | `scripts/model-capability-catalog.mjs` | 安全缓存 Models.dev 结构化模态，并在离线时降级。 |
 | Runtime 扫描 | `scripts/runtime-discovery.mjs`、`scripts/runtime-health.mjs` | 发现本地 CLI，并验证每条路线能否使用。 |
 | Web UI | `host/client.js` | 渲染原生侧栏、模型矩阵、视觉首选项和升级状态。 |
 | 同源接口 | `host/admin-server.mjs` | 在 Harness WebServer 中提供 `/api/deepsee`。 |
