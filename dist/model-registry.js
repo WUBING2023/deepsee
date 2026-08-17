@@ -48,6 +48,9 @@ function normalizeRoute(value) {
         ...(typeof route.cliModel === "string" && route.cliModel.trim()
             ? { cliModel: route.cliModel.trim().toLowerCase() }
             : {}),
+        ...(typeof route.cliRuntimeId === "string" && route.cliRuntimeId.trim()
+            ? { cliRuntimeId: route.cliRuntimeId.trim() }
+            : {}),
         ...(typeof route.desktopAppId === "string" && route.desktopAppId.trim()
             ? { desktopAppId: route.desktopAppId.trim() }
             : {}),
@@ -89,6 +92,19 @@ function normalizeRoute(value) {
             : {}),
         ...(typeof route.statusReason === "string" && route.statusReason.trim()
             ? { statusReason: route.statusReason.trim() }
+            : {}),
+        ...(typeof route.visionProbeVersion === "number" && Number.isInteger(route.visionProbeVersion)
+            ? { visionProbeVersion: route.visionProbeVersion }
+            : {}),
+        ...(typeof route.visionProbeModel === "string" && route.visionProbeModel.trim()
+            ? { visionProbeModel: route.visionProbeModel.trim() }
+            : {}),
+        ...(typeof route.visionProbeReady === "boolean" ? { visionProbeReady: route.visionProbeReady } : {}),
+        ...(typeof route.visionProbedAt === "string" && route.visionProbedAt.trim()
+            ? { visionProbedAt: route.visionProbedAt.trim() }
+            : {}),
+        ...(typeof route.visionStatusReason === "string" && route.visionStatusReason.trim()
+            ? { visionStatusReason: route.visionStatusReason.trim() }
             : {}),
     };
 }

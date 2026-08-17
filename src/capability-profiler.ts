@@ -25,6 +25,16 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+export function isPlaceholderCapability(value: string): boolean {
+  const normalized = value.trim().toLowerCase().replaceAll(" ", "");
+  return /^(?:能力|任务|擅长|strength|capability|task)[-_]?\d+$/.test(normalized)
+    || ["能力", "任务", "擅长能力", "待补充", "未知能力"].includes(normalized);
+}
+
+function isVisionCapabilityClaim(value: string): boolean {
+  return /vision|image|visual|multimodal|视觉|图像|图片|识图|看图|扫描|ocr/i.test(value);
+}
+
 function looseJsonObject(text: string): Record<string, unknown> {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   const candidate = fenced || text.match(/\{[\s\S]*\}/)?.[0] || "";
@@ -55,8 +65,9 @@ export function parseCapabilityProfile(text: string, info?: Pick<LlmResolvedMode
   const value = looseJsonObject(text);
   const strengths = unique((Array.isArray(value.strengths) ? value.strengths : [value.strengths])
     .filter((item): item is string => typeof item === "string")
+    .filter((item) => !isPlaceholderCapability(item))
     .slice(0, 4));
-  if (strengths.length === 0) throw new Error("模型没有返回擅长能力。");
+  if (strengths.length === 0) throw new Error("模型没有返回具体的擅长能力。");
   const joined = strengths.join(" ").toLowerCase();
   const declaredVision = typeof value.vision === "boolean" ? value.vision : false;
   const runtimeModalities = info?.inputModalities;
@@ -110,7 +121,7 @@ export async function requestCapabilityProfile(
     source: { kind: "plugin", plugin: "opends-bridge" },
     content: [{
       type: "text",
-      text: "与市场上多数大模型相比，你最擅长哪三类任务？你能否直接读取图片输入？只返回一行 JSON：{\"strengths\":[\"能力1\",\"能力2\",\"能力3\"],\"vision\":true或false}",
+      text: "与市场上多数大模型相比，你最擅长哪三类具体任务？你能否直接读取图片输入？只返回一行 JSON，字段仅为 strengths（3 个具体中文任务类别）和 vision（布尔值）。禁止使用“能力1”“任务1”等占位词。",
     }],
   });
   const assembler = new BlockAssembler();
@@ -128,7 +139,7 @@ export async function requestCapabilityProfile(
   return parseCapabilityProfile(textBlocks(assembler.blocks()), info);
 }
 
-const PROFILE_PROMPT = "与市场上多数大模型相比，你最擅长哪三类任务？你能否直接读取图片输入？只返回一行 JSON：{\"strengths\":[\"能力1\",\"能力2\",\"能力3\"],\"vision\":true或false}";
+const PROFILE_PROMPT = "与市场上多数大模型相比，你最擅长哪三类具体任务？你能否直接读取图片输入？只返回一行 JSON，字段仅为 strengths（3 个具体中文任务类别）和 vision（布尔值）。禁止使用“能力1”“任务1”等占位词。";
 
 function commandArgv(executable: string, args: string[]): { argv: string[]; env: NodeJS.ProcessEnv } {
   const env: NodeJS.ProcessEnv = { ...scrubbedParentEnv(), NO_COLOR: "1", FORCE_COLOR: "0" };
@@ -145,14 +156,15 @@ function commandArgv(executable: string, args: string[]): { argv: string[]; env:
 async function requestCliCapabilityProfile(
   ctx: Context,
   registryFile: string,
-  route: Pick<ModelRoute, "id" | "executable" | "cliModel">,
+  route: Pick<ModelRoute, "id" | "executable" | "cliModel" | "cliRuntimeId">,
   signal?: AbortSignal,
 ): Promise<CapabilityProfile> {
   if (!route.executable) throw new Error("CLI 路由缺少可执行文件。");
   let invocation: { argv: string[]; env: NodeJS.ProcessEnv };
-  if (route.id === "cli:claude-code") {
+  const runtimeId = route.cliRuntimeId || route.id.replace(/@\d+$/, "");
+  if (runtimeId === "cli:claude-code") {
     invocation = claudeArgv(route.executable, route.cliModel || undefined);
-  } else if (route.id === "cli:codex") {
+  } else if (runtimeId === "cli:codex") {
     invocation = commandArgv(route.executable, [
       "exec",
       "--skip-git-repo-check",
@@ -184,7 +196,7 @@ async function requestCliCapabilityProfile(
     if (outcome.exitCode !== 0) {
       throw new Error(`${route.id} 能力画像失败（exit ${String(outcome.exitCode)}）${stderr ? `：${stderr.slice(-1200)}` : ""}`);
     }
-    const response = route.id === "cli:claude-code" ? parseClaudeOutput(stdout) : stdout.trim();
+    const response = runtimeId === "cli:claude-code" ? parseClaudeOutput(stdout) : stdout.trim();
     return parseCapabilityProfile(response);
   } finally {
     clearTimeout(timer);
@@ -233,6 +245,9 @@ export function installCapabilityProfiler(ctx: Context, registryFile: string): v
       const vision = route.source === "cli"
         ? route.visionLevel === "full-vision"
         : (reported.visionVerified ? reported.vision : (reported.vision || route.visionLevel === "full-vision"));
+      const safeStrengths = vision
+        ? reported.strengths
+        : reported.strengths.filter((strength) => !isVisionCapabilityClaim(strength));
       const textOutput = !Array.isArray(route.outputModalities)
         || route.outputModalities.length === 0
         || route.outputModalities.includes("text");
@@ -242,7 +257,7 @@ export function installCapabilityProfiler(ctx: Context, registryFile: string): v
         capabilities: unique([
           ...route.capabilities,
           ...reported.capabilities,
-        ].filter((capability) => capability !== "vision" || vision)),
+        ].filter((capability) => (capability !== "vision" || vision) && (vision || !isVisionCapabilityClaim(capability)))),
         roles: unique([
           ...route.roles,
           ...reported.roles,
@@ -254,7 +269,7 @@ export function installCapabilityProfiler(ctx: Context, registryFile: string): v
       updateRoute(registryFile, route.id, {
         capabilities: profile.capabilities,
         roles: profile.roles,
-        description: profile.description,
+        description: safeStrengths.join("、") || route.description,
         descriptionSource: "verified",
         visionLevel: profile.vision ? "full-vision" : "none",
         profileStatus: "ready",

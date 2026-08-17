@@ -143,17 +143,13 @@ var CodexAppServerWire = class {
 	* @param signal - local cancellation for the published run.
 	* @returns the shared subagent result.
 	*/
-	async runTurn(texts, signal) {
+	async runTurn(inputs, signal) {
 		const completion = Promise.withResolvers();
 		this.turnCompleted = completion;
 		const threadId = this.threadId;
 		const turn = object(object(await this.guarded(this.transport.request("turn/start", {
 			threadId,
-			input: texts.map((text) => ({
-				type: "text",
-				text,
-				text_elements: []
-			}))
+			input: inputs
 		}, signal), signal), "turn/start response").turn, "turn/start turn");
 		this.commitTurnId(string(turn.id, "turn/start turn id"));
 		const terminal = object((await this.guarded(completion.promise, signal)).turn, "turn/completed turn");
@@ -370,15 +366,23 @@ function thrown(value) {
 * @param prompt - task content accepted from the shared subagent service.
 * @returns the exact non-empty text block sequence.
 */
-function textTask(prompt) {
-	if (prompt.length === 0) throw new Error("subagent-codex: the one-shot task must contain only text blocks");
-	const texts = [];
+async function taskInput(prompt, readImage, signal) {
+	if (prompt.length === 0) throw new Error("subagent-codex: the one-shot task must not be empty");
+	const inputs = [];
 	for (const block of prompt) {
-		if (block.type !== "text") throw new Error("subagent-codex: the one-shot task must contain only text blocks");
-		texts.push(block.text);
+		if (block.type === "text") {
+			inputs.push({ type: "text", text: block.text, text_elements: [] });
+			continue;
+		}
+		if (block.type === "image") {
+			const stored = await readImage(block.attachment, signal);
+			inputs.push({ type: "image", url: `data:${stored.ref.mediaType};base64,${Buffer.from(stored.data).toString("base64")}` });
+			continue;
+		}
+		throw new Error(`subagent-codex: unsupported one-shot task block ${block.type}`);
 	}
-	if (texts.every((text) => text.trim().length === 0)) throw new Error("subagent-codex: the one-shot task must not be empty");
-	return texts;
+	if (!inputs.some((input) => input.type === "image" || input.text.trim().length > 0)) throw new Error("subagent-codex: the one-shot task must not be empty");
+	return inputs;
 }
 /**
 * Close the private wire, terminate the managed process tree, and wait for the
@@ -406,7 +410,7 @@ async function disposeCodexChild(wire, child) {
 * @returns the published run after initialization and ephemeral thread creation.
 */
 async function startCodexRun(request, spec) {
-	const texts = textTask(request.prompt);
+	const inputs = await taskInput(request.prompt, spec.readImage, request.signal);
 	if (request.signal.aborted) throw new Error("subagent-codex: request was aborted before app-server startup");
 	const child = spec.spawn({
 		argv: codexAppServerArgv(),
@@ -449,7 +453,7 @@ async function startCodexRun(request, spec) {
 	}
 	const collectOutput = () => wire.collectOutput();
 	const result = settleRunResult({
-		attempt: () => Promise.race([wire.runTurn(texts, runAbort.signal), processFailure]),
+		attempt: () => Promise.race([wire.runTurn(inputs, runAbort.signal), processFailure]),
 		collectOutput,
 		cancelled: () => runAbort.signal.aborted,
 		onError: spec.onError,
@@ -475,7 +479,7 @@ async function startCodexRun(request, spec) {
 * @module @deepseek-ai/dsh-subagent-codex
 */
 const name = "subagent-codex";
-const inject = ["subagents", "subprocess"];
+const inject = ["attachments", "subagents", "subprocess"];
 const Config = z.object({
 	env: z.dict(z.string()).default({}),
 	disposeGraceMs: z.number().default(DEFAULT_DISPOSE_GRACE_MS)
@@ -496,6 +500,7 @@ var CodexProvider = class {
 		return startCodexRun(request, {
 			cwd: resolveChildCwd("subagent-codex", void 0, parentCwd),
 			model: request.agentOptions?.model,
+			readImage: (ref, signal) => this.ctx.attachments.readImage(ref, signal),
 			env: this.config.env,
 			disposeGraceMs: this.config.disposeGraceMs,
 			spawn: (spawnSpec) => this.ctx.subprocess.spawn(spawnSpec),

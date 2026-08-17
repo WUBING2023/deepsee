@@ -60,9 +60,11 @@ describe("first-class vision route", () => {
     const listed = await adapter.listModels("opends-vision");
     const resolved = await adapter.resolveModel("opends-vision", "deepseek-v4-flash");
 
-    expect(adapter.providerInfo("opends-vision").name).toContain("DeepSeek + kimi-k3");
+    expect(adapter.providerInfo("opends-vision").name).toBe("DeepSeek \u6df1\u89c1");
     expect(listed[0]).toMatchObject({
       provider: "opends-vision",
+      name: "DeepSeek-V4-Flash \u00b7 \u6df1\u89c1",
+      description: expect.stringContaining("\u6df1\u89c1\u8c03\u7528 kimi-k3 \u8bc6\u56fe"),
       inputModalities: ["text", "image"],
     });
     expect(resolved).toMatchObject({

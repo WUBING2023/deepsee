@@ -16,20 +16,42 @@ import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 const OUTPUT_LIMIT = 4 * 1024 * 1024;
 const DISPOSE_GRACE_MS = 3_000;
 
-function textTask(request: ResolvedSubagentStartRequest): string {
+export async function prepareClaudeTask(
+  ctx: Pick<Context, "attachments">,
+  request: ResolvedSubagentStartRequest,
+): Promise<{ stdin: string; streamJson: boolean }> {
   if (request.prompt.length === 0) {
-    throw new Error("opends-claude-code: the delegated task must contain text");
+    throw new Error("opends-claude-code: the delegated task must not be empty");
   }
-  const texts: string[] = [];
+  const content: Array<Record<string, unknown>> = [];
+  let hasImage = false;
   for (const block of request.prompt) {
-    if (block.type !== "text") {
-      throw new Error("opends-claude-code: Claude Code tasks currently accept text blocks only");
+    if (block.type === "text") {
+      content.push({ type: "text", text: block.text });
+      continue;
     }
-    texts.push(block.text);
+    if (block.type === "image") {
+      const stored = await ctx.attachments.readImage(block.attachment, request.signal);
+      content.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: stored.ref.mediaType,
+          data: Buffer.from(stored.data).toString("base64"),
+        },
+      });
+      hasImage = true;
+      continue;
+    }
+    throw new Error(`opends-claude-code: unsupported task block ${block.type}`);
   }
-  const prompt = texts.join("\n\n");
-  if (!prompt.trim()) throw new Error("opends-claude-code: the delegated task must not be empty");
-  return prompt;
+  const visibleText = content.some((block) => block.type === "text" && String(block.text || "").trim());
+  if (!visibleText && !hasImage) throw new Error("opends-claude-code: the delegated task must not be empty");
+  if (!hasImage) return { stdin: content.map((block) => block.text).join("\n\n"), streamJson: false };
+  return {
+    stdin: `${JSON.stringify({ type: "user", message: { role: "user", content } })}\n`,
+    streamJson: true,
+  };
 }
 
 export function parseClaudeOutput(stdout: string): string {
@@ -51,10 +73,10 @@ export function parseClaudeOutput(stdout: string): string {
   return trimmed;
 }
 
-export function claudeArgv(executable: string, model: string | undefined): { argv: string[]; env: NodeJS.ProcessEnv } {
+export function claudeArgv(executable: string, model: string | undefined, streamJson = false): { argv: string[]; env: NodeJS.ProcessEnv } {
   const args = [
     "--print",
-    "--output-format", "json",
+    ...(streamJson ? ["--input-format", "stream-json", "--output-format", "stream-json", "--verbose"] : ["--output-format", "json"]),
     "--no-session-persistence",
     "--permission-mode", "acceptEdits",
     ...(model ? ["--model", model] : []),
@@ -71,14 +93,14 @@ export function claudeArgv(executable: string, model: string | undefined): { arg
 }
 
 async function startClaudeRun(ctx: Context, request: ResolvedSubagentStartRequest, executable: string): Promise<SubagentRun> {
-  const prompt = textTask(request);
   const parentCwd = request.parent.session.header.cwd;
   if (parentCwd === undefined) {
     throw new Error("opends-claude-code: no working directory is available for the delegated task");
   }
   const cwd = resolveChildCwd("opends-claude-code", undefined, parentCwd);
+  const { stdin, streamJson } = await prepareClaudeTask(ctx, request);
   const model = request.agentOptions?.model?.trim() || undefined;
-  const { argv, env } = claudeArgv(executable, model);
+  const { argv, env } = claudeArgv(executable, model, streamJson);
   const child = ctx.subprocess.spawn({
     argv,
     cwd,
@@ -86,7 +108,7 @@ async function startClaudeRun(ctx: Context, request: ResolvedSubagentStartReques
     signal: request.signal,
     graceMs: DISPOSE_GRACE_MS,
     stdio: {
-      stdin: { data: prompt },
+      stdin: { data: stdin },
       stdout: { maxBytes: OUTPUT_LIMIT, spill: { maxBytes: OUTPUT_LIMIT * 4 } },
       stderr: { maxBytes: OUTPUT_LIMIT },
     },

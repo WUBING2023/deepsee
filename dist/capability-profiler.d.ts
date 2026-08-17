@@ -9,6 +9,7 @@ export interface CapabilityProfile {
     roles: string[];
     description: string;
 }
+export declare function isPlaceholderCapability(value: string): boolean;
 export declare function parseCapabilityProfile(text: string, info?: Pick<LlmResolvedModelInfo, "inputModalities" | "reasoning">): CapabilityProfile;
 export declare function requestCapabilityProfile(llm: LlmRuntime, route: Pick<ModelRoute, "runtimeProvider" | "provider" | "runtimeModel" | "model">, signal?: AbortSignal): Promise<CapabilityProfile>;
 export declare function installCapabilityProfiler(ctx: Context, registryFile: string): void;

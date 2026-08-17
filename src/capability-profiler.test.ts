@@ -29,4 +29,11 @@ describe("automatic capability profiling", () => {
     expect(profile.strengths).toEqual(["复杂推理", "代码生成", "长文档分析"]);
     expect(profile.vision).toBe(false);
   });
+
+  it("rejects placeholder capability labels instead of persisting them", () => {
+    expect(() => parseCapabilityProfile(
+      '{"strengths":["能力1","能力2","能力3"],"vision":false}',
+      { inputModalities: ["text"], reasoning: undefined },
+    )).toThrow("具体的擅长能力");
+  });
 });

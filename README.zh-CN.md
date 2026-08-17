@@ -45,8 +45,8 @@ npx --yes github:WUBING2023/deepsee web
 | 能力 | 实际体验 |
 | --- | --- |
 | **真正可执行的识图** | 上传图片后，DeepSee 会交给选定的多模态模型，或 MinerU、PaddleOCR、RapidOCR，再把观察结果交回 DeepSeek。 |
-| **统一模型目录** | Harness API 模型与通过验证的本地 CLI 会出现在同一个简洁矩阵中，显示可用性和擅长能力。 |
-| **快速初始化** | 自动选择首个可用视觉模型，并沿用 Codex/Claude 桌面端或 CLI 与已有 `AGENTS.md`、`CLAUDE.md` 或 `agent.md` 指令。 |
+| **统一模型目录** | 目录始终可见，并按 API 供应商、Harness 供应商、本地 CLI 或桌面端分组。订阅 Runtime 初始只保留一个模型，用户可在同一来源下继续添加、更换、关闭或移除模型实例。 |
+| **快速初始化** | 自动选择首个可用视觉模型；工作区指令由 Harness 原生加载，全局 Claude/Codex `AGENTS.md`、`CLAUDE.md` 或 `agent.md` 只读继承到主会话和 Workflow。 |
 | **原生配置体验** | 插件就在 Harness 侧栏内，通过同源接口工作；模型和凭据仍归 Harness 管理。 |
 
 ### 视觉：模型或 OCR
@@ -65,8 +65,9 @@ DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验
 | 路线 | 可发现 | 可由 DeepSee 执行 | 说明 |
 | --- | :---: | :---: | --- |
 | Harness / API 模型 | 是 | 是 | 复用原生供应商、模型设置和子 Agent。 |
-| Codex Desktop / CLI | 是 | 是 | 复用验证通过的内置 App Server 或 CLI，可选择支持的模型档位。 |
-| Claude Desktop + Claude Code | 是 | CLI 验证后可用 | 只有桌面端时可从 DeepSee 打开；自动 Workflow 仍需要 Claude Code CLI。 |
+| Codex Desktop / CLI | 是 | 是 | 复用验证通过的内置 App Server 或 CLI；多个模型档位可同时作为独立的主模型或 Workflow 路线。 |
+| Claude Desktop + Claude Code | 是 | CLI 验证后可用 | 一个已验证订阅可分别管理 Sonnet、Opus、Haiku、Fable；自动 Workflow 仍需要 Claude Code CLI。 |
+| Gemini CLI | 是；未安装时可点模型目录的 `+` | 安装并重启后可用 | 可选择独立安装路径；优先使用官方 npm 稳定版，失败时回退 Google GitHub Release bundle。初始只启用一个模型，可继续添加 Auto、Pro、Flash 或 Flash-Lite。 |
 | Kimi CLI、OpenCode、Ollama | 是 | 暂不支持 | 会如实显示扫描结果；没有稳定 Harness 适配器时不会伪装成可执行路线。 |
 | MinerU / PaddleOCR / RapidOCR | 是 | 仅 OCR | 位于首选项中的视觉工具，不混入通用模型矩阵。 |
 
@@ -74,7 +75,7 @@ DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验
 
 - `/workflow <任务>` 会显式启动一个可见的 Harness Workflow。
 - Prime 会让小任务继续走普通 Loop；只有确实存在独立工作流、跨能力角色，或已经批准的 Workflow 计划时才进入编排。
-- Harness/API 模型通过原生 `spawn` 子 Agent 执行；Codex 与 Claude Code 通过各自验证过的 CLI provider 执行。
+- Harness/API 模型通过原生 `spawn` 子 Agent 执行；Codex、Claude Code 与 Gemini CLI 通过各自验证过的 CLI provider 执行。
 - `opends_list_models` 工具让主模型按视觉、编码、写作、推理、文档或审查能力查看可用路线。
 
 ```mermaid
@@ -94,6 +95,7 @@ flowchart LR
 - 可变状态保存在 `$DSH_HOME/deepsee`，与包目录分离，升级和卸载不会抹掉用户选择。
 - `prime` preset 从当前 Harness 的标准 preset 生成，不修改官方 preset。
 - 只读取供应商元数据和凭据引用，不读取原始 API Key。
+- 只读取约定位置中的全局指令文件；正文不会进入浏览器状态，单文件与总量都有安全上限，当前明确请求始终优先。
 
 [查看架构与扩展点 →](docs/ARCHITECTURE.zh-CN.md)
 

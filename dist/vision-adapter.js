@@ -1,7 +1,7 @@
 import { LlmAdapter, } from "@deepseek-ai/dsh-llm";
 import { countImages, describeImages, rewriteWithVisualContext, visionCacheKey, VisionDescriptionCache, } from "./vision.js";
-function visualName(name, visionModel) {
-    return name + " + " + visionModel + " \u89c6\u89c9";
+function visualName(name) {
+    return name + " \u00b7 \u6df1\u89c1";
 }
 /**
  * A first-class Harness model route that advertises image input while keeping
@@ -13,13 +13,15 @@ export class VisionBridgeAdapter extends LlmAdapter {
     runtime;
     config;
     describer;
+    resolveSelection;
     cache;
-    constructor(ctx, runtime, config, describer) {
+    constructor(ctx, runtime, config, describer, resolveSelection) {
         super();
         this.ctx = ctx;
         this.runtime = runtime;
         this.config = config;
         this.describer = describer;
+        this.resolveSelection = resolveSelection;
         if (config.route === config.primaryProvider) {
             throw new Error("DeepSee vision route must differ from its primary provider");
         }
@@ -28,33 +30,37 @@ export class VisionBridgeAdapter extends LlmAdapter {
     providerInfo(provider) {
         return {
             id: provider,
-            name: "DeepSee \u89c6\u89c9\u6865\uff08DeepSeek + " + this.config.model + "\uff09",
+            name: "DeepSeek \u6df1\u89c1",
         };
     }
     providerRetryPolicy(_provider) {
         return this.runtime.providerRetryPolicy(this.config.primaryProvider);
     }
     async listModels(provider) {
-        const models = await this.runtime.listModels(this.config.primaryProvider);
+        const selected = this.resolveSelection ? await this.resolveSelection() : { config: this.config, describer: this.describer };
+        const models = await this.runtime.listModels(selected.config.primaryProvider);
         return models.map((model) => ({
             ...model,
             provider,
-            name: visualName(model.name, this.config.model),
-            description: "\u56fe\u7247\u7531 " + this.config.model + " \u8bc6\u522b\uff0c\u6587\u5b57\u4efb\u52a1\u4ecd\u7531 DeepSeek \u5b8c\u6210",
+            name: visualName(model.name),
+            description: "\u7531\u6df1\u89c1\u8c03\u7528 " + selected.config.model + " \u8bc6\u56fe\uff0cDeepSeek \u5c06\u6839\u636e\u8bc6\u56fe\u7ed3\u679c\u7ee7\u7eed\u56de\u7b54",
             inputModalities: ["text", "image"],
         }));
     }
     async resolveModel(provider, model, signal) {
-        const resolved = await this.runtime.resolveModelInfo(this.config.primaryProvider, model, signal);
+        const selected = this.resolveSelection ? await this.resolveSelection() : { config: this.config, describer: this.describer };
+        const resolved = await this.runtime.resolveModelInfo(selected.config.primaryProvider, model, signal);
         return {
             ...resolved,
             provider,
-            name: visualName(resolved.name, this.config.model),
-            description: "\u56fe\u7247\u7531 " + this.config.model + " \u8bc6\u522b\uff0c\u6587\u5b57\u4efb\u52a1\u4ecd\u7531 DeepSeek \u5b8c\u6210",
+            name: visualName(resolved.name),
+            description: "\u7531\u6df1\u89c1\u8c03\u7528 " + selected.config.model + " \u8bc6\u56fe\uff0cDeepSeek \u5c06\u6839\u636e\u8bc6\u56fe\u7ed3\u679c\u7ee7\u7eed\u56de\u7b54",
             inputModalities: ["text", "image"],
         };
     }
     async *stream(options) {
+        const selected = this.resolveSelection ? await this.resolveSelection() : { config: this.config, describer: this.describer };
+        const config = selected.config;
         const messages = [];
         for (const message of options.messages) {
             if (message.role !== "user" || countImages(message.content) === 0) {
@@ -62,15 +68,15 @@ export class VisionBridgeAdapter extends LlmAdapter {
                 continue;
             }
             const userMessage = message;
-            const cacheKey = visionCacheKey(userMessage, this.config);
-            const description = await this.cache.getOrCreate(cacheKey, () => this.describer
-                ? this.describer(userMessage, options.signal)
-                : describeImages(this.ctx, userMessage, this.config, options.signal));
-            messages.push(rewriteWithVisualContext(userMessage, description, this.config));
+            const cacheKey = visionCacheKey(userMessage, config);
+            const description = await this.cache.getOrCreate(cacheKey, () => selected.describer
+                ? selected.describer(userMessage, options.signal)
+                : describeImages(this.ctx, userMessage, config, options.signal));
+            messages.push(rewriteWithVisualContext(userMessage, description, config));
         }
         yield* this.runtime.stream({
             ...options,
-            provider: this.config.primaryProvider,
+            provider: config.primaryProvider,
             messages,
         });
     }

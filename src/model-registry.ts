@@ -22,6 +22,8 @@ export interface ModelRoute {
   cliModels?: string[];
   /** User-selected CLI model; absence means the CLI's own default. */
   cliModel?: string;
+  /** Stable local Runtime id shared by all user-managed model instances. */
+  cliRuntimeId?: string;
   /** Installed desktop application associated with this executable route. */
   desktopAppId?: string;
   enabled: boolean;
@@ -49,6 +51,12 @@ export interface ModelRoute {
   catalogUpdatedAt?: string;
   /** Short user-facing explanation when startup verification did not pass. */
   statusReason?: string;
+  /** Cached, model-specific result of a real local Runtime image-input probe. */
+  visionProbeVersion?: number;
+  visionProbeModel?: string;
+  visionProbeReady?: boolean;
+  visionProbedAt?: string;
+  visionStatusReason?: string;
 }
 
 export interface ModelRegistryPreferences {
@@ -147,6 +155,9 @@ function normalizeRoute(value: unknown): ModelRoute | undefined {
     ...(typeof route.cliModel === "string" && route.cliModel.trim()
       ? { cliModel: route.cliModel.trim().toLowerCase() }
       : {}),
+    ...(typeof route.cliRuntimeId === "string" && route.cliRuntimeId.trim()
+      ? { cliRuntimeId: route.cliRuntimeId.trim() }
+      : {}),
     ...(typeof route.desktopAppId === "string" && route.desktopAppId.trim()
       ? { desktopAppId: route.desktopAppId.trim() }
       : {}),
@@ -188,6 +199,19 @@ function normalizeRoute(value: unknown): ModelRoute | undefined {
       : {}),
     ...(typeof route.statusReason === "string" && route.statusReason.trim()
       ? { statusReason: route.statusReason.trim() }
+      : {}),
+    ...(typeof route.visionProbeVersion === "number" && Number.isInteger(route.visionProbeVersion)
+      ? { visionProbeVersion: route.visionProbeVersion }
+      : {}),
+    ...(typeof route.visionProbeModel === "string" && route.visionProbeModel.trim()
+      ? { visionProbeModel: route.visionProbeModel.trim() }
+      : {}),
+    ...(typeof route.visionProbeReady === "boolean" ? { visionProbeReady: route.visionProbeReady } : {}),
+    ...(typeof route.visionProbedAt === "string" && route.visionProbedAt.trim()
+      ? { visionProbedAt: route.visionProbedAt.trim() }
+      : {}),
+    ...(typeof route.visionStatusReason === "string" && route.visionStatusReason.trim()
+      ? { visionStatusReason: route.visionStatusReason.trim() }
       : {}),
   };
 }

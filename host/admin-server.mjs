@@ -3,8 +3,10 @@ import {
   updateRegistryWithConnection,
 } from "../scripts/model-connections.mjs";
 import {
+  addRegistryCliModel,
   applyPreferencesToHarness,
   publicRegistryState,
+  removeRegistryCliModel,
   syncHarnessModels,
   updateRegistryPreferences,
   updateRegistryRoute,
@@ -14,7 +16,9 @@ import {
   refreshModelCapabilityCatalog,
 } from "../scripts/model-capability-catalog.mjs";
 import { discoverDeepSeeRuntimes, discoverWorkspaceInstructions, resolveDeepSeePaths } from "../scripts/runtime-discovery.mjs";
+import { loadGlobalMemory, publicGlobalMemory } from "../scripts/global-memory.mjs";
 import { getOCRStatus, getOCRToolsState, startOCRInstall, uninstallOCR } from "../scripts/ocr-manager.mjs";
+import { getManagedRuntimesState, startManagedRuntimeInstall } from "../scripts/runtime-manager.mjs";
 import {
   checkDeepSeeUpdate,
   getDeepSeeUpdateStatus,
@@ -96,11 +100,19 @@ export function createDeepSeeAdminHandler(options = {}) {
             ...(route.desktopAppId ? { desktopAppId: route.desktopAppId } : {}),
           })),
         desktopApps: registry.desktopApps || [],
-        instructions: discoverWorkspaceInstructions(options.cwd || process.cwd()),
+        instructions: {
+          ...discoverWorkspaceInstructions(options.cwd || process.cwd()),
+          global: publicGlobalMemory(loadGlobalMemory({
+            dshHome,
+            env: options.env || process.env,
+            ...(options.home ? { home: options.home } : {}),
+          })),
+        },
       },
       tools: {
         ocr: getOCRToolsState(stateRoot),
         mineru: getOCRStatus(stateRoot, "mineru"),
+        runtimes: getManagedRuntimesState(stateRoot, { env: options.env || process.env }),
       },
       update: getDeepSeeUpdateStatus(stateRoot, packageRoot),
       modelCatalog: getModelCatalogStatus(stateRoot),
@@ -160,6 +172,14 @@ export function createDeepSeeAdminHandler(options = {}) {
         const route = updateRegistryRoute(stateRoot, await readJson(req));
         return send(res, 200, { route, state: state(), restartRequired: true });
       }
+      if (req.method === "POST" && path === "/v1/cli-models") {
+        const route = addRegistryCliModel(stateRoot, await readJson(req));
+        return send(res, 201, { route, state: state(), restartRequired: true });
+      }
+      if (req.method === "POST" && path === "/v1/cli-models/remove") {
+        const route = removeRegistryCliModel(stateRoot, await readJson(req));
+        return send(res, 200, { route, state: state(), restartRequired: true });
+      }
       if (req.method === "POST" && path === "/v1/preferences") {
         const preferences = updateRegistryPreferences(stateRoot, await readJson(req));
         applyPreferencesToHarness(stateRoot, dshHome);
@@ -167,8 +187,19 @@ export function createDeepSeeAdminHandler(options = {}) {
       }
       if (req.method === "POST" && path === "/v1/runtimes/verify") {
         await readJson(req);
-        await discoverDeepSeeRuntimes({ ...paths, cwd: process.cwd() });
+        await discoverDeepSeeRuntimes({ ...paths, cwd: process.cwd(), forceVisionProbe: true });
         return send(res, 200, { state: state(), message: "已重新验证 Harness、API、桌面应用与本机 CLI。" });
+      }
+      const runtimeInstall = path.match(/^\/v1\/runtimes\/(gemini)\/install$/);
+      if (req.method === "POST" && runtimeInstall) {
+        const input = await readJson(req);
+        const install = options.runtimeInstall || startManagedRuntimeInstall;
+        const runtime = install(stateRoot, runtimeInstall[1], input.installPath, {
+          spawnImpl: options.runtimeSpawn,
+          workerPath: options.runtimeWorkerPath,
+          env: options.env || process.env,
+        });
+        return send(res, 202, { runtime });
       }
       if (req.method === "POST" && path === "/v1/tools/mineru/install") {
         await readJson(req);

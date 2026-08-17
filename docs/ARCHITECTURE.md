@@ -21,7 +21,8 @@ DeepSee is an integration layer, not a replacement agent framework. It adds visu
 | Host | `src/index.ts` | Installs tools, prompts, visual routing, provider mapping, Workflow command, and Prime policy. |
 | Model registry | `src/model-registry.ts`, `scripts/registry-state.mjs` | Normalizes routes, preferences, status, and user-edited capability guidance. |
 | Capability catalog | `scripts/model-capability-catalog.mjs` | Safely caches structured Models.dev modalities and degrades offline. |
-| Runtime discovery | `scripts/runtime-discovery.mjs`, `scripts/runtime-health.mjs` | Finds local CLIs and validates whether each route is usable. |
+| Runtime discovery and installation | `scripts/runtime-discovery.mjs`, `scripts/runtime-health.mjs`, `scripts/runtime-manager.mjs` | Finds local CLIs, owns isolated install paths, and validates whether each route is usable. |
+| Global memory | `scripts/global-memory.mjs`, `src/cli-runtime-adapter.ts` | Imports Claude/Codex user instructions read-only and passes them to base sessions, CLI bases, direct routes, and Workflow children. |
 | Web UI | `host/client.js` | Renders the native sidebar panel, model matrix, visual preference, and update state. |
 | Same-origin API | `host/admin-server.mjs` | Exposes `/api/deepsee` inside the Harness WebServer. |
 | Visual adapters | `src/vision.ts`, `src/vision-adapter.ts`, `src/ocr.ts` | Selects a visual model or managed OCR and returns an observation to the base model. |
@@ -71,7 +72,8 @@ The routing contract is deliberately small:
 - `opends_list_models` returns enabled and ready routes filtered by capability or role.
 - A Workflow child can pass an exact DeepSee route ID as its `model` option.
 - The `opends` worker maps that ID to the real Harness provider/model pair.
-- CLI routes are handled by their dedicated provider only after validation.
+- A verified CLI Runtime creates one initial route. Additional user-selected models are stored as sibling routes with stable IDs and the same `cliRuntimeId`; each route keeps its own enabled state and capability profile.
+- CLI routes are handled by their dedicated provider only after validation, so sibling Sonnet/Opus/Fable, Codex variants, or Gemini Auto/Pro/Flash routes can run concurrently in one Workflow.
 - Missing, disabled, or stale route IDs fail loudly instead of silently falling back to an unrelated model.
 
 `/workflow <task>` is the explicit path. Prime may choose Workflow only for multiple independent workstreams, clear cross-capability roles, or an approved plan marked `Execution mode: Workflow`. Automatic Prime orchestration is disabled when no ready full-vision route exists; explicit Workflow can still use ready text routes.
@@ -81,6 +83,8 @@ The routing contract is deliberately small:
 Default mutable state is rooted at `$DSH_HOME/deepsee` and includes the model registry, OCR status and logs, staged ZIP packages, and update state. Managed OCR Python environments and model caches use isolated app-data directories; uninstall removes only allowlisted children. The generated Prime preset lives under `$DSH_HOME/.agent-presets/prime` because that is the Harness discovery location.
 
 DeepSee does not copy raw provider secrets into the registry or return credential references to the browser. API keys remain managed by Harness. Legacy `OPENDS_BRIDGE_*` configuration can migrate provider metadata and a credential reference, not the secret value itself.
+
+Harness continues to own project-level `AGENTS.md`, `CLAUDE.md`, and `agent.md` loading. DeepSee additionally checks conventional files in the user directory, `.claude`, and `.codex`, deduplicates and size-bounds them, and installs the result in the system prompt. Codex/Claude subscription base models and Workflow children receive the same inherited memory. `$DSH_HOME/AGENTS.md` is reported as a Harness-native source and is not injected twice. Browser state receives only file names, sources, sizes, and truncation status—never text or absolute paths.
 
 The Web profile mounts `/api/deepsee`. Headless has no WebServer, so it skips the management route while retaining discovery, routing, tools, providers, and policy.
 

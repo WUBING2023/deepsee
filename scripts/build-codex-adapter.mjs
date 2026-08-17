@@ -24,9 +24,63 @@ source = replaceRequired(source,
   "wire.startThread(spec.cwd, request.signal, spec.model)",
   "wire start");
 source = replaceRequired(source,
+  "async runTurn(texts, signal) {",
+  "async runTurn(inputs, signal) {",
+  "runTurn image-capable signature");
+source = replaceRequired(source,
+  `input: texts.map((text) => ({
+\t\t\t\ttype: "text",
+\t\t\t\ttext,
+\t\t\t\ttext_elements: []
+\t\t\t}))`,
+  "input: inputs",
+  "turn/start image-capable input");
+source = replaceRequired(source,
+  `function textTask(prompt) {
+\tif (prompt.length === 0) throw new Error("subagent-codex: the one-shot task must contain only text blocks");
+\tconst texts = [];
+\tfor (const block of prompt) {
+\t\tif (block.type !== "text") throw new Error("subagent-codex: the one-shot task must contain only text blocks");
+\t\ttexts.push(block.text);
+\t}
+\tif (texts.every((text) => text.trim().length === 0)) throw new Error("subagent-codex: the one-shot task must not be empty");
+\treturn texts;
+}`,
+  `async function taskInput(prompt, readImage, signal) {
+\tif (prompt.length === 0) throw new Error("subagent-codex: the one-shot task must not be empty");
+\tconst inputs = [];
+\tfor (const block of prompt) {
+\t\tif (block.type === "text") {
+\t\t\tinputs.push({ type: "text", text: block.text, text_elements: [] });
+\t\t\tcontinue;
+\t\t}
+\t\tif (block.type === "image") {
+\t\t\tconst stored = await readImage(block.attachment, signal);
+\t\t\tinputs.push({ type: "image", url: \`data:\${stored.ref.mediaType};base64,\${Buffer.from(stored.data).toString("base64")}\` });
+\t\t\tcontinue;
+\t\t}
+\t\tthrow new Error(\`subagent-codex: unsupported one-shot task block \${block.type}\`);
+\t}
+\tif (!inputs.some((input) => input.type === "image" || input.text.trim().length > 0)) throw new Error("subagent-codex: the one-shot task must not be empty");
+\treturn inputs;
+}`,
+  "Codex image task conversion");
+source = replaceRequired(source,
+  "const texts = textTask(request.prompt);",
+  "const inputs = await taskInput(request.prompt, spec.readImage, request.signal);",
+  "Codex image task preparation");
+source = replaceRequired(source,
+  "wire.runTurn(texts, runAbort.signal)",
+  "wire.runTurn(inputs, runAbort.signal)",
+  "Codex image turn call");
+source = replaceRequired(source,
   'cwd: resolveChildCwd("subagent-codex", void 0, parentCwd),',
-  'cwd: resolveChildCwd("subagent-codex", void 0, parentCwd),\n\t\t\tmodel: request.agentOptions?.model,',
+  'cwd: resolveChildCwd("subagent-codex", void 0, parentCwd),\n\t\t\tmodel: request.agentOptions?.model,\n\t\t\treadImage: (ref, signal) => this.ctx.attachments.readImage(ref, signal),',
   "model option");
+source = replaceRequired(source,
+  'const inject = ["subagents", "subprocess"];',
+  'const inject = ["attachments", "subagents", "subprocess"];',
+  "Codex attachment service injection");
 source = replaceRequired(source,
   `function codexAppServerArgv(platform = process.platform) {
 \treturn platform === "win32" ? [

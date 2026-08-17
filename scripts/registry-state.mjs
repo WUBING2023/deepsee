@@ -14,6 +14,17 @@ function text(value, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+function isPlaceholderCapability(value) {
+  const normalized = String(value || "").trim().toLowerCase().replaceAll(" ", "");
+  return /^(?:能力|任务|擅长|strength|capability|task)[-_]?\d+$/.test(normalized)
+    || ["能力", "任务", "擅长能力", "待补充", "未知能力"].includes(normalized);
+}
+
+function hasPlaceholderProfile(route) {
+  return (Array.isArray(route?.capabilities) && route.capabilities.some(isPlaceholderCapability))
+    || /能力\s*\d|任务\s*\d/i.test(String(route?.description || ""));
+}
+
 function modalityList(model, direction) {
   const candidates = direction === "input"
     ? [model?.inputModalities, model?.input_modalities, model?.modalities?.input]
@@ -68,6 +79,11 @@ function supportsTextOutput(route) {
     || route.outputModalities.includes("text");
 }
 
+function cliRuntimeId(route) {
+  if (route?.source !== "cli") return "";
+  return text(route.cliRuntimeId, text(route.id).replace(/@\d+$/, ""));
+}
+
 export function loadRegistryState(root) {
   const path = join(root, REGISTRY_FILE);
   if (!existsSync(path)) return { version: 1, routes: [], desktopApps: [], preferences: {} };
@@ -114,7 +130,7 @@ export function syncHarnessModels(root, input) {
 
   for (const group of groups) {
     const provider = text(group?.id);
-    if (!provider || provider === "opends-vision" || provider === "opends-bridge" || provider.startsWith("opends-api-")) continue;
+    if (!provider || provider === "opends-vision" || provider === "opends-bridge" || provider.startsWith("opends-api-") || provider.startsWith("deepsee-cli-")) continue;
     const sourceLabel = text(group?.name, provider);
     for (const model of (Array.isArray(group?.models) ? group.models : []).slice(0, 200)) {
       const modelId = text(model?.id);
@@ -122,7 +138,9 @@ export function syncHarnessModels(root, input) {
       const id = `harness:${provider}:${modelId}`;
       const current = previous.get(id);
       const userProfile = current?.descriptionSource === "user";
-      const verifiedProfile = current?.descriptionSource === "verified" && current?.profileStatus === "ready";
+      const verifiedProfile = current?.descriptionSource === "verified"
+        && current?.profileStatus === "ready"
+        && !hasPlaceholderProfile(current);
       const keepProfile = userProfile || verifiedProfile;
       const defaults = modelCapabilityDefaults(root, provider, modelId);
       const inputModalities = modalityList(model, "input") || defaults?.inputModalities;
@@ -225,8 +243,15 @@ export function updateRegistryRoute(root, input) {
     throw new Error(current.statusReason || "该路线未通过启动验证，暂时不能打开。");
   }
   if (current.source === "cli" && typeof input.cliModel === "string" && input.cliModel.trim()) {
-    if (!Array.isArray(current.cliModels) || !current.cliModels.includes(input.cliModel.trim())) {
+    const nextModel = input.cliModel.trim();
+    if (!Array.isArray(current.cliModels) || !current.cliModels.includes(nextModel)) {
       throw new Error("该 CLI 模型不在启动时验证得到的可选列表中。");
+    }
+    const runtimeId = cliRuntimeId(current);
+    if (registry.routes.some((route) => (
+      route?.id !== current.id && cliRuntimeId(route) === runtimeId && route.cliModel === nextModel
+    ))) {
+      throw new Error("该订阅模型已经添加，不能重复使用同一个模型。");
     }
   }
   const next = {
@@ -240,7 +265,7 @@ export function updateRegistryRoute(root, input) {
     ...(typeof input.description === "string" ? { description: input.description.trim() } : {}),
     ...(current.source === "cli" && typeof input.cliModel === "string"
       ? (input.cliModel.trim()
-        ? { cliModel: input.cliModel.trim() }
+        ? { cliModel: input.cliModel.trim(), status: "ready", statusReason: undefined }
         : { cliModel: undefined })
       : {}),
     ...(editsProfile ? { descriptionSource: "user", profileStatus: "ready", profileError: undefined } : {}),
@@ -248,6 +273,60 @@ export function updateRegistryRoute(root, input) {
   registry.routes[index] = next;
   saveRegistryState(root, registry);
   return next;
+}
+
+export function addRegistryCliModel(root, input) {
+  const registry = loadRegistryState(root);
+  const requestedRuntimeId = text(input?.runtimeRouteId);
+  const runtimeRoutes = registry.routes.filter((route) => cliRuntimeId(route) === requestedRuntimeId);
+  const base = runtimeRoutes.find((route) => route.id === requestedRuntimeId) || runtimeRoutes[0];
+  if (!base || base.source !== "cli") throw new Error("订阅 Runtime 不存在；请重新验证后再添加模型。");
+  if (base.status !== "ready") throw new Error(base.statusReason || "订阅 Runtime 尚未通过验证。");
+  const model = text(input?.model);
+  if (!model || !Array.isArray(base.cliModels) || !base.cliModels.includes(model)) {
+    throw new Error("该模型不在订阅 Runtime 验证得到的可选列表中。");
+  }
+  if (runtimeRoutes.some((route) => route.cliModel === model)) {
+    throw new Error("该订阅模型已经添加。");
+  }
+  const ids = new Set(registry.routes.map((route) => route?.id));
+  let sequence = 2;
+  while (ids.has(`${requestedRuntimeId}@${sequence}`)) sequence += 1;
+  const route = {
+    ...base,
+    id: `${requestedRuntimeId}@${sequence}`,
+    cliRuntimeId: requestedRuntimeId,
+    cliModel: model,
+    enabled: true,
+    status: "ready",
+    statusReason: undefined,
+    lastCheckedAt: new Date().toISOString(),
+  };
+  registry.routes.push(route);
+  saveRegistryState(root, registry);
+  return route;
+}
+
+export function removeRegistryCliModel(root, input) {
+  const registry = loadRegistryState(root);
+  const id = text(input?.id);
+  const index = registry.routes.findIndex((route) => route?.id === id);
+  if (index === -1) throw new Error("订阅模型不存在；请重新验证 Runtime。");
+  const route = registry.routes[index];
+  if (route.source !== "cli") throw new Error("只有订阅 Runtime 模型可以在这里移除。");
+  const runtimeId = cliRuntimeId(route);
+  const siblings = registry.routes.filter((candidate) => cliRuntimeId(candidate) === runtimeId);
+  if (id === runtimeId || siblings.length <= 1) {
+    throw new Error("初始模型必须保留；可以更换它，或先添加其他模型。");
+  }
+  registry.routes.splice(index, 1);
+  if (registry.preferences?.primaryRouteId === id) {
+    const fallback = siblings.find((candidate) => candidate.id !== id && candidate.status === "ready" && candidate.enabled !== false)
+      || siblings.find((candidate) => candidate.id !== id);
+    registry.preferences.primaryRouteId = fallback?.id;
+  }
+  saveRegistryState(root, registry);
+  return route;
 }
 
 function requireReadyRoute(registry, id, predicate, label) {
@@ -260,13 +339,24 @@ function requireReadyRoute(registry, id, predicate, label) {
   return route;
 }
 
+export function cliRuntimeProviderId(routeId) {
+  const slug = String(routeId || "")
+    .replace(/^cli:/i, "")
+    .replace(/@\d+$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!slug) throw new Error(`CLI 路线 ${routeId} 无法生成 Harness provider id。`);
+  return `deepsee-cli-${slug}`;
+}
+
 export function updateRegistryPreferences(root, input) {
   const registry = loadRegistryState(root);
   const next = { ...registry.preferences };
   if (typeof input?.primaryRouteId === "string") {
     const id = input.primaryRouteId.trim();
     requireReadyRoute(registry, id, (route) => (
-      (route.source === "harness" || route.source === "api") && supportsTextOutput(route)
+      (route.source === "harness" || route.source === "api" || route.source === "cli") && supportsTextOutput(route)
     ), "主模型");
     next.primaryRouteId = id;
   }
@@ -289,7 +379,7 @@ export function applyPreferencesToHarness(root, dshHome) {
     route?.id === registry.preferences?.primaryRouteId
     && route.status === "ready"
     && route.enabled !== false
-    && (route.source === "harness" || route.source === "api")
+    && (route.source === "harness" || route.source === "api" || route.source === "cli")
     && supportsTextOutput(route)
   ));
   if (!primary) return null;
@@ -299,8 +389,10 @@ export function applyPreferencesToHarness(root, dshHome) {
   const settingsText = existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : "";
   const current = readModelSelection(settingsText);
   const target = {
-    provider: primary.runtimeProvider || primary.provider,
-    model: primary.runtimeModel || primary.model,
+    provider: primary.source === "cli" ? cliRuntimeProviderId(primary.id) : primary.runtimeProvider || primary.provider,
+    model: primary.source === "cli"
+      ? primary.cliModel || primary.cliModels?.[0] || primary.model
+      : primary.runtimeModel || primary.model,
     reasoningEffort: current?.reasoningEffort || state.previousModel?.reasoningEffort || "high",
   };
   writeFileSync(settingsPath, writeModelSelection(settingsText, {

@@ -73,6 +73,9 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(builder).toContain("resolveDeepSeeCodexExecutable");
     expect(builder).toContain('item?.id === "cli:codex"');
     expect(builder).toContain('route?.status === "ready"');
+    expect(builder).toContain("taskInput(request.prompt, spec.readImage");
+    expect(builder).toContain('inputs.push({ type: "image", url:');
+    expect(builder).toContain('const inject = ["attachments", "subagents", "subprocess"]');
   });
 
   it("does not start a companion admin server", () => {

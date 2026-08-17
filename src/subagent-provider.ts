@@ -15,6 +15,7 @@ export const DEEPSEE_SUBAGENT_PROVIDER = "opends";
 export function createDeepSeeSubagentProvider(
   ctx: Context,
   getRegistry: () => ModelRegistryFile,
+  inheritedGlobalMemory = "",
 ): SubagentProvider {
   return {
     name: DEEPSEE_SUBAGENT_PROVIDER,
@@ -59,8 +60,12 @@ export function createDeepSeeSubagentProvider(
         const { model: _routeId, provider: _provider, ...remainingOptions } = request.agentOptions || {};
         const selectedCliModel = cliRoute.cliModel?.trim();
         const { agentOptions: _originalOptions, ...baseRequest } = request;
+        const prompt = inheritedGlobalMemory
+          ? [{ type: "text" as const, text: inheritedGlobalMemory }, ...request.prompt]
+          : request.prompt;
         return runtime.start({
           ...baseRequest,
+          prompt,
           ...(Object.keys(remainingOptions).length > 0 || selectedCliModel
             ? { agentOptions: { ...remainingOptions, ...(selectedCliModel ? { model: selectedCliModel } : {}) } }
             : {}),
@@ -72,8 +77,12 @@ export function createDeepSeeSubagentProvider(
         throw new Error('DeepSee requires the built-in Harness "spawn" subagent provider.');
       }
       const agentOptions = resolveDeepSeeAgentOptions(registry, request.agentOptions);
+      const prompt = inheritedGlobalMemory
+        ? [{ type: "text" as const, text: inheritedGlobalMemory }, ...request.prompt]
+        : request.prompt;
       return spawn.start({
         ...request,
+        prompt,
         ...(agentOptions ? { agentOptions } : {}),
       });
     },
@@ -83,6 +92,7 @@ export function createDeepSeeSubagentProvider(
 export function installDeepSeeSubagentProvider(
   ctx: Context,
   getRegistry: () => ModelRegistryFile,
+  inheritedGlobalMemory = "",
 ): void {
-  ctx.subagents.registerProvider(createDeepSeeSubagentProvider(ctx, getRegistry));
+  ctx.subagents.registerProvider(createDeepSeeSubagentProvider(ctx, getRegistry, inheritedGlobalMemory));
 }

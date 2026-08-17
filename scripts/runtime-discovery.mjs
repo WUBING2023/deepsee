@@ -4,9 +4,10 @@ import { homedir } from "node:os";
 import { DEFAULT_DEEPSEEK_SELECTION, readBridgeState, readModelSelection } from "./model-selection.mjs";
 import { findExecutable } from "./runtime-locator.mjs";
 import { connectionToRoute, loadConnections } from "./model-connections.mjs";
-import { runtimeDefinitions, verifyRuntime } from "./runtime-health.mjs";
+import { runtimeDefinitions, verifyRuntime, verifyRuntimeVision } from "./runtime-health.mjs";
 import { discoverCodexModels } from "./cli-model-catalog.mjs";
 import { discoverDesktopApps, publicDesktopApps } from "./desktop-runtime.mjs";
+import { getManagedRuntimeExecutable } from "./runtime-manager.mjs";
 
 const LEGACY_STATE_FILES = [
   ".opends-models.json",
@@ -14,6 +15,8 @@ const LEGACY_STATE_FILES = [
   ".opends-bridge.json",
   ".opends-runtime-hub.json",
 ];
+const VISION_PROBE_CACHE_MS = 24 * 60 * 60 * 1000;
+const VISION_PROBE_VERSION = 1;
 
 export const WORKSPACE_INSTRUCTION_CANDIDATES = Object.freeze([
   "AGENTS.md",
@@ -105,6 +108,21 @@ function parseEnv(text) {
   return values;
 }
 
+function isPlaceholderCapability(value) {
+  const normalized = String(value || "").trim().toLowerCase().replaceAll(" ", "");
+  return /^(?:能力|任务|擅长|strength|capability|task)[-_]?\d+$/.test(normalized)
+    || ["能力", "任务", "擅长能力", "待补充", "未知能力"].includes(normalized);
+}
+
+function hasPlaceholderProfile(route) {
+  return (Array.isArray(route?.capabilities) && route.capabilities.some(isPlaceholderCapability))
+    || /能力\s*\d|任务\s*\d/i.test(String(route?.description || ""));
+}
+
+function isVisionCapabilityClaim(value) {
+  return /vision|image|visual|multimodal|视觉|图像|图片|识图|看图|扫描|ocr/i.test(String(value || ""));
+}
+
 function preserveUserFields(detected, previous) {
   if (!previous || typeof previous !== "object") return detected;
   const userDescription = previous.descriptionSource === "user";
@@ -114,16 +132,28 @@ function preserveUserFields(detected, previous) {
     && previous.capabilities.includes("vision");
   const verifiedProfile = previous.descriptionSource === "verified"
     && previous.profileStatus === "ready"
-    && !incompatibleVisionProfile;
+    && !incompatibleVisionProfile
+    && !hasPlaceholderProfile(previous);
   const preserveProfileStatus = userDescription || verifiedProfile;
+  const previousCapabilities = Array.isArray(previous.capabilities)
+    ? previous.capabilities.filter((capability) => detected.visionLevel === "full-vision" || (capability !== "vision" && !isVisionCapabilityClaim(capability)))
+    : [];
+  const previousRoles = Array.isArray(previous.roles)
+    ? previous.roles.filter((role) => !["vision", "document"].includes(role) || detected.visionLevel === "full-vision")
+    : [];
+  const previousDescription = typeof previous.description === "string"
+    ? (detected.visionLevel === "full-vision"
+        ? previous.description.trim()
+        : previous.description.split(/[、;；\n]/).map((part) => part.trim()).filter((part) => part && !isVisionCapabilityClaim(part)).join("、"))
+    : "";
   return {
     ...detected,
     enabled: detected.status === "ready" && (previous.status === "unavailable" || previous.enabled !== false),
-    ...((userDescription || verifiedProfile) && typeof previous.description === "string"
-      ? { description: previous.description, descriptionSource: previous.descriptionSource }
+    ...((userDescription || verifiedProfile) && previousDescription
+      ? { description: previousDescription, descriptionSource: previous.descriptionSource }
       : {}),
-    ...((userDescription || verifiedProfile) && Array.isArray(previous.roles) ? { roles: previous.roles } : {}),
-    ...((userDescription || verifiedProfile) && Array.isArray(previous.capabilities) ? { capabilities: previous.capabilities } : {}),
+    ...((userDescription || verifiedProfile) ? { roles: [...new Set([...(detected.roles || []), ...previousRoles])] } : {}),
+    ...((userDescription || verifiedProfile) ? { capabilities: [...new Set([...(detected.capabilities || []), ...previousCapabilities])] } : {}),
     ...(Array.isArray(previous.weaknesses) && previous.weaknesses.length > 0 ? { weaknesses: previous.weaknesses } : {}),
     ...(typeof previous.displayName === "string" && previous.displayName.trim() ? { displayName: previous.displayName.trim() } : {}),
     ...(detected.source !== "cli" && typeof previous.sourceLabel === "string" && previous.sourceLabel.trim()
@@ -133,6 +163,12 @@ function preserveUserFields(detected, previous) {
     ...((userDescription || verifiedProfile) && typeof previous.profiledAt === "string" ? { profiledAt: previous.profiledAt } : {}),
     ...(preserveProfileStatus && typeof previous.profileError === "string" ? { profileError: previous.profileError } : {}),
   };
+}
+
+function cliRuntimeId(route) {
+  if (route?.source !== "cli") return "";
+  if (typeof route.cliRuntimeId === "string" && route.cliRuntimeId.trim()) return route.cliRuntimeId.trim();
+  return String(route.id || "").replace(/@\d+$/, "");
 }
 
 export async function discoverDeepSeeRuntimes(options = {}) {
@@ -215,10 +251,13 @@ export async function discoverDeepSeeRuntimes(options = {}) {
   const runtimeCwd = options.cwd || process.cwd();
   for (const definition of runtimeDefinitions) {
     const desktopApp = desktopApps.find((app) => app.runtimeDefinitionId === definition.id);
-    const executable = findExecutable(definition.command, { env: options.env || process.env }) || desktopApp?.runtimeExecutable;
+    const executable = getManagedRuntimeExecutable(stateRoot, definition.id, { env: options.env || process.env })
+      || findExecutable(definition.command, { env: options.env || process.env })
+      || desktopApp?.runtimeExecutable;
     if (!executable) continue;
     const health = verifyRuntime(definition, executable, { cwd: runtimeCwd });
-    const previous = oldRoutes.get(definition.id);
+    const previousInstances = [...oldRoutes.values()].filter((route) => cliRuntimeId(route) === definition.id);
+    const previous = oldRoutes.get(definition.id) || previousInstances[0];
     let cliModels = Array.isArray(definition.cliModels) ? definition.cliModels : [];
     if (health.available && definition.id === "cli:codex") {
       try {
@@ -229,39 +268,129 @@ export async function discoverDeepSeeRuntimes(options = {}) {
     }
     const selectedCliModel = typeof previous?.cliModel === "string" && cliModels.includes(previous.cliModel)
       ? previous.cliModel
-      : "";
+      : cliModels[0] || "";
+    const visionProbeCache = new Map();
+    const resolveVisionHealth = (model, prior) => {
+      if (!health.available || definition.visionLevel !== "full-vision") {
+        return { available: false, reason: "", probedAt: undefined };
+      }
+      if (typeof definition.visionProbe !== "function") {
+        return { available: true, reason: "", probedAt: undefined };
+      }
+      const cacheKey = model || definition.model;
+      if (visionProbeCache.has(cacheKey)) return visionProbeCache.get(cacheKey);
+      const cacheAge = Date.now() - Date.parse(String(prior?.visionProbedAt || ""));
+      if (options.forceVisionProbe !== true
+        && prior?.visionProbeVersion === VISION_PROBE_VERSION
+        && prior?.visionProbeModel === cacheKey
+        && prior?.executable === executable
+        && Number.isFinite(cacheAge)
+        && cacheAge >= 0
+        && cacheAge < VISION_PROBE_CACHE_MS) {
+        const cached = {
+          available: prior.visionProbeReady === true,
+          reason: prior.visionProbeReady === true ? "" : (prior.visionStatusReason || "当前账号所选模型没有通过真实图片输入验证。"),
+          probedAt: prior.visionProbedAt,
+        };
+        visionProbeCache.set(cacheKey, cached);
+        return cached;
+      }
+      const probed = {
+        ...verifyRuntimeVision(definition, executable, cacheKey, { cwd: runtimeCwd }),
+        probedAt: now,
+      };
+      visionProbeCache.set(cacheKey, probed);
+      return probed;
+    };
+    const visionHealth = resolveVisionHealth(selectedCliModel, previous);
+    const visionLevel = visionHealth.available ? definition.visionLevel : "none";
+    const inputModalities = Array.isArray(definition.inputModalities)
+      ? definition.inputModalities.filter((modality) => modality !== "image" || visionHealth.available)
+      : undefined;
+    const capabilities = definition.capabilities.filter((capability) => capability !== "vision" || visionHealth.available);
     const route = {
       id: definition.id,
       source: "cli",
       provider: definition.provider,
       model: definition.model,
       ...(definition.runtimeProvider ? { runtimeProvider: definition.runtimeProvider } : {}),
+      cliRuntimeId: definition.id,
       enabled: health.available,
       status: health.available ? "ready" : "unavailable",
-      capabilities: definition.capabilities,
+      capabilities,
+      ...(inputModalities ? { inputModalities } : {}),
+      ...(Array.isArray(definition.outputModalities) ? { outputModalities: definition.outputModalities } : {}),
       weaknesses: definition.weaknesses || ["能力尚未验证"],
       roles: definition.roles,
       description: definition.description,
       descriptionSource: "inferred",
+      ...(definition.sourceLabel ? { sourceLabel: definition.sourceLabel } : {}),
       ...(desktopApp ? {
         desktopAppId: desktopApp.id,
         sourceLabel: definition.id === "cli:claude-code" ? `${desktopApp.name} + CLI` : desktopApp.name,
       } : {}),
-      visionLevel: "none",
+      visionLevel,
       profileStatus: health.available ? "pending" : "error",
       executable,
       ...(cliModels.length > 0 ? { cliModels } : {}),
       ...(selectedCliModel ? { cliModel: selectedCliModel } : {}),
       lastCheckedAt: now,
       ...(health.reason ? { statusReason: health.reason } : {}),
+      ...(typeof definition.visionProbe === "function" ? {
+        visionProbeVersion: VISION_PROBE_VERSION,
+        visionProbeModel: selectedCliModel || definition.model,
+        visionProbeReady: visionHealth.available,
+        visionProbedAt: visionHealth.probedAt,
+        ...(visionHealth.reason ? { visionStatusReason: visionHealth.reason } : {}),
+      } : {}),
     };
     routes.push(preserveUserFields(route, previous));
+    for (const instance of previousInstances) {
+      if (!instance || instance.id === definition.id) continue;
+      const instanceModel = typeof instance.cliModel === "string" ? instance.cliModel.trim() : "";
+      const modelAvailable = instanceModel && (cliModels.length === 0 || cliModels.includes(instanceModel));
+      const instanceVision = resolveVisionHealth(instanceModel, instance);
+      const instanceVisionLevel = instanceVision.available ? definition.visionLevel : "none";
+      const detectedInstance = {
+        ...route,
+        id: instance.id,
+        cliRuntimeId: definition.id,
+        ...(instanceModel ? { cliModel: instanceModel } : {}),
+        enabled: health.available && modelAvailable && instance.enabled !== false,
+        status: health.available && modelAvailable ? "ready" : "unavailable",
+        capabilities: definition.capabilities.filter((capability) => capability !== "vision" || instanceVision.available),
+        ...(Array.isArray(definition.inputModalities) ? {
+          inputModalities: definition.inputModalities.filter((modality) => modality !== "image" || instanceVision.available),
+        } : {}),
+        visionLevel: instanceVisionLevel,
+        ...(typeof definition.visionProbe === "function" ? {
+          visionProbeVersion: VISION_PROBE_VERSION,
+          visionProbeModel: instanceModel || definition.model,
+          visionProbeReady: instanceVision.available,
+          visionProbedAt: instanceVision.probedAt,
+          ...(instanceVision.reason ? { visionStatusReason: instanceVision.reason } : {}),
+        } : {}),
+        ...(!modelAvailable ? { statusReason: "该订阅模型已不在当前 Runtime 的可选列表中；可移除后重新添加。" } : {}),
+      };
+      routes.push(preserveUserFields(detectedInstance, instance));
+    }
   }
 
   const detectedIds = new Set(routes.map((route) => route.id));
   for (const previous of oldRoutes.values()) {
     if (previous.source === "harness" && !detectedIds.has(previous.id)) {
-      routes.push({ ...previous, lastCheckedAt: now });
+      routes.push(hasPlaceholderProfile(previous)
+        ? {
+            ...previous,
+            capabilities: Array.isArray(previous.capabilities) ? previous.capabilities.filter((value) => !isPlaceholderCapability(value)) : ["text"],
+            description: "正在让模型生成能力画像。",
+            descriptionSource: "inferred",
+            profileStatus: "pending",
+            profileError: undefined,
+            profiledAt: undefined,
+            lastCheckedAt: now,
+          }
+        : { ...previous, lastCheckedAt: now });
       detectedIds.add(previous.id);
       continue;
     }

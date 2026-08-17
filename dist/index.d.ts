@@ -11,7 +11,7 @@ import "@deepseek-ai/dsh-tools";
 import { type ModelRegistryFile, type ModelRouteOverride } from "./model-registry.js";
 import { type OCRTool } from "./ocr.js";
 export declare const name = "deepsee";
-export declare const inject: readonly ["attachments", "commands", "llm", "settings", "subagents", "subprocess", "systemPrompt", "tools"];
+export declare const inject: readonly ["agents", "attachments", "commands", "llm", "settings", "subagents", "subprocess", "systemPrompt", "tools"];
 export interface Config {
     enabled: boolean;
     provider: string;
@@ -42,5 +42,8 @@ export { applyRouteOverrides, defaultRoutes, loadRegistryFile, normalizeRegistry
 export { VisionBridgeAdapter } from "./vision-adapter.js";
 export { resolveDeepSeeAgentOptions } from "./subagent-router.js";
 export { installCapabilityProfiler, parseCapabilityProfile, requestCapabilityProfile } from "./capability-profiler.js";
+export { CliRuntimeAdapter, cliBasePrompt, cliRuntimeProviderId, installCliRuntimeAdapters } from "./cli-runtime-adapter.js";
+export { geminiArgv, installGeminiCliProvider, parseGeminiOutput } from "./gemini-cli-provider.js";
+export { installModelRouteTool, runModelRoute } from "./model-route-tool.js";
 export { describeImagesWithMinerU } from "./ocr.js";
 export { describeImagesWithLocalOCR } from "./ocr.js";

@@ -19,6 +19,8 @@ export interface ModelRoute {
     cliModels?: string[];
     /** User-selected CLI model; absence means the CLI's own default. */
     cliModel?: string;
+    /** Stable local Runtime id shared by all user-managed model instances. */
+    cliRuntimeId?: string;
     /** Installed desktop application associated with this executable route. */
     desktopAppId?: string;
     enabled: boolean;
@@ -46,6 +48,12 @@ export interface ModelRoute {
     catalogUpdatedAt?: string;
     /** Short user-facing explanation when startup verification did not pass. */
     statusReason?: string;
+    /** Cached, model-specific result of a real local Runtime image-input probe. */
+    visionProbeVersion?: number;
+    visionProbeModel?: string;
+    visionProbeReady?: boolean;
+    visionProbedAt?: string;
+    visionStatusReason?: string;
 }
 export interface ModelRegistryPreferences {
     primaryRouteId?: string;

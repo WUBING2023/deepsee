@@ -7,7 +7,7 @@ export const DEEPSEE_SUBAGENT_PROVIDER = "opends";
  * CLI routes go to their verified native provider. Every other child is
  * delegated to Harness' normal in-process spawn provider after route mapping.
  */
-export function createDeepSeeSubagentProvider(ctx, getRegistry) {
+export function createDeepSeeSubagentProvider(ctx, getRegistry, inheritedGlobalMemory = "") {
     return {
         name: DEEPSEE_SUBAGENT_PROVIDER,
         capabilities: {
@@ -49,8 +49,12 @@ export function createDeepSeeSubagentProvider(ctx, getRegistry) {
                 const { model: _routeId, provider: _provider, ...remainingOptions } = request.agentOptions || {};
                 const selectedCliModel = cliRoute.cliModel?.trim();
                 const { agentOptions: _originalOptions, ...baseRequest } = request;
+                const prompt = inheritedGlobalMemory
+                    ? [{ type: "text", text: inheritedGlobalMemory }, ...request.prompt]
+                    : request.prompt;
                 return runtime.start({
                     ...baseRequest,
+                    prompt,
                     ...(Object.keys(remainingOptions).length > 0 || selectedCliModel
                         ? { agentOptions: { ...remainingOptions, ...(selectedCliModel ? { model: selectedCliModel } : {}) } }
                         : {}),
@@ -61,13 +65,17 @@ export function createDeepSeeSubagentProvider(ctx, getRegistry) {
                 throw new Error('DeepSee requires the built-in Harness "spawn" subagent provider.');
             }
             const agentOptions = resolveDeepSeeAgentOptions(registry, request.agentOptions);
+            const prompt = inheritedGlobalMemory
+                ? [{ type: "text", text: inheritedGlobalMemory }, ...request.prompt]
+                : request.prompt;
             return spawn.start({
                 ...request,
+                prompt,
                 ...(agentOptions ? { agentOptions } : {}),
             });
         },
     };
 }
-export function installDeepSeeSubagentProvider(ctx, getRegistry) {
-    ctx.subagents.registerProvider(createDeepSeeSubagentProvider(ctx, getRegistry));
+export function installDeepSeeSubagentProvider(ctx, getRegistry, inheritedGlobalMemory = "") {
+    ctx.subagents.registerProvider(createDeepSeeSubagentProvider(ctx, getRegistry, inheritedGlobalMemory));
 }

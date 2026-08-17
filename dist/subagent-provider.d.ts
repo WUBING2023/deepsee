@@ -9,5 +9,5 @@ export declare const DEEPSEE_SUBAGENT_PROVIDER = "opends";
  * CLI routes go to their verified native provider. Every other child is
  * delegated to Harness' normal in-process spawn provider after route mapping.
  */
-export declare function createDeepSeeSubagentProvider(ctx: Context, getRegistry: () => ModelRegistryFile): SubagentProvider;
-export declare function installDeepSeeSubagentProvider(ctx: Context, getRegistry: () => ModelRegistryFile): void;
+export declare function createDeepSeeSubagentProvider(ctx: Context, getRegistry: () => ModelRegistryFile, inheritedGlobalMemory?: string): SubagentProvider;
+export declare function installDeepSeeSubagentProvider(ctx: Context, getRegistry: () => ModelRegistryFile, inheritedGlobalMemory?: string): void;

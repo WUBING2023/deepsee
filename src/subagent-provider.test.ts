@@ -23,6 +23,23 @@ const registry: ModelRegistryFile = {
       visionLevel: "none",
     },
     {
+      id: "cli:codex@2",
+      cliRuntimeId: "cli:codex",
+      source: "cli",
+      provider: "openai",
+      model: "codex-cli",
+      runtimeProvider: "codex",
+      cliModel: "gpt-5.6-terra",
+      enabled: true,
+      status: "ready",
+      capabilities: ["coding"],
+      weaknesses: [],
+      roles: ["coding"],
+      description: "Codex CLI Terra",
+      descriptionSource: "verified",
+      visionLevel: "none",
+    },
+    {
       id: "api:kimi:kimi-k3",
       source: "api",
       provider: "kimi",
@@ -94,6 +111,24 @@ describe("DeepSee Workflow subagent provider", () => {
       agentOptions: { model: "gpt-5.6-sol" },
     });
     expect(spawnStart).not.toHaveBeenCalled();
+  });
+
+  it("inherits global user memory into native CLI Workflow children", async () => {
+    const { ctx, codexStart } = testContext();
+    await createDeepSeeSubagentProvider(ctx, () => registry, "GLOBAL_MEMORY_SENTINEL").start(request("cli:codex") as never);
+
+    expect(codexStart.mock.calls[0]?.[0]).toMatchObject({
+      prompt: [
+        { type: "text", text: "GLOBAL_MEMORY_SENTINEL" },
+        { type: "text", text: "Do the task" },
+      ],
+    });
+  });
+
+  it("routes a second model instance from the same subscription independently", async () => {
+    const { ctx, codexStart } = testContext();
+    await createDeepSeeSubagentProvider(ctx, () => registry).start(request("cli:codex@2") as never);
+    expect(codexStart.mock.calls[0]?.[0]).toMatchObject({ agentOptions: { model: "gpt-5.6-terra" } });
   });
 
   it("maps API routes and delegates them to the normal Harness spawn provider", async () => {

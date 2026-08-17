@@ -7,6 +7,11 @@ export interface VisionAdapterConfig extends VisionBridgeConfig {
     cacheEntries: number;
 }
 export type VisionDescriber = (message: UserMessage, signal?: AbortSignal) => Promise<string>;
+export interface VisionAdapterSelection {
+    config: VisionAdapterConfig;
+    describer?: VisionDescriber;
+}
+export type VisionSelectionResolver = () => VisionAdapterSelection | Promise<VisionAdapterSelection>;
 type DelegatingRuntime = Pick<LlmRuntime, "listModels" | "resolveModelInfo" | "providerRetryPolicy" | "stream">;
 /**
  * A first-class Harness model route that advertises image input while keeping
@@ -18,8 +23,9 @@ export declare class VisionBridgeAdapter extends LlmAdapter {
     private readonly runtime;
     private readonly config;
     private readonly describer?;
+    private readonly resolveSelection?;
     private readonly cache;
-    constructor(ctx: Pick<Context, "llm">, runtime: DelegatingRuntime, config: VisionAdapterConfig, describer?: VisionDescriber | undefined);
+    constructor(ctx: Pick<Context, "llm">, runtime: DelegatingRuntime, config: VisionAdapterConfig, describer?: VisionDescriber | undefined, resolveSelection?: VisionSelectionResolver | undefined);
     providerInfo(provider: string): LlmProviderInfo;
     providerRetryPolicy(_provider: string): import("@deepseek-ai/dsh-llm").ResolvedRetryPolicy;
     listModels(provider: string): Promise<readonly LlmModelInfo[]>;

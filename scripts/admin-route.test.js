@@ -61,6 +61,7 @@ describe("embedded DeepSee Host route", () => {
     expect(state).toMatchObject({ version: 1, routes: [], preferences: {} });
     expect(state.tools.mineru).toBeTruthy();
     expect(state.tools.ocr.catalog.map((tool) => tool.id)).toEqual(["mineru", "paddleocr", "rapidocr"]);
+    expect(state.tools.runtimes.catalog.map((runtime) => runtime.id)).toEqual(["gemini"]);
     expect(state.update).toMatchObject({ currentVersion: manifest.version });
   });
 
@@ -78,6 +79,19 @@ describe("embedded DeepSee Host route", () => {
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ update: { status: "available", latestVersion: availableVersion } });
+  });
+
+  it("starts a managed Runtime install through the same-origin route", async () => {
+    const runtimeInstall = vi.fn((_root, id, installPath) => ({ id, installPath, status: "installing", progress: 3 }));
+    const base = await fixture({ runtimeInstall });
+    const response = await fetch(`${base}${DEEPSEE_API_PREFIX}/v1/runtimes/gemini/install`, {
+      method: "POST",
+      headers: { origin: base, "content-type": "application/json" },
+      body: JSON.stringify({ installPath: "C:\\DeepSee\\Runtimes\\gemini" }),
+    });
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({ runtime: { id: "gemini", status: "installing" } });
+    expect(runtimeInstall).toHaveBeenCalledWith(expect.any(String), "gemini", "C:\\DeepSee\\Runtimes\\gemini", expect.any(Object));
   });
 
   it("rejects cross-origin browser requests", async () => {

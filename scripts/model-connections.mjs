@@ -211,7 +211,7 @@ export function buildGeneratedPatch(root, env, outputPath) {
       providers.push({
         routeId,
         runtimeProvider: "opends-bridge",
-        displayName: "DeepSee External API",
+        displayName: "DeepSeek 深见 · 视觉引擎",
         apiKeyEnv: "OPENDS_BRIDGE_API_KEY",
         api: env.OPENDS_BRIDGE_API || "openai-completions",
         baseURL: env.OPENDS_BRIDGE_BASE_URL || "https://api.moonshot.cn/v1",
@@ -227,7 +227,7 @@ export function buildGeneratedPatch(root, env, outputPath) {
     providers.push({
       routeId,
       runtimeProvider: connection.runtimeProvider,
-      displayName: `DeepSee · ${connection.providerLabel}`,
+      displayName: `DeepSeek 深见 · ${connection.providerLabel}`,
       apiKeyEnv: connection.apiKeyEnv,
       api: connection.api,
       baseURL: connection.baseURL,
@@ -238,7 +238,7 @@ export function buildGeneratedPatch(root, env, outputPath) {
   const fallback = providers[0] || {
     routeId: "api:external:kimi-k3",
     runtimeProvider: "opends-bridge",
-    displayName: "DeepSee External API",
+    displayName: "DeepSeek 深见 · 视觉引擎",
     apiKeyEnv: "OPENDS_BRIDGE_API_KEY",
     api: "openai-completions",
     baseURL: "https://api.moonshot.cn/v1",
@@ -257,7 +257,7 @@ export function buildGeneratedPatch(root, env, outputPath) {
   ));
   const primaryProvider = preferredPrimary?.runtimeProvider || preferredPrimary?.provider || "deepseek-official";
   const codexAdapterReady = registry.routes.some((route) => (
-    route.id === "cli:codex"
+    (route.cliRuntimeId || String(route.id || "").replace(/@\d+$/, "")) === "cli:codex"
     && route.status === "ready"
     && route.enabled !== false
     && route.runtimeProvider === "codex"

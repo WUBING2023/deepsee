@@ -1,6 +1,6 @@
 {
   "name": "@wubing2023/deepsee",
-  "version": "0.6.0-alpha.14",
+  "version": "0.6.0-alpha.24",
   "description": "DeepSee — one-command vision and model-routing plugin for DeepSeek Harness",
   "license": "MIT",
   "repository": {
@@ -97,7 +97,7 @@
     "bridge:enable": "node ./scripts/bridge-state.mjs enable",
     "bridge:disable": "node ./scripts/bridge-state.mjs disable",
     "bridge:status": "node ./scripts/bridge-state.mjs status",
-    "install:plugin": "pnpm run build:plugin && node ./scripts/install-plugin.mjs --local",
+    "install:plugin": "pnpm run build:plugin && node ./scripts/install-plugin.mjs --local --force",
     "uninstall:plugin": "node ./scripts/uninstall-plugin.mjs --local",
     "dump-config": "pnpm run build:plugin && node ./host/bin.mjs --local-home --profile headless --dump-config",
     "start:web": "pnpm run build:plugin && node ./host/bin.mjs --local-home web",

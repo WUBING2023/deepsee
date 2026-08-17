@@ -45,8 +45,8 @@ Already have DeepSeek Harness configured? DeepSee reuses its providers, model ID
 | Capability | What it feels like |
 | --- | --- |
 | **Vision that actually runs** | Attach an image and DeepSee sends it to a selected multimodal model, MinerU, PaddleOCR, or RapidOCR, then returns the observation to DeepSeek. |
-| **One model directory** | Harness API models and verified local CLIs appear in one compact matrix with their availability and strengths. |
-| **Fast initialization** | The first ready visual model is selected automatically; Codex/Claude Desktop or CLI and existing `AGENTS.md`, `CLAUDE.md`, or `agent.md` instructions are reused. |
+| **One model directory** | The directory stays visible and groups models by API provider, Harness provider, local CLI, or desktop runtime. A verified subscription starts with one model; users can add, replace, disable, or remove additional model instances under the same source. |
+| **Fast initialization** | The first ready visual model is selected automatically; Harness loads project instructions natively, while global Claude/Codex `AGENTS.md`, `CLAUDE.md`, or `agent.md` files are inherited read-only by base sessions and Workflow. |
 | **Native configuration** | The plugin lives in the Harness sidebar and uses same-origin routes. Models and credentials remain owned by Harness. |
 
 ### Vision: model or OCR
@@ -65,8 +65,9 @@ DeepSee scans the machine at startup, verifies what can really run, and keeps un
 | Route | Discovered | Executable from DeepSee | Notes |
 | --- | :---: | :---: | --- |
 | Harness / API models | Yes | Yes | Uses native providers, model settings, and subagents. |
-| Codex Desktop / CLI | Yes | Yes | Reuses the verified bundled App Server or CLI; supported model variants are selectable. |
-| Claude Desktop + Claude Code | Yes | Yes when CLI is verified | Desktop-only installs can be opened from DeepSee; automatic Workflow execution still requires Claude Code CLI. |
+| Codex Desktop / CLI | Yes | Yes | Reuses the verified bundled App Server or CLI; several supported variants can be enabled as independent base/Workflow routes. |
+| Claude Desktop + Claude Code | Yes | Yes when CLI is verified | Sonnet, Opus, Haiku, or Fable can be managed independently under one verified subscription; automatic Workflow execution still requires Claude Code CLI. |
+| Gemini CLI | Yes; install from the model-directory `+` when missing | Yes after install and restart | Pick an isolated install path. DeepSee tries the official stable npm package, then Google's GitHub Release bundle. One model starts enabled; Auto, Pro, Flash, and Flash-Lite can be added independently. |
 | Kimi CLI, OpenCode, Ollama | Yes | Not yet | Shown for honest discovery, but not exposed as runnable routes without a stable Harness adapter. |
 | MinerU / PaddleOCR / RapidOCR | Yes | OCR only | Visual tools in Preferences, not general-purpose models in the matrix. |
 
@@ -74,7 +75,7 @@ DeepSee scans the machine at startup, verifies what can really run, and keeps un
 
 - `/workflow <task>` explicitly starts a visible Harness Workflow.
 - Prime leaves small tasks in the normal Loop and selects Workflow for genuinely independent workstreams, cross-capability roles, or an approved Workflow plan.
-- Harness/API models run through native `spawn` subagents. Codex and Claude Code run through their verified CLI providers.
+- Harness/API models run through native `spawn` subagents. Codex, Claude Code, and Gemini CLI run through their verified CLI providers.
 - The `opends_list_models` tool lets the main model inspect available routes by vision, coding, writing, reasoning, document, or review capability.
 
 ```mermaid
@@ -94,6 +95,7 @@ flowchart LR
 - Stores mutable state under `$DSH_HOME/deepsee`, outside the package directory, so upgrades and uninstall preserve user choices.
 - Generates the `prime` preset from the installed Harness standard preset instead of patching an official preset.
 - Reads provider metadata and credential references, never raw API keys.
+- Reads global instructions only from conventional locations; their text never enters browser state, bounded per-file and total limits apply, and the current explicit request always wins.
 
 [Architecture and extension points →](docs/ARCHITECTURE.md)
 
