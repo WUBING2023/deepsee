@@ -26,8 +26,11 @@ describe("managed Runtime installation state", () => {
     const root = mkdtempSync(join(tmpdir(), "deepsee-runtime-"));
     const installPath = join(root, "gemini");
     mkdirSync(installPath);
-    const executable = join(installPath, "gemini.cmd");
-    writeFileSync(executable, "@echo off\r\n", "utf8");
+    const executable = process.platform === "win32"
+      ? join(installPath, "gemini.cmd")
+      : join(installPath, "bin", "gemini");
+    mkdirSync(join(installPath, "bin"), { recursive: true });
+    writeFileSync(executable, process.platform === "win32" ? "@echo off\r\n" : "#!/bin/sh\n", "utf8");
     writeFileSync(join(installPath, ".deepsee-runtime.json"), JSON.stringify({ id: "gemini" }), "utf8");
     writeManagedRuntimeState(root, "gemini", { status: "ready", installPath, executable, progress: 100 });
 
