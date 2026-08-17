@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { modelCapabilityDefaults } from "./model-capability-catalog.mjs";
 import { readBridgeState, readModelSelection, writeModelSelection } from "./model-selection.mjs";
 
 export const REGISTRY_FILE = ".opends-models.json";
@@ -13,34 +14,73 @@ function text(value, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-function pendingCapabilities(model) {
-  const description = text(model?.description).toLowerCase();
-  const capabilities = ["text"];
-  if (model?.reasoning || /reason|推理/.test(description)) capabilities.push("reasoning");
-  if (/vision|image|multimodal|视觉|图像|多模态/.test(description)) capabilities.push("vision");
-  return [...new Set(capabilities)];
+function modalityList(model, direction) {
+  const candidates = direction === "input"
+    ? [model?.inputModalities, model?.input_modalities, model?.modalities?.input]
+    : [model?.outputModalities, model?.output_modalities, model?.modalities?.output];
+  const value = candidates.find(Array.isArray);
+  return Array.isArray(value) ? stringList(value) : undefined;
 }
 
-function pendingRoles(capabilities) {
+function pendingCapabilities(model, defaults) {
+  const description = text(model?.description).toLowerCase();
+  const inputModalities = modalityList(model, "input");
+  const outputModalities = modalityList(model, "output");
+  const capabilities = [...(defaults?.capabilities || []), "text"];
+  if (model?.reasoning || /reason|推理/.test(description)) capabilities.push("reasoning");
+  if (model?.toolCall || model?.tool_call || model?.supportsTools || model?.supports_tools) capabilities.push("tools");
+  if (inputModalities?.includes("image")) capabilities.push("vision");
+  if (outputModalities?.includes("image")) capabilities.push("image-generation");
+  if (inputModalities?.includes("audio")) capabilities.push("audio-input");
+  if (inputModalities?.includes("video")) capabilities.push("video-input");
+  if (outputModalities?.includes("audio")) capabilities.push("audio-generation");
+  if (outputModalities?.includes("video")) capabilities.push("video-generation");
+  if (!inputModalities && /vision|image understanding|multimodal|视觉|图像理解|多模态/.test(description)) capabilities.push("vision");
+  if (!outputModalities && /image generation|text.to.image|图像生成|生图/.test(description)) capabilities.push("image-generation");
+  const normalized = [...new Set(capabilities)];
+  if (inputModalities && !inputModalities.includes("image")) {
+    return normalized.filter((capability) => capability !== "vision");
+  }
+  if (outputModalities && !outputModalities.includes("image")) {
+    return normalized.filter((capability) => capability !== "image-generation");
+  }
+  return normalized;
+}
+
+function pendingRoles(capabilities, outputModalities) {
+  const textOutput = !Array.isArray(outputModalities)
+    || outputModalities.length === 0
+    || outputModalities.includes("text");
   return [...new Set([
-    "executor",
+    ...(textOutput ? ["executor"] : []),
     ...(capabilities.includes("reasoning") ? ["reasoning", "review"] : []),
+    ...(capabilities.includes("coding") ? ["coding"] : []),
     ...(capabilities.includes("vision") ? ["vision", "document"] : []),
+    ...(capabilities.includes("image-generation") ? ["image-generation", "design"] : []),
+    ...(capabilities.includes("writing") ? ["writing"] : []),
   ])];
+}
+
+function supportsTextOutput(route) {
+  if (!route) return false;
+  return !Array.isArray(route.outputModalities)
+    || route.outputModalities.length === 0
+    || route.outputModalities.includes("text");
 }
 
 export function loadRegistryState(root) {
   const path = join(root, REGISTRY_FILE);
-  if (!existsSync(path)) return { version: 1, routes: [], preferences: {} };
+  if (!existsSync(path)) return { version: 1, routes: [], desktopApps: [], preferences: {} };
   try {
     const value = JSON.parse(readFileSync(path, "utf8"));
     return {
       version: 1,
       routes: Array.isArray(value?.routes) ? value.routes : [],
+      desktopApps: Array.isArray(value?.desktopApps) ? value.desktopApps : [],
       preferences: value?.preferences && typeof value.preferences === "object" ? value.preferences : {},
     };
   } catch {
-    return { version: 1, routes: [], preferences: {} };
+    return { version: 1, routes: [], desktopApps: [], preferences: {} };
   }
 }
 
@@ -49,6 +89,7 @@ export function saveRegistryState(root, registry) {
   writeFileSync(path, `${JSON.stringify({
     version: 1,
     routes: Array.isArray(registry.routes) ? registry.routes : [],
+    desktopApps: Array.isArray(registry.desktopApps) ? registry.desktopApps : [],
     preferences: registry.preferences && typeof registry.preferences === "object" ? registry.preferences : {},
   }, null, 2)}\n`, "utf8");
 }
@@ -80,9 +121,18 @@ export function syncHarnessModels(root, input) {
       if (!modelId) continue;
       const id = `harness:${provider}:${modelId}`;
       const current = previous.get(id);
-      const keepProfile = current?.descriptionSource === "user"
-        || (current?.descriptionSource === "verified" && current?.profileStatus === "ready");
-      const capabilities = keepProfile ? stringList(current.capabilities) : pendingCapabilities(model);
+      const userProfile = current?.descriptionSource === "user";
+      const verifiedProfile = current?.descriptionSource === "verified" && current?.profileStatus === "ready";
+      const keepProfile = userProfile || verifiedProfile;
+      const defaults = modelCapabilityDefaults(root, provider, modelId);
+      const inputModalities = modalityList(model, "input") || defaults?.inputModalities;
+      const outputModalities = modalityList(model, "output") || defaults?.outputModalities;
+      const inferredCapabilities = pendingCapabilities(model, defaults);
+      const capabilities = userProfile
+        ? stringList(current.capabilities)
+        : (verifiedProfile
+          ? [...new Set([...stringList(current.capabilities), ...inferredCapabilities])]
+          : inferredCapabilities);
       const route = {
         id,
         source: "harness",
@@ -94,18 +144,34 @@ export function syncHarnessModels(root, input) {
         runtimeModel: modelId,
         enabled: current?.enabled !== false,
         status: "ready",
+        ...(inputModalities ? { inputModalities } : {}),
+        ...(outputModalities ? { outputModalities } : {}),
         capabilities,
         weaknesses: keepProfile ? stringList(current.weaknesses) : [],
-        roles: keepProfile ? stringList(current.roles) : pendingRoles(capabilities),
-        description: keepProfile ? text(current.description) : text(model?.description, "正在让模型生成能力画像。"),
+        roles: userProfile
+          ? stringList(current.roles)
+          : (verifiedProfile
+            ? [...new Set([...stringList(current.roles), ...pendingRoles(capabilities, outputModalities)])]
+            : pendingRoles(capabilities, outputModalities)),
+        description: keepProfile
+          ? text(current.description)
+          : text(model?.description, defaults?.description || "正在让模型生成能力画像。"),
         descriptionSource: keepProfile ? current.descriptionSource : "inferred",
-        visionLevel: keepProfile
+        visionLevel: userProfile
           ? (current.visionLevel === "full-vision" ? "full-vision" : "none")
           : (capabilities.includes("vision") ? "full-vision" : "none"),
         profileStatus: keepProfile
           ? (current.profileStatus || "ready")
-          : (current?.profileStatus === "error" && input?.retryProfiles !== true ? "error" : "pending"),
+          : (supportsTextOutput({ outputModalities })
+            ? (current?.profileStatus === "error" && input?.retryProfiles !== true ? "error" : "pending")
+            : "ready"),
         ...(keepProfile && typeof current.profiledAt === "string" ? { profiledAt: current.profiledAt } : {}),
+        ...(defaults ? {
+          catalogModelId: defaults.catalogModelId,
+          catalogSource: defaults.catalogSource,
+          catalogSourceUrl: defaults.catalogSourceUrl,
+          catalogUpdatedAt: defaults.catalogUpdatedAt,
+        } : {}),
         ...(current?.profileStatus === "error" && input?.retryProfiles !== true && typeof current.profileError === "string" ? { profileError: current.profileError } : {}),
         lastCheckedAt: now,
       };
@@ -124,6 +190,27 @@ export function syncHarnessModels(root, input) {
     ...registry.routes.filter((route) => route?.source !== "harness"),
     ...harnessRoutes,
   ];
+  const ready = (id) => registry.routes.find((route) => (
+    route?.id === id && route.status === "ready" && route.enabled !== false
+  ));
+  if (!supportsTextOutput(ready(registry.preferences?.primaryRouteId))) {
+    const primary = registry.routes.find((route) => (
+      route?.status === "ready"
+      && route.enabled !== false
+      && (route.source === "harness" || route.source === "api")
+      && supportsTextOutput(route)
+    ));
+    if (primary) registry.preferences.primaryRouteId = primary.id;
+  }
+  if (ready(registry.preferences?.visionRouteId)?.visionLevel !== "full-vision") {
+    const vision = registry.routes.find((route) => (
+      route?.status === "ready" && route.enabled !== false && route.visionLevel === "full-vision"
+    ));
+    if (vision) {
+      registry.preferences.visionRouteId = vision.id;
+      registry.preferences.visionMode = "model";
+    }
+  }
   saveRegistryState(root, registry);
   return { state: publicRegistryState(root), synced: harnessRoutes.length };
 }
@@ -178,7 +265,9 @@ export function updateRegistryPreferences(root, input) {
   const next = { ...registry.preferences };
   if (typeof input?.primaryRouteId === "string") {
     const id = input.primaryRouteId.trim();
-    requireReadyRoute(registry, id, (route) => route.source === "harness" || route.source === "api", "主模型");
+    requireReadyRoute(registry, id, (route) => (
+      (route.source === "harness" || route.source === "api") && supportsTextOutput(route)
+    ), "主模型");
     next.primaryRouteId = id;
   }
   if (typeof input?.visionRouteId === "string") {
@@ -187,7 +276,7 @@ export function updateRegistryPreferences(root, input) {
     next.visionRouteId = id;
   }
   if (input?.visionMode === "model" || input?.visionMode === "ocr") next.visionMode = input.visionMode;
-  if (input?.ocrTool === "mineru") next.ocrTool = input.ocrTool;
+  if (["mineru", "paddleocr", "rapidocr"].includes(input?.ocrTool)) next.ocrTool = input.ocrTool;
   if (typeof input?.primeAutoWorkflow === "boolean") next.primeAutoWorkflow = input.primeAutoWorkflow;
   registry.preferences = next;
   saveRegistryState(root, registry);
@@ -201,6 +290,7 @@ export function applyPreferencesToHarness(root, dshHome) {
     && route.status === "ready"
     && route.enabled !== false
     && (route.source === "harness" || route.source === "api")
+    && supportsTextOutput(route)
   ));
   if (!primary) return null;
   const settingsPath = join(dshHome, "settings.yaml");

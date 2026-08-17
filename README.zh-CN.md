@@ -18,7 +18,7 @@ DeepSee 是 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) 
 它不会另造一套产品：仍然使用原来的 Web 界面、模型设置，以及 Harness 自带的 Loop、Goal、Plan 和 Workflow。没有第二个控制台，没有伴随服务，也不需要重复填写 API Key。
 
 > [!IMPORTANT]
-> DeepSee 目前处于 Alpha 阶段，目标版本为 DeepSeek Harness `0.1.0-rc.6`。视觉路线、模型目录、Codex/Claude CLI 适配、一键安装与升级流程已经实现；Runtime 支持会保持谨慎，真实边界见下文。
+> DeepSee 目前处于 Alpha 阶段，目标版本为 DeepSeek Harness `0.1.0-rc.6`。视觉路线、模型目录、Codex/Claude 桌面端与 CLI 适配、一键安装与升级流程已经实现；Runtime 支持会保持谨慎，真实边界见下文。
 
 ## 一行安装
 
@@ -44,9 +44,9 @@ npx --yes github:WUBING2023/deepsee web
 
 | 能力 | 实际体验 |
 | --- | --- |
-| **真正可执行的识图** | 上传图片后，DeepSee 会交给选定的多模态模型或 MinerU OCR，再把观察结果交回 DeepSeek。对话中会标明真正的视觉读取者。 |
+| **真正可执行的识图** | 上传图片后，DeepSee 会交给选定的多模态模型，或 MinerU、PaddleOCR、RapidOCR，再把观察结果交回 DeepSeek。 |
 | **统一模型目录** | Harness API 模型与通过验证的本地 CLI 会出现在同一个简洁矩阵中，显示可用性和擅长能力。 |
-| **轻量任务路由** | `/workflow` 与 Prime 可以按能力选择模型，而不是让基模包办所有步骤。 |
+| **快速初始化** | 自动选择首个可用视觉模型，并沿用 Codex/Claude 桌面端或 CLI 与已有 `AGENTS.md`、`CLAUDE.md` 或 `agent.md` 指令。 |
 | **原生配置体验** | 插件就在 Harness 侧栏内，通过同源接口工作；模型和凭据仍归 Harness 管理。 |
 
 ### 视觉：模型或 OCR
@@ -54,21 +54,21 @@ npx --yes github:WUBING2023/deepsee web
 在 DeepSee 首选项中选择一种读取方式：
 
 - **模型**：选择 Harness 中确认支持图片输入的模型。
-- **OCR**：使用 MinerU 读取文档文字与版面。DeepSee 可按需尝试已有环境、`uv`、Python + `venv`、校验过的便携 UV，最后再尝试源码 ZIP。
+- **OCR**：在三种隔离、可安装、可卸载的本地引擎中选择。MinerU 适合复杂 PDF、表格与公式；PaddleOCR 适合多语言图片和扫描件；RapidOCR 适合截图、票据与低资源 CPU。开始下载时界面会临时显示这行对比。系统已有安装不会被 DeepSee 删除。
 
 视觉路线完成读取后，DeepSeek 会拿到观察结果并继续正常对话。纯文本模型不会再被界面伪装成“已经看过图片”。
 
 ### 模型目录与本地 Runtime
 
-DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验证的路线保持可用。能力描述可以通过一条很短的模型请求自动生成，也可以由用户修正。
+DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验证的路线保持可用。能力默认值来自 Harness 实际模态和 [Models.dev](https://models.dev/) 的结构化目录，再通过一条很短的模型请求补充擅长方向；用户修正始终优先。[了解能力初始化与数据来源 →](docs/MODEL_CAPABILITIES.zh-CN.md)
 
 | 路线 | 可发现 | 可由 DeepSee 执行 | 说明 |
 | --- | :---: | :---: | --- |
 | Harness / API 模型 | 是 | 是 | 复用原生供应商、模型设置和子 Agent。 |
-| Codex CLI | 是 | 是 | 验证登录与适配器，可选择支持的模型档位。 |
-| Claude Code | 是 | 是 | 验证登录与适配器，可选择支持的模型档位。 |
+| Codex Desktop / CLI | 是 | 是 | 复用验证通过的内置 App Server 或 CLI，可选择支持的模型档位。 |
+| Claude Desktop + Claude Code | 是 | CLI 验证后可用 | 只有桌面端时可从 DeepSee 打开；自动 Workflow 仍需要 Claude Code CLI。 |
 | Kimi CLI、OpenCode、Ollama | 是 | 暂不支持 | 会如实显示扫描结果；没有稳定 Harness 适配器时不会伪装成可执行路线。 |
-| MinerU | 是 | 仅 OCR | 位于首选项中的视觉工具，不混入通用模型矩阵。 |
+| MinerU / PaddleOCR / RapidOCR | 是 | 仅 OCR | 位于首选项中的视觉工具，不混入通用模型矩阵。 |
 
 ### Workflow 与 Prime
 
@@ -81,7 +81,7 @@ DeepSee 在启动时扫描本机，只让真正通过执行、登录和适配验
 flowchart LR
     U["用户"] --> H["DeepSeek Harness"]
     H --> D["DeepSee"]
-    D -->|"图片"| V["视觉模型或 MinerU"]
+    D -->|"图片"| V["视觉模型或本地 OCR"]
     D -->|"任务"| R["Harness API、Codex 或 Claude"]
     V -->|"观察结果"| H
     R -->|"执行结果"| H

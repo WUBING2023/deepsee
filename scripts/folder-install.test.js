@@ -18,7 +18,7 @@ function createPackage() {
   const manifest = {
     name: "@wubing2023/deepsee",
     version: "0.6.0-test.1",
-    files: ["dist", "scripts/*.mjs", "README.md"],
+    files: ["dist", "scripts/*.mjs", "scripts/*.py", "README.md"],
   };
   mkdirSync(join(root, "dist"), { recursive: true });
   mkdirSync(join(root, "scripts"), { recursive: true });
@@ -26,6 +26,7 @@ function createPackage() {
   writeFileSync(join(root, "dist", "index.js"), "export {};\n");
   writeFileSync(join(root, "scripts", "cli.mjs"), "#!/usr/bin/env node\n");
   writeFileSync(join(root, "scripts", "install-policy.mjs"), "export {};\n");
+  writeFileSync(join(root, "scripts", "ocr-runner.py"), "print('ok')\n");
   writeFileSync(join(root, "README.md"), "# DeepSee\n");
   return { root, manifest };
 }
@@ -41,6 +42,7 @@ describe("extracted ZIP staging", () => {
     expect(relative(dshHome, target)).toBe(join("deepsee", "packages", source.manifest.version));
     expect(existsSync(join(target, "dist", "index.js"))).toBe(true);
     expect(existsSync(join(target, "scripts", "cli.mjs"))).toBe(true);
+    expect(existsSync(join(target, "scripts", "ocr-runner.py"))).toBe(true);
     expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8"))).toMatchObject({
       name: source.manifest.name,
       version: source.manifest.version,
@@ -63,6 +65,19 @@ describe("extracted ZIP staging", () => {
     const nextManifest = { ...source.manifest, version: "0.6.0-test.2" };
     writeFileSync(join(source.root, "package.json"), JSON.stringify(nextManifest));
     expect(() => stageFolderPackage(source.root, dshHome, nextManifest)).toThrow("complete prebuilt DeepSee package");
+  });
+
+  it("atomically refreshes a complete same-version stage when requested", () => {
+    const source = createPackage();
+    const dshHome = mkdtempSync(join(tmpdir(), "deepsee-folder-home-"));
+    temporaryRoots.push(dshHome);
+    const target = stageFolderPackage(source.root, dshHome, source.manifest);
+    writeFileSync(join(target, "stage-marker.txt"), "stale");
+    writeFileSync(join(source.root, "dist", "index.js"), "export const refreshed = true;\n");
+
+    expect(stageFolderPackage(source.root, dshHome, source.manifest, { replace: true })).toBe(target);
+    expect(existsSync(join(target, "stage-marker.txt"))).toBe(false);
+    expect(readFileSync(join(target, "dist", "index.js"), "utf8")).toContain("refreshed = true");
   });
 
   it("refuses a manifest version that could escape DSH_HOME", () => {

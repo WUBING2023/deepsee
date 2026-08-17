@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, isAbsolute, join } from "node:path";
 import z from "@deepseek-ai/schemastery";
 import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
 import { NO_START_CAPABILITIES, assertPositiveFinite, resolveChildCwd, settleRunResult, subprocessRunHandle } from "@deepseek-ai/dsh-subagent";
@@ -341,20 +344,22 @@ const DEFAULT_DISPOSE_GRACE_MS = 3e3;
 * @param platform - host platform used to select the executable boundary.
 * @returns argv for the fixed Codex app-server command.
 */
+function resolveDeepSeeCodexExecutable() {
+	const dshHome = process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || homedir(), ".dsh");
+	const registryPath = process.env.OPENDS_MODEL_REGISTRY_FILE || join(dshHome, "deepsee", ".opends-models.json");
+	try {
+		const registry = JSON.parse(readFileSync(registryPath, "utf8"));
+		const route = Array.isArray(registry.routes) ? registry.routes.find((item) => item?.id === "cli:codex") : undefined;
+		const executable = typeof route?.executable === "string" ? route.executable : "";
+		const name = basename(executable).toLowerCase();
+		if (route?.status === "ready" && route?.enabled !== false && isAbsolute(executable) && existsSync(executable) && ["codex", "codex.exe", "codex.cmd"].includes(name)) return executable;
+	} catch {}
+	return "codex";
+}
 function codexAppServerArgv(platform = process.platform) {
-	return platform === "win32" ? [
-		"cmd.exe",
-		"/d",
-		"/s",
-		"/c",
-		"codex",
-		"app-server",
-		"--stdio"
-	] : [
-		"codex",
-		"app-server",
-		"--stdio"
-	];
+	const command = resolveDeepSeeCodexExecutable();
+	if (platform !== "win32" || (isAbsolute(command) && command.toLowerCase().endsWith(".exe"))) return [command, "app-server", "--stdio"];
+	return ["cmd.exe", "/d", "/s", "/c", command, "app-server", "--stdio"];
 }
 function thrown(value) {
 	/* v8 ignore next -- typed subprocess/wire failures reject with Error. */

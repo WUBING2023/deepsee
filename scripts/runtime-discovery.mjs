@@ -1,11 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { homedir } from "node:os";
 import { DEFAULT_DEEPSEEK_SELECTION, readBridgeState, readModelSelection } from "./model-selection.mjs";
 import { findExecutable } from "./runtime-locator.mjs";
 import { connectionToRoute, loadConnections } from "./model-connections.mjs";
 import { runtimeDefinitions, verifyRuntime } from "./runtime-health.mjs";
 import { discoverCodexModels } from "./cli-model-catalog.mjs";
+import { discoverDesktopApps, publicDesktopApps } from "./desktop-runtime.mjs";
 
 const LEGACY_STATE_FILES = [
   ".opends-models.json",
@@ -13,6 +14,52 @@ const LEGACY_STATE_FILES = [
   ".opends-bridge.json",
   ".opends-runtime-hub.json",
 ];
+
+export const WORKSPACE_INSTRUCTION_CANDIDATES = Object.freeze([
+  "AGENTS.md",
+  "CLAUDE.md",
+  "agent.md",
+  "AGENTS.local.md",
+  "CLAUDE.local.md",
+  "agent.local.md",
+]);
+
+export function discoverWorkspaceInstructions(cwd = process.cwd()) {
+  const workspace = resolve(cwd);
+  let projectRoot = workspace;
+  while (dirname(projectRoot) !== projectRoot && !existsSync(join(projectRoot, ".git"))) {
+    projectRoot = dirname(projectRoot);
+  }
+  if (!existsSync(join(projectRoot, ".git"))) projectRoot = workspace;
+  const directories = [];
+  for (let directory = workspace; ; directory = dirname(directory)) {
+    directories.unshift(directory);
+    if (directory === projectRoot || dirname(directory) === directory) break;
+  }
+  const files = [];
+  for (const directory of directories) {
+    for (const name of WORKSPACE_INSTRUCTION_CANDIDATES) {
+      const path = join(directory, name);
+      try {
+        const details = statSync(path);
+        if (!details.isFile() || details.size === 0 || details.size > 1024 * 1024) continue;
+        files.push({
+          name,
+          path: relative(projectRoot, path).replaceAll("\\", "/") || name,
+          scope: relative(projectRoot, directory).replaceAll("\\", "/") || ".",
+          local: name.toLowerCase().includes(".local."),
+        });
+      } catch {
+        // Missing, inaccessible, and transient files stay out of the public summary.
+      }
+    }
+  }
+  return {
+    projectRoot: projectRoot === workspace ? "." : relative(workspace, projectRoot).replaceAll("\\", "/") || ".",
+    files,
+    active: files.length > 0,
+  };
+}
 
 function defaultDshHome(env = process.env) {
   return resolve(env.DSH_HOME || join(homedir(), ".dsh"));
@@ -79,7 +126,9 @@ function preserveUserFields(detected, previous) {
     ...((userDescription || verifiedProfile) && Array.isArray(previous.capabilities) ? { capabilities: previous.capabilities } : {}),
     ...(Array.isArray(previous.weaknesses) && previous.weaknesses.length > 0 ? { weaknesses: previous.weaknesses } : {}),
     ...(typeof previous.displayName === "string" && previous.displayName.trim() ? { displayName: previous.displayName.trim() } : {}),
-    ...(typeof previous.sourceLabel === "string" && previous.sourceLabel.trim() ? { sourceLabel: previous.sourceLabel.trim() } : {}),
+    ...(detected.source !== "cli" && typeof previous.sourceLabel === "string" && previous.sourceLabel.trim()
+      ? { sourceLabel: previous.sourceLabel.trim() }
+      : {}),
     ...(preserveProfileStatus && typeof previous.profileStatus === "string" ? { profileStatus: previous.profileStatus } : {}),
     ...((userDescription || verifiedProfile) && typeof previous.profiledAt === "string" ? { profiledAt: previous.profiledAt } : {}),
     ...(preserveProfileStatus && typeof previous.profileError === "string" ? { profileError: previous.profileError } : {}),
@@ -96,6 +145,9 @@ export async function discoverDeepSeeRuntimes(options = {}) {
   const existing = readJson(registryFile, { version: 1, routes: [], preferences: {} });
   const oldRoutes = new Map((Array.isArray(existing.routes) ? existing.routes : []).map((route) => [route.id, route]));
   const routes = [];
+  const desktopApps = Array.isArray(options.desktopApps)
+    ? options.desktopApps
+    : discoverDesktopApps({ env: options.env || process.env });
 
   const settingsPath = join(dshHome, "settings.yaml");
   const settings = existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : "";
@@ -162,7 +214,8 @@ export async function discoverDeepSeeRuntimes(options = {}) {
 
   const runtimeCwd = options.cwd || process.cwd();
   for (const definition of runtimeDefinitions) {
-    const executable = findExecutable(definition.command, { env: options.env || process.env });
+    const desktopApp = desktopApps.find((app) => app.runtimeDefinitionId === definition.id);
+    const executable = findExecutable(definition.command, { env: options.env || process.env }) || desktopApp?.runtimeExecutable;
     if (!executable) continue;
     const health = verifyRuntime(definition, executable, { cwd: runtimeCwd });
     const previous = oldRoutes.get(definition.id);
@@ -190,6 +243,10 @@ export async function discoverDeepSeeRuntimes(options = {}) {
       roles: definition.roles,
       description: definition.description,
       descriptionSource: "inferred",
+      ...(desktopApp ? {
+        desktopAppId: desktopApp.id,
+        sourceLabel: definition.id === "cli:claude-code" ? `${desktopApp.name} + CLI` : desktopApp.name,
+      } : {}),
       visionLevel: "none",
       profileStatus: health.available ? "pending" : "error",
       executable,
@@ -218,6 +275,7 @@ export async function discoverDeepSeeRuntimes(options = {}) {
   const registry = {
     version: 1,
     routes,
+    desktopApps: publicDesktopApps(desktopApps, routes),
     preferences: {
       reviewPolicy: "prefer-different",
       primeAutoWorkflow: true,

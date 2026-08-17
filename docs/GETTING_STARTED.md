@@ -9,7 +9,7 @@ This guide takes you from a clean machine to a verified visual conversation. Mos
 - Install [Node.js 24 or newer](https://nodejs.org/).
 - Keep a working internet connection for the first installation.
 - Have at least one DeepSeek Harness text model for the main conversation.
-- For vision, prepare either a multimodal API model or enough disk space to install MinerU locally.
+- For vision, prepare either a multimodal API model or enough disk space for one local OCR engine.
 
 You do not need to install a separate DeepSee server. If `dsh` is not already available, the installer uses the exact Harness runtime tested with this DeepSee release.
 
@@ -45,9 +45,9 @@ npx --yes github:WUBING2023/deepsee install --force
 
 1. In Harness, open **Settings → Models**.
 2. Add or select the provider and model used for your normal DeepSeek conversation.
-3. Add at least one model that declares image input, or plan to use MinerU.
+3. Add at least one model that declares image input, or plan to use local OCR.
 4. Open the **DeepSee** sidebar panel.
-5. Under **Visual reader**, choose **Model** and select the multimodal model, or choose **OCR** and install MinerU.
+5. Under **Visual reader**, choose **Model** and select the multimodal model, or choose **OCR**, select an engine, and click install.
 
 DeepSee reads Harness provider metadata and credential references. It does not display, copy, or store the raw API key in its own configuration.
 
@@ -55,17 +55,25 @@ DeepSee reads Harness provider metadata and credential references. It does not d
 
 Use this route for natural-image understanding, charts, screenshots, and questions that need semantic visual reasoning. A model appears in the visual list only when its Harness adapter confirms image input.
 
-### Option B: MinerU OCR
+### Option B: local OCR
 
-Use this route for PDFs, scans, document text, tables, and layout. Click **MinerU · Install** once. DeepSee tries, in order:
+| Engine | Best fit | Footprint |
+| --- | --- | --- |
+| MinerU | Complex PDFs, papers, tables, formulas, and layout recovery | Heavy |
+| PaddleOCR | Multilingual images, scans, and general PDFs | Medium |
+| RapidOCR | Screenshots, receipts, simple images, and low-resource CPUs | Light |
 
-1. an existing compatible MinerU command;
+Choose an engine and click **Install**. A small stage progress bar and one-line comparison remain visible while DeepSee tries, as needed:
+
+1. an existing compatible command for that OCR engine;
 2. an existing `uv` environment;
 3. Python + an isolated `venv`;
 4. a checksum-verified portable UV archive kept inside DeepSee;
-5. the official MinerU source ZIP as a final package-install fallback.
+5. the project's official source ZIP as a final package-install fallback.
 
-The OCR route uses the CPU-compatible `pipeline` backend and installs `mineru[core]>=3,<4`. Python packages and model files still require network access. A source ZIP is not a complete offline model bundle.
+When the managed installation is ready, the same control becomes **Uninstall**. It removes only that engine's DeepSee-managed virtual environment, caches, downloaded models, and bootstrap files. An installation found elsewhere is shown as system-managed and cannot be removed by DeepSee.
+
+All three defaults support CPU execution. On Windows, DeepSee automatically keeps PaddleOCR model files away from non-ASCII paths; a custom `OPENDS_OCR_HOME` containing non-ASCII characters fails with an explicit recovery message. Python packages and model files still require network access. A source ZIP is not a complete offline model bundle.
 
 ## 3. Run a smoke test
 
@@ -87,10 +95,11 @@ After at least two executable routes are enabled, try:
 
 Harness should show a visible Workflow. DeepSee exposes the model directory to the main model; it does not force a complex Workflow for ordinary one-step requests.
 
-## Local CLI discovery
+## Desktop and CLI discovery
 
-DeepSee scans for Codex, Claude Code, Kimi CLI, OpenCode, and Ollama at startup. Discovery alone does not make a runtime executable.
+DeepSee scans for Codex Desktop, Claude Desktop, Codex/Claude Code CLI, Kimi CLI, OpenCode, and Ollama at startup. Discovery alone does not make a runtime executable.
 
+- Codex Desktop can supply its bundled App Server. Claude Desktop is launchable, but automatic execution still requires a verified Claude Code CLI.
 - Codex and Claude Code can be enabled after the executable, login state, model choice, and adapter pass validation.
 - Kimi CLI, OpenCode, and Ollama are currently discovery-only unless a stable Harness subagent adapter is available.
 - A failed or logged-out CLI remains disabled instead of failing later in a Workflow.

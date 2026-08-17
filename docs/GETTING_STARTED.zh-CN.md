@@ -9,7 +9,7 @@
 - 安装 [Node.js 24 或更高版本](https://nodejs.org/)。
 - 首次安装时保持网络可用。
 - 在 DeepSeek Harness 中准备至少一个负责主对话的文本模型。
-- 视觉读取需要一个多模态 API 模型，或者足够安装 MinerU 的本地磁盘空间。
+- 视觉读取需要一个多模态 API 模型，或者足够安装一个本地 OCR 的磁盘空间。
 
 不需要另装 DeepSee 服务。如果电脑上没有 `dsh`，安装器会使用当前 DeepSee 版本实测过的精确 Harness Runtime。
 
@@ -45,9 +45,9 @@ npx --yes github:WUBING2023/deepsee install --force
 
 1. 在 Harness 中打开 **设置 → 模型**。
 2. 添加或选择日常 DeepSeek 对话使用的供应商与模型。
-3. 再添加至少一个声明支持图片输入的模型，或者准备使用 MinerU。
+3. 再添加至少一个声明支持图片输入的模型，或者准备使用本地 OCR。
 4. 打开侧栏中的 **DeepSee** 面板。
-5. 在 **视觉读取** 中选择 **模型** 并指定多模态模型，或选择 **OCR** 并安装 MinerU。
+5. 在 **视觉读取** 中选择 **模型** 并指定多模态模型，或选择 **OCR**、指定引擎并点击安装。
 
 DeepSee 只读取 Harness 的供应商元数据与凭据引用。它不会在自己的配置中显示、复制或保存原始 API Key。
 
@@ -55,17 +55,25 @@ DeepSee 只读取 Harness 的供应商元数据与凭据引用。它不会在自
 
 适合照片、截图、图表，以及需要语义理解的视觉问题。只有 Harness 适配器明确确认支持图片输入的模型，才会进入视觉模型列表。
 
-### 方案 B：MinerU OCR
+### 方案 B：本地 OCR
 
-适合 PDF、扫描件、文档文字、表格与版面提取。点击一次 **MinerU · 安装** 后，DeepSee 会依次尝试：
+| 引擎 | 更适合 | 体量 |
+| --- | --- | --- |
+| MinerU | 复杂 PDF、论文、表格、公式和版面恢复 | 重型 |
+| PaddleOCR | 中英文及多语言图片、扫描件、通用 PDF | 中型 |
+| RapidOCR | 截图、票据、简单图片和低资源 CPU | 轻型 |
 
-1. 已经可用的 MinerU 命令；
+选择引擎并点击 **安装** 后，界面会显示阶段进度条和一行简短对比。DeepSee 会按需尝试：
+
+1. 已经可用的对应 OCR 命令；
 2. 电脑上已有的 `uv`；
 3. Python + 隔离的 `venv`；
 4. 下载并校验 SHA-256 的便携 UV，只保存在 DeepSee 内部；
-5. 最后使用 MinerU 官方源码 ZIP 作为包安装兜底。
+5. 最后使用项目官方源码 ZIP 作为包安装兜底。
 
-OCR 使用兼容 CPU 的 `pipeline` 后端，安装范围为 `mineru[core]>=3,<4`。Python 依赖和模型文件仍然需要联网；源码 ZIP 并不是包含全部模型的离线安装包。
+安装完成后，同一按钮会变为 **卸载**，只删除该引擎由 DeepSee 管理的虚拟环境、缓存、已下载模型和引导文件。若 OCR 来自系统其他位置，界面会标记为系统安装，DeepSee 不会删除它。
+
+三个引擎默认都可以使用 CPU。PaddleOCR 在 Windows 上会自动避开非 ASCII 模型缓存路径；如果手动把 `OPENDS_OCR_HOME` 指向含中文的目录，安装会明确拒绝并提示移除该覆盖。Python 依赖和模型文件仍需要联网；源码 ZIP 并不是完整离线模型包。
 
 ## 3. 做一次真实验证
 
@@ -87,10 +95,11 @@ OCR 使用兼容 CPU 的 `pipeline` 后端，安装范围为 `mineru[core]>=3,<4
 
 Harness 应显示一个可见的 Workflow。DeepSee 会把模型目录交给主模型选择，但不会让普通的一步任务强行进入复杂编排。
 
-## 本地 CLI 扫描
+## 桌面端与 CLI 扫描
 
-DeepSee 启动时会扫描 Codex、Claude Code、Kimi CLI、OpenCode 与 Ollama。被扫描到，不等于一定可以执行。
+DeepSee 启动时会扫描 Codex Desktop、Claude Desktop、Codex/Claude Code CLI、Kimi CLI、OpenCode 与 Ollama。被扫描到，不等于一定可以执行。
 
+- Codex Desktop 可以提供其内置 App Server；Claude Desktop 可以直接打开，但自动执行仍需要验证通过的 Claude Code CLI。
 - Codex 与 Claude Code 只有在命令、登录状态、模型选择和适配器都通过验证后才能打开。
 - Kimi CLI、OpenCode 与 Ollama 目前以发现为主；没有稳定 Harness 子 Agent 适配器时不会进入可执行路线。
 - 未登录或验证失败的 CLI 会保持关闭，避免 Workflow 运行到中途才报错。

@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag and release contract
+        run: pnpm run release:tag-check
+
+      - name: Build and verify the packaged candidate
+        run: pnpm run release:verify
+
+      - name: Resolve exact release files
+        id: release
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          ASSET="release/deepsee-${VERSION}.tgz"
+          NOTES="docs/releases/v${VERSION}.md"
+          test -f "$ASSET"
+          test -f "${ASSET}.sha256"
+          test -f "$NOTES"
+          test "$(find release -maxdepth 1 -type f -name 'deepsee-*.tgz' | wc -l)" -eq 1
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+
+      - name: Retain the exact CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepsee-${{ steps.release.outputs.version }}
+          path: |
+            ${{ steps.release.outputs.asset }}
+            ${{ steps.release.outputs.asset }}.sha256
+          if-no-files-found: error
+
+      - name: Publish immutable GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          ASSET: ${{ steps.release.outputs.asset }}
+          NOTES: ${{ steps.release.outputs.notes }}
+        shell: bash
+        run: |
+          FLAGS=()
+          if [[ "$VERSION" == *-* ]]; then FLAGS+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" \
+            "$ASSET" \
+            "${ASSET}.sha256" \
+            --verify-tag \
+            --title "DeepSee ${VERSION}" \
+            --notes-file "$NOTES" \
+            "${FLAGS[@]}"

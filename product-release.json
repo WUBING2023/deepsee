@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "name": "DeepSee",
+    "slug": "deepsee",
+    "version": "0.6.0-alpha.14",
+    "channel": "public-alpha",
+    "license": "MIT"
+  },
+  "github": {
+    "owner": "WUBING2023",
+    "repository": "deepsee",
+    "communityRepository": null,
+    "sourceUrl": "https://github.com/WUBING2023/deepsee",
+    "releaseBaseUrl": "https://github.com/WUBING2023/deepsee/releases"
+  },
+  "build": {
+    "installCommand": "pnpm install --frozen-lockfile",
+    "verifyCommands": [
+      "pnpm run typecheck",
+      "pnpm test",
+      "pnpm run build:plugin",
+      "pnpm run release:smoke",
+      "pnpm run site:verify"
+    ],
+    "buildCommand": "pnpm run release:build"
+  },
+  "release": {
+    "tagTemplate": "v{version}",
+    "artifactGlob": "release/deepsee-*.tgz",
+    "assetNameTemplate": "deepsee-{version}.tgz",
+    "checksum": "sha256",
+    "notesPathTemplate": "docs/releases/v{version}.md"
+  },
+  "website": {
+    "directory": "website",
+    "cloudflareProject": "deepsee-wubing2023",
+    "productionUrl": "https://deepsee-wubing2023.pages.dev",
+    "customDomain": null,
+    "manifestPath": "website/version.json"
+  },
+  "update": {
+    "sourceRefUrl": "https://api.github.com/repos/WUBING2023/deepsee/commits/main",
+    "sourceRefFallback": "https://github.com/WUBING2023/deepsee/commits/main.atom",
+    "manifestTemplate": "https://raw.githubusercontent.com/WUBING2023/deepsee/{commit}/package.json",
+    "archiveTemplate": "https://github.com/WUBING2023/deepsee/archive/{commit}.zip"
+  },
+  "compatibility": {
+    "desktopAppId": "@wubing2023/deepsee",
+    "userDataIdentity": "$DSH_HOME/deepsee",
+    "harnessRuntime": "0.1.0-rc.6",
+    "previousUpdateSources": []
+  }
+}

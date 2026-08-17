@@ -59,7 +59,7 @@ Check all of the following:
 
 1. A visual reader is selected in DeepSee preferences.
 2. When using **Model**, the selected Harness model explicitly declares image input and is `ready`.
-3. When using **OCR**, MinerU status is `ready`.
+3. When using **OCR**, the selected MinerU, PaddleOCR, or RapidOCR status is `ready`.
 4. The route is enabled, and any provider credential remains valid in Harness.
 5. Harness was restarted after model or plugin changes.
 
@@ -93,13 +93,15 @@ DeepSee requires more than a matching executable name. Run the CLI interactively
 
 Do not put subscription tokens into DeepSee files. Codex and Claude Code should continue to use their own supported login mechanisms.
 
-## MinerU installation fails
+## Local OCR installation fails
 
 The UI keeps the final status, while full installer output is stored at:
 
 ```text
 $DSH_HOME/deepsee/.opends-tools/mineru/install.stdout.log
 $DSH_HOME/deepsee/.opends-tools/mineru/install.stderr.log
+$DSH_HOME/deepsee/.opends-tools/ocr/<paddleocr|rapidocr>/install.stdout.log
+$DSH_HOME/deepsee/.opends-tools/ocr/<paddleocr|rapidocr>/install.stderr.log
 ```
 
 Check these common constraints:
@@ -109,8 +111,9 @@ Check these common constraints:
 - Antivirus or corporate policy may block the portable UV executable.
 - A PyPI or model host may be unreachable from the current region.
 - Disk space may be insufficient for the isolated environment and model files.
+- On Windows, do not point `OPENDS_OCR_HOME` at a PaddleOCR model path containing non-ASCII characters. Remove the override and DeepSee will choose a compatible location automatically.
 
-Advanced deployments can override package source, mirror, model source, source ZIP, source extra, and timeout with the documented `OPENDS_MINERU_*` variables in `.env.example`. Ordinary users should prefer retrying from the UI before changing them.
+Advanced deployments can override package source, mirror, model source, and timeout with the documented `OPENDS_MINERU_*` or `OPENDS_OCR_*` variables in `.env.example`. Ordinary users should prefer retrying from the UI before changing them.
 
 ## Upgrade fails or requests a manual upgrade
 

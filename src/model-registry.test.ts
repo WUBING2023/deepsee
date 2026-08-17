@@ -36,6 +36,26 @@ describe("model registry", () => {
     expect(registry.routes[0]?.roles).toEqual(["review"]);
   });
 
+  it("preserves safe desktop runtime metadata during capability profiling reads", () => {
+    const registry = normalizeRegistry({
+      version: 1,
+      routes: [{ ...vision, desktopAppId: "desktop:codex" }],
+      desktopApps: [{
+        id: "desktop:codex",
+        name: "Codex Desktop",
+        provider: "openai",
+        launchUrl: "codex://",
+        status: "ready",
+        execution: "runtime",
+        runtimeRouteId: "kimi:k3",
+      }],
+    });
+    expect(registry.routes[0]?.desktopAppId).toBe("desktop:codex");
+    expect(registry.desktopApps).toEqual([
+      expect.objectContaining({ id: "desktop:codex", launchUrl: "codex://", execution: "runtime" }),
+    ]);
+  });
+
   it("never returns disabled or unavailable routes by default", () => {
     const registry = normalizeRegistry({
       version: 1,

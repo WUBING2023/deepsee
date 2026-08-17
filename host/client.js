@@ -91,9 +91,10 @@ window.__ModuleLoader__.load({
       .opends-message{font-size:12px;color:var(--dsw-alias-label-secondary);margin-right:auto}
       .opends-note{padding:11px 13px;border:1px solid rgba(47,107,255,.18);border-radius:10px;background:rgba(47,107,255,.06);color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1.6}
       .opends-preferences{border-bottom:1px solid rgba(127,127,127,.14)}
+      .opends-init-strip{min-height:36px;display:flex;align-items:center;gap:7px;color:var(--dsw-alias-label-secondary);font-size:11px;border-bottom:1px solid rgba(127,127,127,.12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-init-strip:before{content:"";width:6px;height:6px;border-radius:50%;background:#34a876;flex:none}.opends-init-strip a{color:inherit;text-decoration:none;border-bottom:1px solid rgba(127,127,127,.32)}.opends-init-strip a:hover{color:var(--dsw-alias-label-primary)}
       .opends-pref-row{min-height:55px;display:grid;grid-template-columns:180px minmax(240px,1fr);align-items:center;gap:18px;border-top:1px solid rgba(127,127,127,.12)}.opends-pref-row:first-child{border-top:0}
       .opends-pref-label{font-size:13px;font-weight:540;color:var(--dsw-alias-label-primary)}.opends-pref-control{width:min(340px,100%);justify-self:end;border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-pref-action{justify-self:end}.opends-tool-install{min-width:72px}
-      .opends-vision-controls{width:min(430px,100%);justify-self:end;display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px}.opends-vision-kind,.opends-vision-target{border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-vision-target{width:100%;min-width:0}
+      .opends-vision-controls{width:min(430px,100%);justify-self:end;display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px}.opends-vision-kind,.opends-vision-target{border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-vision-target{width:100%;min-width:0}.opends-ocr-target{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}.opends-ocr-target .opends-button{white-space:nowrap}.opends-mineru-progress{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;color:var(--dsw-alias-label-tertiary);font-size:10px}.opends-mineru-progress progress{width:100%;height:5px;border:0;border-radius:99px;overflow:hidden;background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-bar{background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-value{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-mineru-progress progress::-moz-progress-bar{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-ocr-comparison{grid-column:1/-1;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:1.45}
       .opends-model-warning{color:#a56a45}
       .opends-status-list{padding-top:6px}.opends-status-row{min-height:52px;display:grid;grid-template-columns:1fr 110px 90px;align-items:center;border-bottom:1px solid rgba(127,127,127,.14);gap:12px;font-size:12px}
       .opends-empty{padding:36px 0;text-align:center;color:var(--dsw-alias-label-tertiary);font-size:12px}
@@ -174,6 +175,20 @@ window.__ModuleLoader__.load({
         coding: "编码",
         vision: "视觉",
         "long-context": "长上下文",
+        "image-generation": "图像生成",
+        "image-editing": "图像编辑",
+        "audio-input": "音频理解",
+        "audio-generation": "音频生成",
+        "video-input": "视频理解",
+        "video-generation": "视频生成",
+        document: "文档",
+        ocr: "OCR",
+        "structured-output": "结构化输出",
+        writing: "写作",
+        search: "检索",
+        reranking: "重排",
+        embedding: "向量",
+        translation: "翻译",
         local: "本地",
       };
       const canonical = new Set(Object.keys(labels));
@@ -182,7 +197,7 @@ window.__ModuleLoader__.load({
       return visible.map((value) => labels[value] || value).join(" · ");
     }
 
-    function EditableCell({ value, displayValue, placeholder, label, disabled, onSave }) {
+    function EditableCell({ value, displayValue, placeholder, label, help, disabled, onSave }) {
       const [editing, setEditing] = useState(false);
       const [draft, setDraft] = useState(value || "");
       const [saving, setSaving] = useState(false);
@@ -223,7 +238,7 @@ window.__ModuleLoader__.load({
       }
       return createElement("div", {
         className: "opends-edit-cell",
-        title: `${value || placeholder || "未填写"} · 双击编辑`,
+        title: `${help ? `${help} · ` : ""}${value || placeholder || "未填写"} · 双击编辑`,
         tabIndex: disabled ? -1 : 0,
         onDoubleClick: () => !disabled && setEditing(true),
         onKeyDown: (event) => {
@@ -260,14 +275,22 @@ window.__ModuleLoader__.load({
       const config = snapshot.value || {};
       const [localRoutes, setLocalRoutes] = useState(liveRoutes);
       const [preferences, setPreferences] = useState({ primeAutoWorkflow: config.primeAutoWorkflow !== false });
-      const [mineru, setMineru] = useState({ status: "not-installed", installed: false, message: "正在读取…" });
+      const [ocrTools, setOcrTools] = useState([
+        { id: "mineru", label: "MinerU", bestFor: "复杂 PDF、论文、表格与公式", status: "not-installed", managed: true, progress: 0, message: "正在读取…" },
+        { id: "paddleocr", label: "PaddleOCR", bestFor: "多语言图片、扫描件与通用 PDF", status: "not-installed", managed: true, progress: 0, message: "正在读取…" },
+        { id: "rapidocr", label: "RapidOCR", bestFor: "截图、票据与低资源 CPU 快速识字", status: "not-installed", managed: true, progress: 0, message: "正在读取…" },
+      ]);
       const [update, setUpdate] = useState({ status: "idle", message: "尚未检查更新。" });
+      const [initialization, setInitialization] = useState({ vision: null, localRuntimes: [], desktopApps: [], instructions: { files: [] } });
       const [message, setMessage] = useState("");
       const [verifying, setVerifying] = useState(false);
       const [serviceReady, setServiceReady] = useState(false);
       const routes = useMemo(() => localRoutes.filter((route) => route.source !== "ocr"), [localRoutes]);
       const primaryOptions = useMemo(() => routes.filter((route) => (
-        route.status === "ready" && route.enabled !== false && (route.source === "harness" || route.source === "api")
+        route.status === "ready"
+        && route.enabled !== false
+        && (route.source === "harness" || route.source === "api")
+        && (!Array.isArray(route.outputModalities) || route.outputModalities.length === 0 || route.outputModalities.includes("text"))
       )), [routes]);
       const visionOptions = useMemo(() => routes.filter((route) => (
         route.status === "ready" && route.enabled !== false && route.visionLevel === "full-vision"
@@ -281,8 +304,9 @@ window.__ModuleLoader__.load({
           setLocalRoutes(liveRoutes);
         }
         if (state.preferences && typeof state.preferences === "object") setPreferences(state.preferences);
-        if (state.tools?.mineru) setMineru(state.tools.mineru);
+        if (Array.isArray(state.tools?.ocr?.catalog)) setOcrTools(state.tools.ocr.catalog);
         if (state.update && typeof state.update === "object") setUpdate(state.update);
+        if (state.initialization && typeof state.initialization === "object") setInitialization(state.initialization);
       };
 
       const requestAdmin = async (path, options = {}) => {
@@ -334,10 +358,10 @@ window.__ModuleLoader__.load({
       }, []);
 
       useEffect(() => {
-        if (mineru.status !== "installing" && !profiling && !["checking", "updating"].includes(update.status)) return undefined;
+        if (!ocrTools.some((tool) => tool.status === "installing") && !profiling && !["checking", "updating"].includes(update.status)) return undefined;
         const timer = setInterval(loadState, 2000);
         return () => clearInterval(timer);
-      }, [mineru.status, profiling, update.status]);
+      }, [ocrTools.some((tool) => tool.status === "installing"), profiling, update.status]);
 
       useEffect(() => {
         if (update.status === "restart-required") setMessage(update.message || "DeepSee 已升级；重启 Harness 后生效。");
@@ -404,13 +428,28 @@ window.__ModuleLoader__.load({
         }
       };
 
-      const installMinerU = async () => {
+      const updateOCRTool = (next) => setOcrTools((current) => current.map((tool) => tool.id === next?.id
+        ? { ...tool, ...next }
+        : tool));
+
+      const installOCR = async (tool) => {
         try {
-          const result = await requestAdmin("/v1/tools/mineru/install", { method: "POST", body: "{}" });
-          setMineru(result.tool);
-          setMessage(result.tool?.message || "MinerU 已开始自动安装；可以关闭窗口，安装会继续。");
+          const result = await requestAdmin(`/v1/tools/ocr/${tool.id}/install`, { method: "POST", body: "{}" });
+          updateOCRTool({ ...result.tool, id: tool.id });
+          setMessage(`MinerU 适合复杂文档；PaddleOCR 适合多语言通用识别；RapidOCR 适合轻量截图。${result.tool?.message || `${tool.label} 已开始后台安装。`}`);
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : "MinerU 安装启动失败。");
+          setMessage(error instanceof Error ? error.message : `${tool.label} 安装启动失败。`);
+        }
+      };
+
+      const uninstallOCR = async (tool) => {
+        if (!window.confirm(`仅卸载由 DeepSee 管理的 ${tool.label}、模型缓存与虚拟环境。系统中的其他 ${tool.label} 安装不会被删除。继续吗？`)) return;
+        try {
+          const result = await requestAdmin(`/v1/tools/ocr/${tool.id}/uninstall`, { method: "POST", body: "{}" });
+          updateOCRTool({ ...result.tool, id: tool.id });
+          setMessage(result.tool?.message || `DeepSee 管理的 ${tool.label} 已卸载。`);
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : `${tool.label} 卸载失败。`);
         }
       };
 
@@ -484,7 +523,17 @@ window.__ModuleLoader__.load({
                     createElement("td", null,
                       createElement("span", { className: "opends-source-pill" }, routeSourceLabel(route))),
                     createElement("td", null,
-                      createElement(EditableCell, { value: (route.capabilities || []).join(", "), displayValue: route.profileStatus === "pending" || route.profileStatus === "profiling" ? "分析中…" : route.profileStatus === "error" ? "待分析" : capabilityLabel(route.capabilities), label: "能力", disabled: !serviceReady, placeholder: "自动分析", onSave: (value) => saveRouteFields(route, { capabilities: value.split(/[,，]/).map((item) => item.trim()).filter(Boolean) }) })),
+                      createElement(EditableCell, {
+                        value: (route.capabilities || []).join(", "),
+                        displayValue: capabilityLabel(route.capabilities) || (route.profileStatus === "error" ? "待分析" : "分析中…"),
+                        label: "能力",
+                        help: route.catalogSource === "models.dev"
+                          ? `默认能力来自 Models.dev${route.catalogUpdatedAt ? `（${route.catalogUpdatedAt}）` : ""}${route.profileStatus === "pending" || route.profileStatus === "profiling" ? "，正在通过当前 Runtime 复核" : ""}`
+                          : undefined,
+                        disabled: !serviceReady,
+                        placeholder: "自动分析",
+                        onSave: (value) => saveRouteFields(route, { capabilities: value.split(/[,，]/).map((item) => item.trim()).filter(Boolean) }),
+                      })),
                   );
                 })),
               ),
@@ -494,6 +543,8 @@ window.__ModuleLoader__.load({
       const preferredPrimary = preferences.primaryRouteId || primaryOptions[0]?.id || "";
       const preferredVision = preferences.visionRouteId || visionOptions[0]?.id || "";
       const visionMode = preferences.visionMode === "ocr" ? "ocr" : "model";
+      const selectedOCRId = ["mineru", "paddleocr", "rapidocr"].includes(preferences.ocrTool) ? preferences.ocrTool : "mineru";
+      const selectedOCR = ocrTools.find((tool) => tool.id === selectedOCRId) || ocrTools[0];
       const updateAvailable = update.status === "available";
       const updateManual = update.status === "manual-required";
       const updateBusy = update.status === "checking" || update.status === "updating";
@@ -518,10 +569,10 @@ window.__ModuleLoader__.load({
             primaryOptions.map((route) => createElement("option", { key: route.id, value: route.id }, `${routeDisplayName(route)} · ${routeSourceLabel(route)}`)),
           ),
         ),
-        createElement("div", { className: "opends-pref-row", title: visionMode === "model" ? "图片交给所选多模态模型，再由主模型继续回答。" : `图片使用本地 OCR 与版面解析。${mineru.message || ""}` },
+        createElement("div", { className: "opends-pref-row", title: visionMode === "model" ? "图片交给所选多模态模型，再由主模型继续回答。" : `图片使用本地 OCR。${selectedOCR?.message || ""}` },
           createElement("div", { className: "opends-pref-label" }, "视觉读取"),
           createElement("div", { className: "opends-vision-controls" },
-            createElement("select", { className: "opends-select opends-vision-kind", "aria-label": "视觉读取方式", value: visionMode, disabled: !serviceReady, onChange: (event) => savePreferences({ visionMode: event.target.value, ...(event.target.value === "ocr" ? { ocrTool: "mineru" } : {}) }) },
+            createElement("select", { className: "opends-select opends-vision-kind", "aria-label": "视觉读取方式", value: visionMode, disabled: !serviceReady, onChange: (event) => savePreferences({ visionMode: event.target.value, ...(event.target.value === "ocr" ? { ocrTool: selectedOCRId } : {}) }) },
               createElement("option", { value: "model" }, "模型"),
               createElement("option", { value: "ocr" }, "OCR"),
             ),
@@ -530,7 +581,29 @@ window.__ModuleLoader__.load({
                   visionOptions.length === 0 && createElement("option", { value: "" }, "暂无视觉模型"),
                   visionOptions.map((route) => createElement("option", { key: route.id, value: route.id }, `${routeDisplayName(route)} · ${routeSourceLabel(route)}`)),
                 )
-              : createElement("button", { className: "opends-button secondary opends-vision-target", type: "button", title: mineru.message || "自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP。", disabled: !serviceReady || mineru.status === "ready" || mineru.status === "installing", onClick: installMinerU }, mineru.status === "ready" ? "MinerU · 已就绪" : mineru.status === "installing" ? "MinerU · 安装中…" : mineru.status === "error" ? "MinerU · 重试" : "MinerU · 安装"),
+              : createElement(Fragment, null,
+                  createElement("div", { className: "opends-ocr-target" },
+                    createElement("select", { className: "opends-select opends-vision-target", "aria-label": "本地 OCR", value: selectedOCRId, disabled: !serviceReady || ocrTools.some((tool) => tool.status === "installing"), onChange: (event) => savePreferences({ ocrTool: event.target.value }) },
+                      ocrTools.map((tool) => createElement("option", { key: tool.id, value: tool.id }, `${tool.label} · ${tool.footprint || "本地"}`)),
+                    ),
+                    createElement("button", {
+                      className: "opends-button secondary",
+                      type: "button",
+                      title: selectedOCR?.status === "ready" && selectedOCR?.managed === false
+                        ? `这是系统已有的 ${selectedOCR.label}，DeepSee 不会卸载其他程序管理的环境。`
+                        : `${selectedOCR?.bestFor || "本地 OCR"}。${selectedOCR?.message || "自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP。"}`,
+                      disabled: !serviceReady || selectedOCR?.status === "installing" || (selectedOCR?.status === "ready" && selectedOCR?.managed === false),
+                      onClick: () => selectedOCR?.status === "ready" ? uninstallOCR(selectedOCR) : installOCR(selectedOCR),
+                    }, selectedOCR?.status === "ready"
+                      ? selectedOCR?.managed === false ? "系统安装" : "卸载"
+                      : selectedOCR?.status === "installing" ? "安装中…" : selectedOCR?.status === "error" ? "重试" : "安装"),
+                  ),
+                  selectedOCR?.status === "installing" && createElement("div", { className: "opends-mineru-progress opends-ocr-progress", title: selectedOCR.message || `${selectedOCR.label} 正在后台安装` },
+                    createElement("progress", { max: 100, value: Number.isFinite(selectedOCR.progress) ? selectedOCR.progress : 5, "aria-label": `${selectedOCR.label} 安装进度` }),
+                    createElement("span", null, `${Math.round(Number.isFinite(selectedOCR.progress) ? selectedOCR.progress : 5)}%`),
+                  ),
+                  selectedOCR?.status === "installing" && createElement("div", { className: "opends-ocr-comparison" }, "MinerU · 复杂文档　PaddleOCR · 多语言通用　RapidOCR · 轻量截图"),
+                ),
           ),
         ),
         createElement("div", { className: "opends-pref-row", title: "Prime 模式可为复杂任务选择 Harness 原生 Workflow。" },
@@ -541,6 +614,14 @@ window.__ModuleLoader__.load({
           ),
         ),
       );
+
+      const desktopRuntimeIds = new Set((initialization.desktopApps || []).map((app) => app.runtimeRouteId).filter(Boolean));
+      const initializedParts = [
+        initialization.vision?.name ? `视觉 ${initialization.vision.name}` : "",
+        ...(initialization.localRuntimes || []).filter((runtime) => !desktopRuntimeIds.has(runtime.id)).map((runtime) => runtime.name),
+        ...(initialization.instructions?.files || []).map((file) => file.name),
+      ].filter(Boolean);
+      const desktopApps = initialization.desktopApps || [];
 
       return createElement("div", { className: "opends-body" },
         createElement("div", { className: "opends-page-head" },
@@ -556,6 +637,18 @@ window.__ModuleLoader__.load({
             createElement("button", { className: "opends-button secondary", type: "button", title: "重新检查本机 CLI、登录与 Harness 适配状态", disabled: verifying || !serviceReady, onClick: verifyRuntimes }, verifying ? "验证中…" : "验证"),
             createElement("button", { className: "opends-button", type: "button", title: "使用 Harness 已保存的凭证，并可获取供应商模型列表", onClick: exitToNativeModels }, "+ 添加模型"),
           ),
+        ),
+        (initializedParts.length > 0 || desktopApps.length > 0) && createElement("div", {
+          className: "opends-init-strip",
+          title: "桌面端只有在同时验证了 CLI 或 App Server 时才参与自动 Workflow；AGENTS.md、CLAUDE.md 与 agent.md 由 Harness 工作区指令加载器直接使用。",
+        },
+          createElement("span", null, `已自动初始化${initializedParts.length ? ` · ${initializedParts.join(" · ")}` : ""}`),
+          desktopApps.map((app) => createElement(Fragment, { key: app.id },
+            createElement("span", { "aria-hidden": true }, "·"),
+            app.launchUrl
+              ? createElement("a", { href: app.launchUrl, title: app.execution === "runtime" ? `${app.name} 已验证为可调用 Runtime；点击打开桌面端` : `${app.name} 已安装；点击打开。自动 Workflow 仍需对应 CLI 或 App Server` }, `${app.name}${app.execution === "runtime" ? "（可调用）" : "（可打开）"}`)
+              : createElement("span", null, `${app.name}${app.execution === "runtime" ? "（可调用）" : "（已安装）"}`),
+          )),
         ),
         preferencesPanel,
         matrix,
@@ -593,16 +686,42 @@ window.__ModuleLoader__.load({
       return createElement(DeepSeeSettings, { scope, api, exitToNativeModels: () => openNativeModelSettings(close) });
     }
 
-    function VisionOnboarding({ complete, openSection }) {
+    function VisionOnboarding({ complete, openSection, api }) {
       const [ready, setReady] = useState(null);
       useEffect(() => {
         let active = true;
-        fetch(`${adminBaseURL}/v1/models`)
-          .then((response) => response.ok ? response.json() : Promise.reject(new Error("not ready")))
+        const initialize = async () => {
+          let state;
+          const verified = await fetch(`${adminBaseURL}/v1/runtimes/verify`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: "{}",
+          });
+          if (verified.ok) state = (await verified.json()).state;
+          if (api?.llm?.models) {
+            const catalog = await api.llm.models({});
+            if (catalog?.result?.ok) {
+              const synced = await fetch(`${adminBaseURL}/v1/harness/models`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(catalog.result.value),
+              });
+              if (synced.ok) state = (await synced.json()).state;
+            }
+          }
+          if (!state) {
+            const response = await fetch(`${adminBaseURL}/v1/models`);
+            if (!response.ok) throw new Error("not ready");
+            state = await response.json();
+          }
+          return state;
+        };
+        initialize()
           .then((state) => {
             if (!active) return;
             const modelReady = Array.isArray(state.routes) && state.routes.some((route) => route.enabled !== false && route.status === "ready" && route.visionLevel === "full-vision");
-            const ocrReady = state.preferences?.visionMode === "ocr" && state.tools?.mineru?.status === "ready";
+            const selectedOCR = state.preferences?.ocrTool || "mineru";
+            const ocrReady = state.preferences?.visionMode === "ocr" && state.tools?.ocr?.catalog?.some((tool) => tool.id === selectedOCR && tool.status === "ready");
             setReady(modelReady || ocrReady);
           })
           .catch(() => active && setReady(false));
@@ -654,6 +773,7 @@ window.__ModuleLoader__.load({
         name: "settings.onboarding",
         id: "opends-vision",
         order: 30,
+        inject: () => ({ api }),
       }, VisionOnboarding));
     }
 

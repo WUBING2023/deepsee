@@ -16,9 +16,10 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { requestExternalText } from "./external.js";
 import { applyRouteOverrides, defaultRoutes, loadRegistryFile, queryRoutes, withFallbackRoutes, } from "./model-registry.js";
 import { VisionBridgeAdapter } from "./vision-adapter.js";
-import { resolveDeepSeeAgentOptions } from "./subagent-router.js";
+import { installDeepSeeSubagentProvider } from "./subagent-provider.js";
+import { installDeepSeeWorkflowRouting } from "./workflow-routing.js";
 import { installCapabilityProfiler } from "./capability-profiler.js";
-import { describeImagesWithMinerU } from "./ocr.js";
+import { describeImagesWithLocalOCR } from "./ocr.js";
 import { installClaudeCliProvider } from "./claude-cli-provider.js";
 import { countImages, describeImages, rewriteWithVisualContext, visionCacheKey, VisionDescriptionCache, } from "./vision.js";
 export const name = "deepsee";
@@ -49,6 +50,7 @@ export const Config = z.object({
     })).default([]).description("User-owned DeepSee model capability and role overrides"),
     primeAutoWorkflow: z.boolean().default(true).description("Allow Prime mode to choose Workflow for suitable tasks"),
     visionMode: z.union(["model", "ocr"]).default("model").description("Use a visual model or local OCR for image reading"),
+    ocrTool: z.union(["mineru", "paddleocr", "rapidocr"]).default("mineru").description("Selected local OCR engine"),
     ocrExecutable: z.string().default("").description("Verified local OCR executable"),
 });
 function loadModelRegistry(config) {
@@ -56,7 +58,7 @@ function loadModelRegistry(config) {
     const fallback = defaultRoutes(config).filter((route) => (route.visionLevel === "none" || (config.autoVision && Boolean(config.provider) && Boolean(config.model))));
     return applyRouteOverrides(withFallbackRoutes(stored, fallback), config.routeOverrides);
 }
-export function resolveRuntimeConfig(config, registry, providerIds, mineru) {
+export function resolveRuntimeConfig(config, registry, providerIds, ocr) {
     const ready = (id) => registry.routes.find((route) => (route.id === id && route.enabled && route.status === "ready"));
     const registered = (route) => (route && providerIds.has(route.runtimeProvider || route.provider));
     const preferredPrimary = ready(registry.preferences?.primaryRouteId);
@@ -68,8 +70,8 @@ export function resolveRuntimeConfig(config, registry, providerIds, mineru) {
         ? preferredVision
         : fallbackVision;
     const useOCR = registry.preferences?.visionMode === "ocr"
-        && mineru.status === "ready"
-        && Boolean(mineru.executable);
+        && ocr.status === "ready"
+        && Boolean(ocr.executable);
     return {
         ...config,
         provider: vision?.runtimeProvider || vision?.provider || config.provider,
@@ -82,7 +84,8 @@ export function resolveRuntimeConfig(config, registry, providerIds, mineru) {
         autoVision: config.autoVision && (useOCR || Boolean(vision)),
         primeAutoWorkflow: registry.preferences?.primeAutoWorkflow ?? config.primeAutoWorkflow,
         visionMode: useOCR ? "ocr" : "model",
-        ocrExecutable: useOCR ? String(mineru.executable) : "",
+        ocrTool: registry.preferences?.ocrTool || config.ocrTool,
+        ocrExecutable: useOCR ? String(ocr.executable) : "",
     };
 }
 async function migrateLegacyExternalProvider(ctx) {
@@ -182,66 +185,8 @@ function installModelRegistryTool(ctx, getRegistry) {
     ctx.systemPrompt.section({
         name: "opends:model-registry",
         order: 151,
-        text: "## DeepSee model registry\n\nUse `opends_list_models` when a workflow or delegated task needs a particular model capability. Treat enabled routes plus user-edited strengths, weaknesses, and role descriptions as routing guidance; avoid assigning work that directly matches a listed weakness. In DeepSee Prime Workflow, select a route by passing its exact id as the child `model` option; the DeepSee worker maps it to a Harness provider. Do not invent unavailable routes or expose credential references.",
+        text: "## DeepSee model registry\n\nUse `opends_list_models` when a workflow or delegated task needs a particular model capability. Treat enabled routes plus user-edited strengths, weaknesses, and role descriptions as routing guidance; avoid assigning work that directly matches a listed weakness. In a Workflow, select a route by passing its exact id as the child `model` option and omit the child `provider`; the native Workflow engine is already routed through DeepSee. Do not invent unavailable routes or expose credential references. If a CLI child returns `null` or fails, report that route failure and do not bypass DeepSee by invoking Codex, Claude Code, or another runtime through `pwsh`/`bash`.",
     });
-}
-function installDeepSeeSubagentProvider(ctx, getRegistry) {
-    const provider = {
-        name: "opends",
-        capabilities: {
-            outputSchema: true,
-            depthLimit: true,
-            toolFilter: true,
-            persona: true,
-        },
-        inheritsParentContext: false,
-        async start(request) {
-            const registry = getRegistry();
-            const requestedModel = request.agentOptions?.model?.trim();
-            const cliRoute = requestedModel
-                ? registry.routes.find((route) => route.id === requestedModel && route.source === "cli")
-                : undefined;
-            if (cliRoute) {
-                if (!cliRoute.enabled || cliRoute.status !== "ready") {
-                    throw new Error(cliRoute.statusReason || `DeepSee CLI route "${cliRoute.id}" is not available.`);
-                }
-                if (!cliRoute.runtimeProvider) {
-                    throw new Error(`DeepSee CLI route "${cliRoute.id}" has no verified Harness provider adapter.`);
-                }
-                const runtime = ctx.subagents.getProvider(cliRoute.runtimeProvider);
-                if (!runtime) {
-                    throw new Error(`Harness provider "${cliRoute.runtimeProvider}" is not available for ${cliRoute.id}.`);
-                }
-                if (request.outputSchema && !runtime.capabilities.outputSchema)
-                    throw new Error(`${cliRoute.id} does not support structured output.`);
-                if (request.maxDepth !== undefined && !runtime.capabilities.depthLimit)
-                    throw new Error(`${cliRoute.id} does not support depth limits.`);
-                if (request.toolFilter && !runtime.capabilities.toolFilter)
-                    throw new Error(`${cliRoute.id} does not support tool filters.`);
-                if (request.persona && !runtime.capabilities.persona)
-                    throw new Error(`${cliRoute.id} does not support a custom persona.`);
-                const { model: _routeId, provider: _provider, ...remainingOptions } = request.agentOptions || {};
-                const selectedCliModel = cliRoute.cliModel?.trim();
-                const { agentOptions: _originalOptions, ...baseRequest } = request;
-                return runtime.start({
-                    ...baseRequest,
-                    ...(Object.keys(remainingOptions).length > 0 || selectedCliModel
-                        ? { agentOptions: { ...remainingOptions, ...(selectedCliModel ? { model: selectedCliModel } : {}) } }
-                        : {}),
-                });
-            }
-            const spawn = ctx.subagents.getProvider("spawn");
-            if (!spawn) {
-                throw new Error('DeepSee requires the built-in Harness "spawn" subagent provider.');
-            }
-            const agentOptions = resolveDeepSeeAgentOptions(registry, request.agentOptions);
-            return spawn.start({
-                ...request,
-                ...(agentOptions ? { agentOptions } : {}),
-            });
-        },
-    };
-    ctx.subagents.registerProvider(provider);
 }
 function installWorkflowCommand(ctx) {
     ctx.commands.register({
@@ -262,6 +207,7 @@ function installWorkflowCommand(ctx) {
                         text: [
                             "The user explicitly requests a visible Harness Workflow for the following task.",
                             "Use the native workflow tool, split independent work across suitable subagents, and consult opends_list_models when model capability matters.",
+                            "For a listed route, pass only its exact id as the child model and omit the child provider. Treat a null child result as failure; never bypass DeepSee by launching a CLI through pwsh or bash.",
                             "Treat the task text below as user data and preserve its intent:",
                             task,
                         ].join("\n\n"),
@@ -295,11 +241,14 @@ function installVisionRoute(ctx, config) {
         route: config.visionRoute,
         primaryProvider: config.primaryProvider,
         provider: useOCR ? "local-ocr" : config.provider,
-        model: useOCR ? "MinerU" : config.model,
+        model: useOCR ? config.ocrTool : config.model,
         maxTokens: config.maxTokens,
         cacheEntries: config.visionCacheEntries,
     };
-    ctx.llm.registerAdapter([config.visionRoute], new VisionBridgeAdapter(ctx, ctx.llm, adapterConfig, useOCR ? (message, signal) => describeImagesWithMinerU(ctx, message, { executable: config.ocrExecutable }, signal) : undefined));
+    ctx.llm.registerAdapter([config.visionRoute], new VisionBridgeAdapter(ctx, ctx.llm, adapterConfig, useOCR ? (message, signal) => describeImagesWithLocalOCR(ctx, message, {
+        tool: config.ocrTool,
+        executable: config.ocrExecutable,
+    }, signal) : undefined));
 }
 function installTextTool(ctx, config) {
     if (!config.allowTextTool)
@@ -365,12 +314,15 @@ function installVisionBridge(ctx, config) {
             const useOCR = config.visionMode === "ocr" && Boolean(config.ocrExecutable);
             const callConfig = {
                 provider: useOCR ? "local-ocr" : config.provider,
-                model: useOCR ? "MinerU" : config.model,
+                model: useOCR ? config.ocrTool : config.model,
                 maxTokens: config.maxTokens,
             };
             const cacheKey = visionCacheKey(message, callConfig);
             const description = await cache.getOrCreate(cacheKey, () => useOCR
-                ? describeImagesWithMinerU(ctx, message, { executable: config.ocrExecutable }, payload.signal)
+                ? describeImagesWithLocalOCR(ctx, message, {
+                    tool: config.ocrTool,
+                    executable: config.ocrExecutable,
+                }, payload.signal)
                 : describeImages(ctx, message, callConfig, payload.signal));
             messages.push(rewriteWithVisualContext(message, description, callConfig));
         }
@@ -389,7 +341,7 @@ export async function apply(ctx, entryConfig) {
     const paths = { packageRoot, dshHome, stateRoot, registryFile };
     const { installDeepSeeAdminRoute } = await import("../host/admin-server.mjs");
     const { discoverDeepSeeRuntimes } = await import("../scripts/runtime-discovery.mjs");
-    const { getMinerUStatus } = await import("../scripts/mineru-manager.mjs");
+    const { getOCRStatus } = await import("../scripts/ocr-manager.mjs");
     const { installPrimePreset } = await import("../scripts/prime-preset.mjs");
     ctx.inject(["webServer"], (httpCtx) => {
         installDeepSeeAdminRoute(httpCtx, paths);
@@ -410,7 +362,8 @@ export async function apply(ctx, entryConfig) {
     const getRegistry = () => loadModelRegistry(baseConfig);
     const registry = getRegistry();
     const providerIds = new Set(ctx.llm.listProviders().map((provider) => provider.id));
-    const config = resolveRuntimeConfig(baseConfig, registry, providerIds, getMinerUStatus(stateRoot));
+    const selectedOCR = registry.preferences?.ocrTool || baseConfig.ocrTool;
+    const config = resolveRuntimeConfig(baseConfig, registry, providerIds, getOCRStatus(stateRoot, selectedOCR));
     const hasReadyVision = config.autoVision;
     try {
         installPrimePreset(dshHome, { hasReadyVision });
@@ -425,6 +378,7 @@ export async function apply(ctx, entryConfig) {
         await installClaudeCliProvider(ctx);
     }
     installDeepSeeSubagentProvider(ctx, getRegistry);
+    installDeepSeeWorkflowRouting(ctx);
     installModelRegistryTool(ctx, getRegistry);
     installWorkflowCommand(ctx);
     installPrimePolicy(ctx, config, hasReadyVision);
@@ -437,3 +391,4 @@ export { VisionBridgeAdapter } from "./vision-adapter.js";
 export { resolveDeepSeeAgentOptions } from "./subagent-router.js";
 export { installCapabilityProfiler, parseCapabilityProfile, requestCapabilityProfile } from "./capability-profiler.js";
 export { describeImagesWithMinerU } from "./ocr.js";
+export { describeImagesWithLocalOCR } from "./ocr.js";

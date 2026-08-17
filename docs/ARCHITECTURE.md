@@ -20,10 +20,12 @@ DeepSee is an integration layer, not a replacement agent framework. It adds visu
 | Bundle | `cordis.patch.yml` | Loads the Host plugin, Web client, and optional Codex provider in supported DSH profiles. |
 | Host | `src/index.ts` | Installs tools, prompts, visual routing, provider mapping, Workflow command, and Prime policy. |
 | Model registry | `src/model-registry.ts`, `scripts/registry-state.mjs` | Normalizes routes, preferences, status, and user-edited capability guidance. |
+| Capability catalog | `scripts/model-capability-catalog.mjs` | Safely caches structured Models.dev modalities and degrades offline. |
 | Runtime discovery | `scripts/runtime-discovery.mjs`, `scripts/runtime-health.mjs` | Finds local CLIs and validates whether each route is usable. |
 | Web UI | `host/client.js` | Renders the native sidebar panel, model matrix, visual preference, and update state. |
 | Same-origin API | `host/admin-server.mjs` | Exposes `/api/deepsee` inside the Harness WebServer. |
-| Visual adapters | `src/vision.ts`, `src/vision-adapter.ts`, `src/ocr.ts` | Selects a visual model or MinerU and returns an observation to the base model. |
+| Visual adapters | `src/vision.ts`, `src/vision-adapter.ts`, `src/ocr.ts` | Selects a visual model or managed OCR and returns an observation to the base model. |
+| OCR management | `scripts/ocr-manager.mjs`, `scripts/ocr-runner.py` | Isolates install, validation, normalized output, and safe removal for MinerU, PaddleOCR, and RapidOCR. |
 | Subagent routing | `src/subagent-router.ts`, CLI provider modules | Maps a DeepSee route ID to a Harness provider/model or verified CLI adapter. |
 | Installation | `scripts/install-plugin.mjs`, `scripts/folder-install.mjs` | Installs Web + Headless and supports durable ZIP staging. |
 | Updates | `scripts/update-manager.mjs`, `scripts/update-policy.mjs`, `scripts/update-worker.mjs` | Checks, verifies, locks, and resumes user-approved upgrades. |
@@ -48,7 +50,7 @@ sequenceDiagram
     participant User
     participant Harness
     participant DeepSee
-    participant Reader as Vision model / MinerU
+    participant Reader as Vision model / local OCR
 
     User->>Harness: prompt + image
     Harness->>DeepSee: attachment and task context
@@ -58,7 +60,7 @@ sequenceDiagram
     Harness-->>User: final answer from the base model
 ```
 
-The selected model must have `full-vision` status in the registry. OCR is selected separately through `visionMode`; MinerU is therefore not represented as a general chat model.
+The selected model must have `full-vision` status in the registry. OCR is selected separately through `visionMode` and `ocrTool`; MinerU, PaddleOCR, and RapidOCR are therefore never represented as general chat models. Each engine has an isolated directory. A small Python runner normalizes recognized text before the Host wraps it as an untrusted visual observation.
 
 ## Model registry and routing
 
@@ -76,7 +78,7 @@ The routing contract is deliberately small:
 
 ## State and secret boundaries
 
-Default mutable state is rooted at `$DSH_HOME/deepsee` and includes the model registry, MinerU status and logs, staged ZIP packages, and update state. The generated Prime preset lives under `$DSH_HOME/.agent-presets/prime` because that is the Harness discovery location.
+Default mutable state is rooted at `$DSH_HOME/deepsee` and includes the model registry, OCR status and logs, staged ZIP packages, and update state. Managed OCR Python environments and model caches use isolated app-data directories; uninstall removes only allowlisted children. The generated Prime preset lives under `$DSH_HOME/.agent-presets/prime` because that is the Harness discovery location.
 
 DeepSee does not copy raw provider secrets into the registry or return credential references to the browser. API keys remain managed by Harness. Legacy `OPENDS_BRIDGE_*` configuration can migrate provider metadata and a credential reference, not the secret value itself.
 

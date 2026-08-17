@@ -44,6 +44,16 @@ describe("registry preferences", () => {
     });
   });
 
+  it("accepts each supported local OCR and ignores arbitrary tool ids", () => {
+    const root = fixture();
+    updateRegistryPreferences(root, { visionMode: "ocr", ocrTool: "rapidocr" });
+    expect(loadRegistryState(root).preferences).toMatchObject({ visionMode: "ocr", ocrTool: "rapidocr" });
+    updateRegistryPreferences(root, { ocrTool: "../../other" });
+    expect(loadRegistryState(root).preferences.ocrTool).toBe("rapidocr");
+    updateRegistryPreferences(root, { ocrTool: "paddleocr" });
+    expect(loadRegistryState(root).preferences.ocrTool).toBe("paddleocr");
+  });
+
   it("syncs Harness model catalogs without copying credentials and queues AI profiling", () => {
     const root = fixture();
     const result = syncHarnessModels(root, {
@@ -52,7 +62,7 @@ describe("registry preferences", () => {
         name: "DeepSeek",
         models: [
           { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", reasoning: { efforts: [] } },
-          { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro" },
+          { id: "vision-pro", name: "Vision Pro", description: "Multimodal vision and image understanding" },
         ],
       }],
       failures: [],
@@ -68,6 +78,68 @@ describe("registry preferences", () => {
       runtimeProvider: "deepseek-official",
       profileStatus: "pending",
     });
+    expect(result.state.preferences).toMatchObject({
+      primaryRouteId: "api:kimi:v",
+      visionRouteId: "api:kimi:v",
+      visionMode: "model",
+    });
+  });
+
+  it("initializes modalities from Models.dev without selecting an image-only generator as the base model", () => {
+    const root = fixture();
+    writeFileSync(join(root, ".opends-models.json"), JSON.stringify({ version: 1, routes: [], preferences: {} }));
+    writeFileSync(join(root, ".deepsee-model-catalog.json"), JSON.stringify({
+      version: 1,
+      source: { id: "models.dev" },
+      fetchedAt: "2026-08-17T00:00:00.000Z",
+      models: {
+        "openai/gpt-image-2": {
+          id: "openai/gpt-image-2",
+          name: "GPT Image 2",
+          description: "Image generation and editing model",
+          reasoning: false,
+          toolCall: false,
+          structuredOutput: false,
+          modalities: { input: ["text", "image"], output: ["image"] },
+          limit: {},
+        },
+        "openai/gpt-4o": {
+          id: "openai/gpt-4o",
+          name: "GPT-4o",
+          description: "Multimodal chat model",
+          reasoning: false,
+          toolCall: true,
+          structuredOutput: true,
+          modalities: { input: ["text", "image"], output: ["text"] },
+          limit: { context: 128000 },
+        },
+      },
+    }));
+    const result = syncHarnessModels(root, {
+      groups: [{
+        id: "openai-official",
+        name: "OpenAI",
+        models: [{ id: "gpt-image-2" }, { id: "gpt-4o" }],
+      }],
+    });
+    const generator = result.state.routes.find((route) => route.model === "gpt-image-2");
+    const reader = result.state.routes.find((route) => route.model === "gpt-4o");
+    expect(generator).toMatchObject({
+      capabilities: expect.arrayContaining(["image-generation"]),
+      outputModalities: ["image"],
+      visionLevel: "none",
+      profileStatus: "ready",
+    });
+    expect(generator.capabilities).not.toContain("vision");
+    expect(generator.roles).not.toContain("executor");
+    expect(reader).toMatchObject({
+      capabilities: expect.arrayContaining(["vision", "tools", "structured-output", "long-context"]),
+      outputModalities: ["text"],
+      visionLevel: "full-vision",
+    });
+    expect(result.state.preferences.primaryRouteId).toBe("harness:openai-official:gpt-4o");
+    expect(result.state.preferences.visionRouteId).toBe("harness:openai-official:gpt-4o");
+    expect(() => updateRegistryPreferences(root, { primaryRouteId: "harness:openai-official:gpt-image-2" })).toThrow("主模型类型不符合要求");
   });
 
   it("syncs the preferred base model into Harness' composite vision selection", () => {

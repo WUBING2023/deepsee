@@ -56,10 +56,13 @@ function copyTree(source, target, label) {
 }
 
 function copyGlob(sourceRoot, targetRoot, pattern) {
-  const directory = assertSafeRelativePath(pattern.slice(0, -"/*.mjs".length));
+  const match = pattern.match(/^(.*)\/\*\.([A-Za-z0-9]+)$/);
+  if (!match) throw new Error(`Unsupported package file pattern: ${pattern}`);
+  const [, directoryValue, extension] = match;
+  const directory = assertSafeRelativePath(directoryValue);
   const sourceDirectory = join(sourceRoot, directory);
   if (!existsSync(sourceDirectory)) throw new Error(`ZIP package is missing required directory: ${directory}`);
-  const files = readdirSync(sourceDirectory).filter((name) => name.endsWith(".mjs"));
+  const files = readdirSync(sourceDirectory).filter((name) => name.endsWith(`.${extension}`));
   if (files.length === 0) throw new Error(`ZIP package contains no ${pattern} files`);
   for (const file of files) copyRelative(sourceRoot, targetRoot, join(directory, file));
 }
@@ -73,7 +76,7 @@ function isCompleteStage(target, manifest) {
     && existsSync(join(target, "scripts", "install-policy.mjs"));
 }
 
-export function stageFolderPackage(sourceRoot, dshHome, manifest) {
+export function stageFolderPackage(sourceRoot, dshHome, manifest, options = {}) {
   const packageRoot = join(dshHome, "deepsee", "packages");
   const versionDirectory = assertSafeRelativePath(manifest.version);
   const target = join(packageRoot, versionDirectory);
@@ -81,26 +84,35 @@ export function stageFolderPackage(sourceRoot, dshHome, manifest) {
   if (relation === "" || relation === ".." || relation.startsWith(`..\\`) || relation.startsWith("../") || isAbsolute(relation)) {
     throw new Error("Refusing to stage the ZIP package outside DSH_HOME.");
   }
-  if (isCompleteStage(target, manifest)) return target;
+  if (isCompleteStage(target, manifest) && !options.replace) return target;
 
   mkdirSync(packageRoot, { recursive: true });
   const staging = `${target}.staging-${process.pid}-${Date.now()}`;
+  const backup = `${target}.backup-${process.pid}-${Date.now()}`;
   rmSync(staging, { recursive: true, force: true });
+  rmSync(backup, { recursive: true, force: true });
   mkdirSync(staging, { recursive: true });
 
   try {
     copyRelative(sourceRoot, staging, "package.json");
     for (const entry of manifest.files ?? []) {
-      if (entry.endsWith("/*.mjs")) copyGlob(sourceRoot, staging, entry);
+      if (/\/\*\.[A-Za-z0-9]+$/.test(entry)) copyGlob(sourceRoot, staging, entry);
       else copyRelative(sourceRoot, staging, entry);
     }
     if (!isCompleteStage(staging, manifest)) {
       throw new Error("The extracted ZIP does not contain a complete prebuilt DeepSee package.");
     }
-    rmSync(target, { recursive: true, force: true });
-    renameSync(staging, target);
+    if (existsSync(target)) renameSync(target, backup);
+    try {
+      renameSync(staging, target);
+    } catch (error) {
+      if (!existsSync(target) && existsSync(backup)) renameSync(backup, target);
+      throw error;
+    }
+    rmSync(backup, { recursive: true, force: true });
   } finally {
     rmSync(staging, { recursive: true, force: true });
+    if (existsSync(target)) rmSync(backup, { recursive: true, force: true });
   }
 
   return target;

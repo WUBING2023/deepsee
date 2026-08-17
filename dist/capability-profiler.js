@@ -44,8 +44,10 @@ export function parseCapabilityProfile(text, info) {
         throw new Error("模型没有返回擅长能力。");
     const joined = strengths.join(" ").toLowerCase();
     const declaredVision = typeof value.vision === "boolean" ? value.vision : false;
-    const vision = Array.isArray(info?.inputModalities)
-        ? info.inputModalities.includes("image")
+    const runtimeModalities = info?.inputModalities;
+    const visionVerified = Array.isArray(runtimeModalities);
+    const vision = Array.isArray(runtimeModalities)
+        ? runtimeModalities.includes("image")
         : declaredVision;
     const capabilities = unique([
         "text",
@@ -63,7 +65,7 @@ export function parseCapabilityProfile(text, info) {
         ...(capabilities.includes("vision") ? ["vision", "document"] : []),
         ...(/write|content|写作|文案|创作/.test(joined) ? ["writing"] : []),
     ]);
-    return { strengths, vision, capabilities, roles, description: strengths.join("、") };
+    return { strengths, vision, visionVerified, capabilities, roles, description: strengths.join("、") };
 }
 function textBlocks(blocks) {
     const visible = blocks
@@ -205,20 +207,25 @@ export function installCapabilityProfiler(ctx, registryFile) {
             const reported = route.source === "cli"
                 ? await requestCliCapabilityProfile(ctx, registryFile, route, controller.signal)
                 : await requestCapabilityProfile(ctx.llm, route, controller.signal);
-            const profile = route.source === "cli"
-                ? {
-                    ...reported,
-                    vision: route.visionLevel === "full-vision",
-                    capabilities: unique([
-                        ...route.capabilities,
-                        ...reported.capabilities,
-                    ].filter((capability) => capability !== "vision" || route.visionLevel === "full-vision")),
-                    roles: unique([
-                        ...route.roles,
-                        ...reported.roles,
-                    ].filter((role) => !new Set(["vision", "document"]).has(role) || route.visionLevel === "full-vision")),
-                }
-                : reported;
+            const vision = route.source === "cli"
+                ? route.visionLevel === "full-vision"
+                : (reported.visionVerified ? reported.vision : (reported.vision || route.visionLevel === "full-vision"));
+            const textOutput = !Array.isArray(route.outputModalities)
+                || route.outputModalities.length === 0
+                || route.outputModalities.includes("text");
+            const profile = {
+                ...reported,
+                vision,
+                capabilities: unique([
+                    ...route.capabilities,
+                    ...reported.capabilities,
+                ].filter((capability) => capability !== "vision" || vision)),
+                roles: unique([
+                    ...route.roles,
+                    ...reported.roles,
+                ].filter((role) => ((role !== "executor" || textOutput)
+                    && (!new Set(["vision", "document"]).has(role) || vision || route.capabilities.includes("document"))))),
+            };
             updateRoute(registryFile, route.id, {
                 capabilities: profile.capabilities,
                 roles: profile.roles,

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepSee — Vision and model routing for DeepSeek Harness</title>
+  <meta name="description" content="Give DeepSeek Harness a real visual route and a lightweight model directory. One command, no companion service, no duplicate API keys.">
+  <meta name="theme-color" content="#f5f7fb">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="DeepSee — Give DeepSeek Harness eyes">
+  <meta property="og:description" content="A lightweight vision and model-routing plugin that stays inside DeepSeek Harness.">
+  <meta property="og:url" content="https://deepsee-wubing2023.pages.dev/">
+  <meta property="og:image" content="https://deepsee-wubing2023.pages.dev/assets/deepsee-panel.png">
+  <meta property="og:image:alt" content="DeepSee model directory and visual-reader preferences inside DeepSeek Harness">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://deepsee-wubing2023.pages.dev/">
+  <link rel="alternate" hreflang="en" href="https://deepsee-wubing2023.pages.dev/">
+  <link rel="alternate" hreflang="zh-CN" href="https://deepsee-wubing2023.pages.dev/zh-CN/">
+  <link rel="alternate" hreflang="x-default" href="https://deepsee-wubing2023.pages.dev/">
+  <link rel="icon" href="/assets/deepsee-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body data-locale="en">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="DeepSee home">
+      <img src="/assets/deepsee-mark.svg" width="34" height="34" alt="">
+      <span>DeepSee</span>
+      <small>Alpha</small>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#capabilities">What it does</a>
+      <a href="#release">Release</a>
+      <a href="https://github.com/WUBING2023/deepsee">GitHub</a>
+      <a class="language-link" href="/zh-CN/" data-locale-choice="zh-CN" lang="zh-CN">中文</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Public alpha · DeepSeek Harness plugin</p>
+        <h1 id="hero-title">Give DeepSeek Harness eyes.<br><span>Keep everything else.</span></h1>
+        <p class="hero-lede">Install once. DeepSee finds available models, selects a visual reader, and keeps your existing workspace instructions—all inside Harness.</p>
+
+        <div class="install-box" aria-label="Installation command">
+          <div>
+            <span class="terminal-label">PowerShell / Terminal</span>
+            <code data-install-command>npx --yes github:WUBING2023/deepsee install</code>
+          </div>
+          <button class="copy-button" type="button" data-copy-install aria-label="Copy installation command">
+            <span data-copy-label>Copy</span>
+          </button>
+        </div>
+
+        <div class="hero-actions">
+          <a class="button button-primary is-loading" href="#release" data-download aria-disabled="true">Download alpha package</a>
+          <a class="button button-secondary" href="https://github.com/WUBING2023/deepsee">View source</a>
+        </div>
+
+        <ul class="trust-list" aria-label="Product boundaries">
+          <li>Windows · macOS · Linux</li>
+          <li>Node.js 24+</li>
+          <li>MIT licensed</li>
+          <li>Keys stay in Harness</li>
+        </ul>
+      </div>
+
+      <div class="hero-evidence">
+        <div class="screenshot-shell">
+          <div class="window-bar" aria-hidden="true">
+            <span></span><span></span><span></span>
+            <p>DeepSeek Harness · DeepSee</p>
+          </div>
+          <img src="/assets/deepsee-panel.png" width="1440" height="960" alt="Interface preview of the DeepSee model directory and visual-reader preferences inside DeepSeek Harness">
+        </div>
+        <div class="evidence-note">
+          <strong>Interface preview.</strong>
+          <span>Native sidebar · same-origin API · no companion process</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof-strip" aria-label="Current release facts">
+      <div><span>Current</span><strong data-version>Loading…</strong></div>
+      <div><span>Channel</span><strong>Public alpha</strong></div>
+      <div><span>Harness</span><strong>0.1.0-rc.6</strong></div>
+      <div><span>Setup</span><strong>Automatic scan</strong></div>
+    </section>
+
+    <section class="section feature-section" id="capabilities" aria-labelledby="feature-title">
+      <div class="section-heading compact">
+        <p class="eyebrow">Ready after one scan</p>
+        <h2 id="feature-title">Three things, configured automatically.</h2>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card feature-vision">
+          <span class="feature-kicker">Visual reader</span>
+          <h3>Use the first ready vision model</h3>
+          <p>Use a multimodal model or manage MinerU, PaddleOCR, and RapidOCR in one place for complex documents, multilingual scans, or lightweight screenshots.</p>
+          <div class="mini-flow" aria-hidden="true"><span>Scan</span><i>→</i><span>Select</span><i>→</i><span>See</span></div>
+        </article>
+        <article class="feature-card">
+          <span class="feature-kicker">Local runtimes</span>
+          <h3>Reuse Codex or Claude Desktop</h3>
+          <p>DeepSee detects desktop apps and CLIs. Only a verified App Server or CLI enters automatic workflows.</p>
+          <ul class="capability-pills" aria-label="Example capabilities">
+            <li>vision</li><li>coding</li><li>reasoning</li><li>review</li>
+          </ul>
+        </article>
+        <article class="feature-card">
+          <span class="feature-kicker">Existing habits</span>
+          <h3>Keep your instruction files</h3>
+          <p>Harness loads <code>AGENTS.md</code> and <code>CLAUDE.md</code>; DeepSee also accepts lowercase <code>agent.md</code>.</p>
+          <div class="route-lines" aria-hidden="true"><span>AGENTS.md</span><b></b><span>CLAUDE.md</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section release-section" id="release" aria-labelledby="release-title">
+      <div class="release-panel">
+        <div class="release-main">
+          <p class="eyebrow">Current release</p>
+          <h2 id="release-title">DeepSee <span data-version>Loading…</span></h2>
+          <p class="release-summary">A public Alpha for early validation. Install with one command, or download the exact packaged candidate and verify its SHA-256.</p>
+          <div class="release-actions">
+            <a class="button button-primary is-loading" href="#" data-download aria-disabled="true">Download package</a>
+            <a class="text-link" href="#" data-release-link>Release notes <span>↗</span></a>
+          </div>
+        </div>
+        <dl class="release-facts">
+          <div><dt>Artifact</dt><dd data-asset-name>Loading manifest…</dd></div>
+          <div><dt>Size</dt><dd data-asset-size>—</dd></div>
+          <div><dt>SHA-256</dt><dd><code data-sha256>—</code> <a href="#" data-checksum-link>checksum file</a></dd></div>
+          <div><dt>License</dt><dd>MIT</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="final-cta" aria-labelledby="cta-title">
+      <img src="/assets/deepsee-mark.svg" width="52" height="52" alt="">
+      <h2 id="cta-title">Add sight. Keep the Harness.</h2>
+      <p>One plugin, one familiar interface, and only the routing you choose to enable.</p>
+      <div class="install-box compact-install">
+        <code data-install-command>npx --yes github:WUBING2023/deepsee install</code>
+        <button class="copy-button" type="button" data-copy-install><span data-copy-label>Copy</span></button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div><strong>DeepSee</strong><span>Vision and model routing for DeepSeek Harness.</span></div>
+    <div class="footer-links">
+      <a href="https://github.com/WUBING2023/deepsee">Source</a>
+      <a href="https://github.com/WUBING2023/deepsee/blob/main/README.md">Docs</a>
+      <a href="https://github.com/WUBING2023/deepsee/issues">Issues</a>
+      <a href="https://github.com/WUBING2023/deepsee/blob/main/LICENSE">MIT License</a>
+    </div>
+    <p>© 2026 WUBING2023. DeepSee is an independent open-source plugin.</p>
+  </footer>
+</body>
+</html>

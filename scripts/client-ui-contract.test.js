@@ -32,6 +32,30 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).not.toContain('"API Key"');
     expect(clientSource).toContain("api.llm.models({})");
     expect(clientSource).toContain("openNativeModelSettings");
+    expect(clientSource).toContain('requestAdmin("/v1/harness/models"');
+  });
+
+  it("auto-initializes verified runtimes and existing workspace instructions", () => {
+    expect(clientSource).toContain('fetch(`${adminBaseURL}/v1/runtimes/verify`');
+    expect(clientSource).toContain('api.llm.models({})');
+    expect(clientSource).toContain("已自动初始化");
+    expect(clientSource).toContain("AGENTS.md、CLAUDE.md 与 agent.md");
+    expect(clientSource).toContain("initialization.desktopApps");
+    expect(clientSource).toContain("（可调用）");
+  });
+
+  it("shows a simple stage-based OCR installation progress bar", () => {
+    expect(clientSource).toContain('createElement("progress"');
+    expect(clientSource).toContain('"aria-label": `${selectedOCR.label} 安装进度`');
+    expect(clientSource).toContain("selectedOCR.progress");
+    expect(clientSource).toContain("MinerU · 复杂文档");
+    expect(clientSource).toContain("PaddleOCR · 多语言通用");
+    expect(clientSource).toContain("RapidOCR · 轻量截图");
+  });
+
+  it("can uninstall only the selected OCR environment managed by DeepSee", () => {
+    expect(clientSource).toContain('requestAdmin(`/v1/tools/ocr/${tool.id}/uninstall`');
+    expect(clientSource).toContain("系统中的其他 ${tool.label} 安装不会被删除");
   });
 
   it("uses the plugin Host route instead of a companion port or injected token", () => {
@@ -46,8 +70,9 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).toContain('"视觉读取"');
     expect(clientSource).toContain('createElement("option", { value: "model" }, "模型")');
     expect(clientSource).toContain('createElement("option", { value: "ocr" }, "OCR")');
-    expect(clientSource).toContain("MinerU · 安装");
-    expect(clientSource).toContain("MinerU · 重试");
+    expect(clientSource).toContain('id: "paddleocr"');
+    expect(clientSource).toContain('id: "rapidocr"');
+    expect(clientSource).toContain('requestAdmin(`/v1/tools/ocr/${tool.id}/install`');
     expect(clientSource).toContain("自动尝试 UV、Python/pip、国内镜像、便携运行时与官方源码 ZIP");
   });
 

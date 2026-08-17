@@ -8,6 +8,8 @@ import { createDeepSeeAdminHandler, DEEPSEE_API_PREFIX, installDeepSeeAdminRoute
 
 const servers = [];
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
+const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
+const availableVersion = manifest.version.replace(/(\d+)$/, (value) => String(Number(value) + 1));
 
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))));
@@ -20,6 +22,7 @@ async function fixture(options = {}) {
     stateRoot: root,
     dshHome: root,
     disableUpdateCheck: true,
+    disableCatalogRefresh: true,
     ...options,
   });
   const server = createServer(handler);
@@ -57,16 +60,16 @@ describe("embedded DeepSee Host route", () => {
     const state = await response.json();
     expect(state).toMatchObject({ version: 1, routes: [], preferences: {} });
     expect(state.tools.mineru).toBeTruthy();
-    expect(state.update).toMatchObject({ currentVersion: "0.6.0-alpha.12" });
+    expect(state.tools.ocr.catalog.map((tool) => tool.id)).toEqual(["mineru", "paddleocr", "rapidocr"]);
+    expect(state.update).toMatchObject({ currentVersion: manifest.version });
   });
 
   it("checks the official update manifest through the same-origin route", async () => {
-    const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
     const sourceRef = "b".repeat(40);
     const base = await fixture({
       updateFetch: async (url) => String(url).includes("/commits/")
         ? ({ ok: true, status: 200, json: async () => ({ sha: sourceRef }) })
-        : ({ ok: true, status: 200, json: async () => ({ ...manifest, version: "0.6.0-alpha.13" }) }),
+        : ({ ok: true, status: 200, json: async () => ({ ...manifest, version: availableVersion }) }),
     });
     const response = await fetch(`${base}${DEEPSEE_API_PREFIX}/v1/update/check`, {
       method: "POST",
@@ -74,7 +77,7 @@ describe("embedded DeepSee Host route", () => {
       body: "{}",
     });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ update: { status: "available", latestVersion: "0.6.0-alpha.13" } });
+    expect(await response.json()).toMatchObject({ update: { status: "available", latestVersion: availableVersion } });
   });
 
   it("rejects cross-origin browser requests", async () => {

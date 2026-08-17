@@ -1,5 +1,5 @@
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, parse, relative, resolve } from "node:path";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -41,6 +41,8 @@ function readState(root) {
 
 function stateDetails(state) {
   return {
+    ...(Number.isFinite(state.progress) ? { progress: Math.max(0, Math.min(100, state.progress)) } : {}),
+    ...(state.phase ? { phase: state.phase } : {}),
     ...(state.installMethod ? { installMethod: state.installMethod } : {}),
     ...(state.strategy ? { strategy: state.strategy } : {}),
     ...(Array.isArray(state.attempts) ? { attempts: state.attempts } : {}),
@@ -81,8 +83,10 @@ export function getMinerUStatus(root) {
       installed: true,
       managed: true,
       executable: managed,
-      message: state.message || "MinerU 已安装，可用于文档 OCR 与版面解析。",
       ...stateDetails(state),
+      progress: 100,
+      phase: "complete",
+      message: state.message || "MinerU 已安装，可用于文档 OCR 与版面解析。",
     };
   }
   if (state.status === "installing") {
@@ -103,8 +107,10 @@ export function getMinerUStatus(root) {
       status: "error",
       installed: false,
       managed: true,
-      message: "上一次 MinerU 安装进程已结束但没有完成；点击重试会重新检测安装方式。",
       ...stateDetails(state),
+      progress: Number.isFinite(state.progress) ? state.progress : 0,
+      phase: "error",
+      message: "上一次 MinerU 安装进程已结束但没有完成；点击重试会重新检测安装方式。",
     };
   }
   if (state.status === "error") {
@@ -112,8 +118,10 @@ export function getMinerUStatus(root) {
       status: "error",
       installed: false,
       managed: true,
-      message: state.message || "MinerU 安装失败，可重试。",
       ...stateDetails(state),
+      progress: Number.isFinite(state.progress) ? state.progress : 0,
+      phase: "error",
+      message: state.message || "MinerU 安装失败，可重试。",
     };
   }
   const external = managedExists ? undefined : findExecutable("mineru");
@@ -123,6 +131,8 @@ export function getMinerUStatus(root) {
       installed: true,
       managed: false,
       executable: external,
+      progress: 100,
+      phase: "complete",
       message: "MinerU 已安装，可用于文档 OCR 与版面解析。",
       installMethod: "系统已有安装",
     };
@@ -131,8 +141,51 @@ export function getMinerUStatus(root) {
     status: "not-installed",
     installed: false,
     managed: true,
-    message: "未安装；仅在你点击安装后才会下载。",
+    progress: 0,
+    phase: "idle",
+    message: state.message || "未安装；仅在你点击安装后才会下载。",
   };
+}
+
+const MANAGED_MINERU_ENTRIES = Object.freeze([
+  ".venv",
+  "bootstrap",
+  "cache",
+  "downloads",
+  "model-cache",
+  "source",
+  "mineru.json",
+]);
+
+export function uninstallMinerU(root) {
+  const current = getMinerUStatus(root);
+  if (current.status === "installing") {
+    throw new Error("MinerU 正在安装，完成或失败后才能卸载。");
+  }
+  if (current.status === "ready" && current.managed === false) {
+    throw new Error("这是系统已有的 MinerU；DeepSee 不会卸载其他程序管理的环境。");
+  }
+  const executable = managedMinerUExecutable(root);
+  if (!existsSync(executable)) return current;
+
+  const toolRoot = resolve(managedMinerURoot(root));
+  const filesystemRoot = parse(toolRoot).root;
+  const depth = relative(filesystemRoot, toolRoot).split(/[\\/]+/).filter(Boolean).length;
+  if (depth < 2 || toolRoot === resolve(root) || toolRoot === resolve(homedir())) {
+    throw new Error("MinerU 管理目录不安全，已拒绝卸载。");
+  }
+  for (const entry of MANAGED_MINERU_ENTRIES) {
+    rmSync(join(toolRoot, entry), { recursive: true, force: true });
+  }
+  writeMinerUState(root, {
+    status: "not-installed",
+    installed: false,
+    progress: 0,
+    phase: "idle",
+    completedAt: new Date().toISOString(),
+    message: "DeepSee 管理的 MinerU 已卸载；系统中的其他 MinerU 安装未受影响。",
+  });
+  return getMinerUStatus(root);
 }
 
 export function startMinerUInstall(root) {
@@ -148,6 +201,8 @@ export function startMinerUInstall(root) {
   writeMinerUState(root, {
     status: "installing",
     startedAt,
+    progress: 2,
+    phase: "starting",
     strategy: "自动检测",
     attempts: [],
     message: "正在检测已有 UV、Python 与可用下载源…",
@@ -170,6 +225,8 @@ export function startMinerUInstall(root) {
       status: "error",
       startedAt,
       completedAt: new Date().toISOString(),
+      progress: 0,
+      phase: "error",
       message: "MinerU 后台安装进程未能启动。",
     });
     throw new Error("MinerU 后台安装进程未能启动。");
@@ -179,6 +236,8 @@ export function startMinerUInstall(root) {
       status: "error",
       startedAt,
       completedAt: new Date().toISOString(),
+      progress: 0,
+      phase: "error",
       message: `MinerU 后台安装进程启动失败：${error.message}`,
     });
   });
