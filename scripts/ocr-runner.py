@@ -8,6 +8,14 @@ import sys
 
 MARKER = "__DEEPSEE_OCR__"
 
+# Windows commonly inherits GBK/CP936 from the active console. OCR results can
+# contain bullets, uncommon punctuation, emoji, and multilingual text, so the
+# small machine-readable protocol must always be emitted as UTF-8.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 
 def nested_texts(value):
     if isinstance(value, str):

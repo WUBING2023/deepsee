@@ -1,6 +1,6 @@
 {
   "name": "@wubing2023/deepsee",
-  "version": "0.6.0-alpha.25",
+  "version": "0.6.0-alpha.26",
   "description": "DeepSee — one-command vision and model-routing plugin for DeepSeek Harness",
   "license": "MIT",
   "repository": {
@@ -101,8 +101,10 @@
     "install:plugin": "pnpm run build:plugin && node ./scripts/install-plugin.mjs --local --force",
     "uninstall:plugin": "node ./scripts/uninstall-plugin.mjs --local",
     "dump-config": "pnpm run build:plugin && node ./host/bin.mjs --local-home --profile headless --dump-config",
-    "start:web": "pnpm run build:plugin && node ./host/bin.mjs --local-home web",
-    "start:headless": "pnpm run build:plugin && node ./host/bin.mjs --local-home --profile headless",
+    "start:web": "pnpm run build:plugin && node ./host/bin.mjs web",
+    "start:web:isolated": "pnpm run build:plugin && node ./host/bin.mjs --local-home web",
+    "start:headless": "pnpm run build:plugin && node ./host/bin.mjs --profile headless",
+    "start:headless:isolated": "pnpm run build:plugin && node ./host/bin.mjs --local-home --profile headless",
     "start:official": "node ./host/bin.mjs --official web --port 3081"
   },
   "dependencies": {

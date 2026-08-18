@@ -112,6 +112,15 @@ export const runtimeDefinitions = Object.freeze([
       timeout: 45_000,
       validator: (output) => /\"result\"\s*:\s*\"DEEPSEE_VISION_RED(?:\\n)?\"/i.test(output)
         && !/unsupported image|vision_unavailable/i.test(output),
+      failureReason: (output) => {
+        const actualModel = output.match(/\"model\"\s*:\s*\"([^\"]+)\"/i)?.[1];
+        if (/DEEPSEE_VISION_UNAVAILABLE/i.test(output)) {
+          return actualModel
+            ? `Claude Code 当前所选模型实际路由到 ${actualModel}，该模型没有接收到图片输入，暂不能作为视觉模型。`
+            : "Claude Code 当前所选模型没有接收到图片输入，暂不能作为视觉模型。";
+        }
+        return "Claude Code 当前账号所选模型没有通过真实图片输入验证。";
+      },
     }),
   },
   {
@@ -235,7 +244,12 @@ export function verifyRuntimeVision(definition, executable, model, options = {})
   const result = run(probe.args, { timeout: probe.timeout, input: probe.input });
   const output = `${result.stdout || ""}\n${result.stderr || ""}`;
   if (failed(result) || !probe.validator(output)) {
-    return { available: false, reason: "当前账号所选模型没有通过真实图片输入验证。" };
+    return {
+      available: false,
+      reason: typeof probe.failureReason === "function"
+        ? probe.failureReason(output)
+        : "当前账号所选模型没有通过真实图片输入验证。",
+    };
   }
   return { available: true, reason: "" };
 }

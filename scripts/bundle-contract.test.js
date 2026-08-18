@@ -13,6 +13,8 @@ const updateManager = readFileSync(new URL("./update-manager.mjs", import.meta.u
 const updateWorker = readFileSync(new URL("./update-worker.mjs", import.meta.url), "utf8");
 const updateLiveSmoke = readFileSync(new URL("./update-live-smoke.mjs", import.meta.url), "utf8");
 const pluginSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const ocrRunner = readFileSync(new URL("./ocr-runner.py", import.meta.url), "utf8");
+const ocrSource = readFileSync(new URL("../src/ocr.ts", import.meta.url), "utf8");
 
 describe("standard DeepSeek Harness bundle", () => {
   it("declares a distributable bundle and Web client", () => {
@@ -92,6 +94,13 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(launcher).not.toContain("3091");
   });
 
+  it("uses the shared Harness home by default and names isolated development explicitly", () => {
+    expect(manifest.scripts["start:web"]).not.toContain("--local-home");
+    expect(manifest.scripts["start:headless"]).not.toContain("--local-home");
+    expect(manifest.scripts["start:web:isolated"]).toContain("--local-home");
+    expect(manifest.scripts["start:headless:isolated"]).toContain("--local-home");
+  });
+
   it("installs MinerU through an automatic fallback chain", () => {
     expect(mineruManager).not.toContain('if (!findExecutable("uv"))');
     expect(mineruWorker).toContain("discoverCompatiblePythonRuntimes");
@@ -117,5 +126,10 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.scripts["update:live-smoke"]).toBe("node ./scripts/update-live-smoke.mjs");
     expect(updateLiveSmoke).toContain('for (const profile of ["web", "headless"])');
     expect(updateLiveSmoke).toContain('status.status !== "restart-required"');
+  });
+
+  it("keeps the local OCR protocol UTF-8 on Windows consoles", () => {
+    expect(ocrRunner).toContain('sys.stdout.reconfigure(encoding="utf-8"');
+    expect(ocrSource).toContain('PYTHONIOENCODING: "utf-8"');
   });
 });

@@ -48,7 +48,7 @@ describe("live visual reader selection", () => {
     });
   });
 
-  it("preserves an OCR selection when the tool is unavailable instead of silently routing to a model", () => {
+  it("falls back to a ready visual model when the selected OCR executable is unavailable", () => {
     const registry = {
       version: 1,
       routes: [{
@@ -69,6 +69,32 @@ describe("live visual reader selection", () => {
       preferences: { visionMode: "ocr", visionRouteId: "api:kimi:vision", ocrTool: "paddleocr" },
     } as ModelRegistryFile;
     const resolved = resolveRuntimeConfig(config, registry, new Set(["kimi"]), { status: "not-installed" });
-    expect(resolved).toMatchObject({ visionMode: "ocr", ocrTool: "paddleocr", ocrExecutable: "", autoVision: true });
+    expect(resolved).toMatchObject({
+      provider: "kimi",
+      model: "vision",
+      visionMode: "model",
+      ocrTool: "paddleocr",
+      ocrExecutable: "",
+      autoVision: true,
+    });
+  });
+
+  it("uses a ready managed OCR fallback without routing the image into the base model", () => {
+    const registry = {
+      version: 1,
+      routes: [],
+      preferences: { visionMode: "ocr", ocrTool: "paddleocr" },
+    } as ModelRegistryFile;
+    const resolved = resolveRuntimeConfig(config, registry, new Set(), {
+      status: "ready",
+      executable: "C:\\DeepSee\\rapidocr\\python.exe",
+      tool: "rapidocr",
+    });
+    expect(resolved).toMatchObject({
+      visionMode: "ocr",
+      ocrTool: "rapidocr",
+      ocrExecutable: "C:\\DeepSee\\rapidocr\\python.exe",
+      autoVision: true,
+    });
   });
 });

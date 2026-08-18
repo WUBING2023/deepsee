@@ -3,7 +3,7 @@
   "product": {
     "name": "DeepSee",
     "slug": "deepsee",
-    "version": "0.6.0-alpha.25",
+    "version": "0.6.0-alpha.26",
     "channel": "public-alpha",
     "license": "MIT"
   },

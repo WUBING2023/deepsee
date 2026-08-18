@@ -73,8 +73,9 @@ export function resolveRuntimeConfig(config, registry, providerIds, ocr) {
     const vision = preferredVision?.visionLevel === "full-vision" && registered(preferredVision)
         ? preferredVision
         : fallbackVision;
-    const useOCR = registry.preferences?.visionMode === "ocr";
-    const readyOCRExecutable = useOCR && ocr.status === "ready" ? String(ocr.executable || "") : "";
+    const requestedOCR = registry.preferences?.visionMode === "ocr";
+    const useOCR = requestedOCR && ocr.status === "ready" && Boolean(ocr.executable);
+    const readyOCRExecutable = useOCR ? String(ocr.executable || "") : "";
     return {
         ...config,
         // CLI routes are exposed to the LLM runtime through DeepSee's registered
@@ -92,7 +93,7 @@ export function resolveRuntimeConfig(config, registry, providerIds, ocr) {
         autoVision: config.autoVision && (useOCR || Boolean(vision)),
         primeAutoWorkflow: registry.preferences?.primeAutoWorkflow ?? config.primeAutoWorkflow,
         visionMode: useOCR ? "ocr" : "model",
-        ocrTool: registry.preferences?.ocrTool || config.ocrTool,
+        ocrTool: useOCR ? (ocr.tool || registry.preferences?.ocrTool || config.ocrTool) : (registry.preferences?.ocrTool || config.ocrTool),
         ocrExecutable: readyOCRExecutable,
     };
 }
@@ -434,7 +435,14 @@ export async function apply(ctx, entryConfig) {
         const currentRegistry = getRegistry();
         const providerIds = new Set(ctx.llm.listProviders().map((provider) => provider.id));
         const selectedOCR = currentRegistry.preferences?.ocrTool || baseConfig.ocrTool;
-        return resolveRuntimeConfig(baseConfig, currentRegistry, providerIds, getOCRStatus(stateRoot, selectedOCR));
+        const ocrCandidates = [selectedOCR, "mineru", "paddleocr", "rapidocr"];
+        const uniqueCandidates = [...new Set(ocrCandidates)];
+        const statuses = uniqueCandidates.map((tool) => ({ tool, ...getOCRStatus(stateRoot, tool) }));
+        const selectedStatus = statuses.find((status) => status.tool === selectedOCR);
+        const effectiveOCR = selectedStatus.status === "ready"
+            ? selectedStatus
+            : (statuses.find((status) => status.status === "ready") || selectedStatus);
+        return resolveRuntimeConfig(baseConfig, currentRegistry, providerIds, effectiveOCR);
     };
     const config = resolveLiveConfig();
     const hasReadyVision = config.autoVision && (config.visionMode === "model" || Boolean(config.ocrExecutable));

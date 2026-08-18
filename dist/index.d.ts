@@ -34,6 +34,7 @@ export declare const Config: z<Config>;
 export declare function resolveRuntimeConfig(config: Config, registry: ModelRegistryFile, providerIds: ReadonlySet<string>, ocr: {
     status?: string;
     executable?: string;
+    tool?: OCRTool;
 }): Config;
 export declare function apply(ctx: Context, entryConfig: Config): Promise<void>;
 export { collectVisionInput, countImages, describeImages, imageAttachmentIds, rewriteWithVisualContext, stripImages, visionCacheKey, VisionDescriptionCache, VISION_SYSTEM_PROMPT, } from "./vision.js";

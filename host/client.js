@@ -187,6 +187,7 @@ window.__ModuleLoader__.load({
       .opends-pref-label{font-size:13px;font-weight:540;color:var(--dsw-alias-label-primary)}.opends-pref-control{width:min(340px,100%);justify-self:end;border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-pref-action{justify-self:end}.opends-tool-install{min-width:72px}
       .opends-vision-controls{width:min(430px,100%);justify-self:end;display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px}.opends-vision-kind,.opends-vision-target{border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-vision-target{width:100%;min-width:0}.opends-ocr-target{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}.opends-ocr-target .opends-button{white-space:nowrap}.opends-mineru-progress{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;color:var(--dsw-alias-label-tertiary);font-size:10px}.opends-mineru-progress progress{width:100%;height:5px;border:0;border-radius:99px;overflow:hidden;background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-bar{background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-value{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-mineru-progress progress::-moz-progress-bar{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-ocr-feedback{grid-column:1/-1;padding:7px 9px;border-radius:8px;background:var(--dsw-alias-bg-module-platform);display:grid;gap:2px;color:var(--dsw-alias-label-secondary);font-size:10px;line-height:1.4}.opends-ocr-comparison{color:var(--dsw-alias-label-tertiary)}
       .opends-model-warning{color:#a56a45}
+      .opends-ocr-advisory{grid-column:1/-1;padding:7px 9px;border:1px solid rgba(217,139,32,.18);border-radius:8px;background:rgba(217,139,32,.045);display:grid;gap:3px;color:var(--dsw-alias-label-secondary);font-size:10px;line-height:1.45}.opends-ocr-advisory strong{color:var(--dsw-alias-label-primary);font-weight:550}.opends-ocr-diagnostics{margin-top:2px}.opends-ocr-diagnostics summary{cursor:pointer;color:var(--dsw-alias-label-secondary)}.opends-ocr-diagnostics pre{max-height:120px;overflow:auto;margin:5px 0 0;padding:6px;border-radius:6px;background:rgba(127,127,127,.08);white-space:pre-wrap;word-break:break-word;font:9px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
       .opends-status-list{padding-top:6px}.opends-status-row{min-height:52px;display:grid;grid-template-columns:1fr 110px 90px;align-items:center;border-bottom:1px solid rgba(127,127,127,.14);gap:12px;font-size:12px}
       .opends-empty{padding:36px 0;text-align:center;color:var(--dsw-alias-label-tertiary);font-size:12px}
       .opends-select{box-sizing:border-box;width:100%;height:36px;border:1px solid rgba(127,127,127,.22);border-radius:9px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;padding:0 9px;outline:none}
@@ -219,19 +220,26 @@ window.__ModuleLoader__.load({
     function VisionBridgeNotice({ input }) {
       if (input.imageIds.length === 0) return null;
       let message;
+      const primary = liveRoutes.find((route) => route.id === livePreferences.primaryRouteId && route.enabled !== false && route.status === "ready")
+        || liveRoutes.find((route) => route.source === "harness" && /deepseek/i.test(`${route.provider} ${route.model}`) && route.status === "ready");
+      const primaryName = primary ? routeDisplayName(primary) : "当前主模型";
       if (livePreferences.visionMode === "ocr") {
         const selected = liveOcrTools.find((tool) => tool.id === (livePreferences.ocrTool || "mineru"));
-        message = selected?.status === "ready"
-          ? `DeepSeek 深见：当前由 ${selected.label} 本地 OCR 读取图片文字与版面，DeepSeek 将根据 OCR 结果继续回答`
-          : `DeepSeek 深见：当前选择的 ${selected?.label || "本地 OCR"} 尚不可用，请先在深见设置中完成安装`;
+        const activeOCR = selected?.status === "ready" ? selected : liveOcrTools.find((tool) => tool.status === "ready");
+        const fallbackVision = liveRoutes.find((route) => route.enabled !== false && route.visionLevel === "full-vision" && route.status === "ready");
+        message = activeOCR
+          ? `深见：${activeOCR === selected ? "当前由" : `所选 ${selected?.label || "OCR"} 不可用，本轮自动改用`} ${activeOCR.label} 本地 OCR 提取文字与版面，${primaryName} 将根据 OCR 结果继续回答`
+          : fallbackVision
+            ? `深见：所选 ${selected?.label || "OCR"} 不可用，本轮自动改用 ${routeDisplayName(fallbackVision)} · ${routeSourceLabel(fallbackVision)} 识图，${primaryName} 将继续回答`
+            : `深见：当前选择的 ${selected?.label || "本地 OCR"} 尚不可用，也没有可回退的视觉模型，请先在深见设置中完成安装或配置`;
       } else {
         const selected = liveRoutes.find((route) => route.id === livePreferences.visionRouteId);
         const vision = selected?.enabled !== false && selected?.visionLevel === "full-vision" && selected?.status === "ready"
           ? selected
           : liveRoutes.find((route) => route.enabled !== false && route.visionLevel === "full-vision" && route.status === "ready");
         message = vision
-          ? `DeepSeek 深见：当前由 ${routeDisplayName(vision)} · ${routeSourceLabel(vision)} 识图，DeepSeek 将根据识图结果继续回答`
-          : "DeepSeek 深见：当前没有可用的视觉模型，请在深见设置中完成配置";
+          ? `深见：当前由 ${routeDisplayName(vision)} · ${routeSourceLabel(vision)} 识图，${primaryName} 将根据识图结果继续回答`
+          : "深见：当前没有可用的视觉模型，请在深见设置中完成配置";
       }
       return createElement(
         "div",
@@ -870,6 +878,15 @@ window.__ModuleLoader__.load({
       const visionMode = preferences.visionMode === "ocr" ? "ocr" : "model";
       const selectedOCRId = ["mineru", "paddleocr", "rapidocr"].includes(preferences.ocrTool) ? preferences.ocrTool : "mineru";
       const selectedOCR = ocrTools.find((tool) => tool.id === selectedOCRId) || ocrTools[0];
+      const ocrColdStart = selectedOCRId === "mineru"
+        ? "首次读取通常需要 30–120 秒加载文档模型"
+        : selectedOCRId === "paddleocr"
+          ? "首次读取通常需要 10–60 秒加载识别模型"
+          : "首次读取通常需要 3–20 秒初始化轻量模型";
+      const ocrDiagnosticText = [
+        ...(selectedOCR?.attempts || []).filter((attempt) => attempt.status === "failed").map((attempt) => `${attempt.label}: ${attempt.message || "未成功"}`),
+        selectedOCR?.diagnostic || "",
+      ].filter(Boolean).join("\n");
       const updateAvailable = update.status === "available";
       const updateManual = update.status === "manual-required";
       const updateBusy = update.status === "checking" || update.status === "updating";
@@ -932,6 +949,14 @@ window.__ModuleLoader__.load({
                   (selectedOCR?.status === "installing" || selectedOCR?.status === "error") && createElement("div", { className: "opends-ocr-feedback", role: "status" },
                     createElement("span", null, selectedOCR.message || `${selectedOCR.label} 正在准备隔离环境…`),
                     createElement("span", { className: "opends-ocr-comparison" }, "MinerU · 复杂文档　PaddleOCR · 多语言通用　RapidOCR · 轻量截图"),
+                    selectedOCR?.status === "error" && ocrDiagnosticText && createElement("details", { className: "opends-ocr-diagnostics" },
+                      createElement("summary", null, "查看安装诊断"),
+                      createElement("pre", null, ocrDiagnosticText),
+                    ),
+                  ),
+                  createElement("div", { className: "opends-ocr-advisory", role: "note" },
+                    createElement("strong", null, `冷启动提示：${ocrColdStart}`),
+                    createElement("span", null, "OCR 只提取可见文字与基础版面，不理解物体、场景、图表含义或视觉关系；需要语义识图时请切换到“模型”。"),
                   ),
                 ),
           ),

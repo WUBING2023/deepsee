@@ -82,6 +82,8 @@ function runPythonOCR(
       stdio: ["ignore", "pipe", "pipe"],
       env: {
         ...process.env,
+        PYTHONIOENCODING: "utf-8",
+        PYTHONUTF8: "1",
         PADDLE_PDX_CACHE_HOME: join(toolRoot, "model-cache", "paddlex"),
         PADDLE_PDX_MODEL_SOURCE: process.env.PADDLE_PDX_MODEL_SOURCE || "BOS",
       },

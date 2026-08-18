@@ -58,6 +58,32 @@ describe("vision bridge content handling", () => {
     });
   });
 
+  it("keeps a visual observation inside its tool-result protocol wrapper", () => {
+    const original = createUserMessage({
+      source: { kind: "user" },
+      content: [{
+        type: "tool-result",
+        toolCallId: "call-read-image",
+        content: [{ type: "text", text: "image result" }, image],
+      } as unknown as ContentBlock],
+    });
+    const rewritten = rewriteWithVisualContext(original, "A poster with a blue title.", {
+      provider: "deepsee-cli-codex",
+      model: "gpt-5.6-sol",
+    });
+
+    expect(rewritten.content).toHaveLength(1);
+    expect(rewritten.content[0]).toMatchObject({
+      type: "tool-result",
+      toolCallId: "call-read-image",
+      content: [
+        { type: "text", text: "image result" },
+        { type: "text", text: expect.stringContaining("A poster with a blue title.") },
+      ],
+    });
+    expect(countImages(rewritten.content)).toBe(0);
+  });
+
   it("builds stable cache keys from the message, model, and attachment ids", () => {
     const message = createUserMessage({
       source: { kind: "user" },

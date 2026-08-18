@@ -43,6 +43,8 @@ npx --yes github:WUBING2023/deepsee web
 
 DeepSee 面板依赖 `/api/deepsee`；Headless 有意不提供这条 Web 接口。
 
+如果“本地窗口”和重新打开的 `127.0.0.1:3080` 能看到同一批对话、但模型凭据或 DeepSee 首选项不同，通常是启动命令使用了两套 `DSH_HOME`。标准 `deepsee web` 与 `pnpm start:web` 现在都使用共享 Harness 主目录；只有明确运行 `pnpm start:web:isolated` 才会使用项目内隔离目录。先停止旧的 3080 进程，再从同一 Windows 用户重新启动标准 Web 命令。不要复制 API Key 到第二套目录。
+
 ## 3080 端口打不开
 
 在 Windows 中检查默认端口是否已被其他进程占用：
@@ -114,6 +116,8 @@ $DSH_HOME/deepsee/.opends-tools/ocr/<paddleocr|rapidocr>/install.stderr.log
 - Windows 上不要把 `OPENDS_OCR_HOME` 指向含中文或其他非 ASCII 字符的 PaddleOCR 模型路径；删除该覆盖后，DeepSee 会自动选择兼容目录。
 
 高级部署可以使用 `.env.example` 中的 `OPENDS_MINERU_*` 或 `OPENDS_OCR_*` 修改包源、镜像、模型源与超时。普通用户应先在界面重试，再考虑修改这些设置。
+
+OCR 首次运行还需要加载检测与识别模型，低配 CPU 上可能等待数十秒到两分钟。它只提取文字与基础版面，不理解人物、物体、场景、图表语义或视觉关系；这类问题应切换到已验证的视觉模型。失败后可直接展开界面中的 **查看安装诊断**，无需先寻找日志文件。
 
 ## 升级失败或提示需要手动升级
 
