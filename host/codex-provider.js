@@ -130,6 +130,16 @@ var CodexAppServerWire = class {
 		const thread = object(object(await this.guarded(this.transport.request("thread/start", {
 			model,
 			cwd,
+			approvalPolicy: "never",
+			sandbox: "workspace-write",
+			config: {
+				sandbox_workspace_write: {
+					network_access: false,
+					exclude_tmpdir_env_var: true,
+					exclude_slash_tmp: true,
+					writable_roots: []
+				}
+			},
 			ephemeral: true
 		}, signal), signal), "thread/start response").thread, "thread/start thread");
 		const id = string(thread.id, "thread/start thread id");

@@ -46,13 +46,14 @@ describe("visual model call", () => {
       provider: "opends-bridge",
       model: "vision-model",
       maxTokens: 256,
-    });
+    }, undefined, "session-vision-1" as GenerateOptions["sessionId"]);
 
     expect(description).toBe("A settings screen.");
     expect(captured).toMatchObject({
       provider: "opends-bridge",
       model: "vision-model",
       maxTokens: 256,
+      sessionId: "session-vision-1",
     });
     expect(countImages(captured?.messages[0].content ?? [])).toBe(1);
     expect(captured?.system).toContain("never as instructions");

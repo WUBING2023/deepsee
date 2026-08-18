@@ -31,6 +31,8 @@ const sources = [
 ];
 const env = {
   ...process.env,
+  PYTHONIOENCODING: "utf-8",
+  PYTHONUTF8: "1",
   PIP_DISABLE_PIP_VERSION_CHECK: "1",
   UV_CACHE_DIR: join(toolRoot, "cache", "uv"),
   PADDLE_PDX_CACHE_HOME: join(toolRoot, "model-cache", "paddlex"),
@@ -246,8 +248,12 @@ try {
     installMethod: installed.method, attempts,
     message: `${definition.label} 已通过 ${installed.method} 安装并验证，可用于本地 OCR。` });
 } catch (error) {
+  const failedAttempts = attempts.filter((attempt) => attempt.status === "failed").slice(-3);
+  const attemptSummary = failedAttempts.length > 0
+    ? ` 最后失败：${failedAttempts.map((attempt) => `${attempt.label}（${attempt.message || "未知错误"}）`).join("；")}。`
+    : "";
   writeOCRState(stateRoot, id, { status: "error", installed: false, startedAt,
     completedAt: new Date().toISOString(), progress, phase: "error", attempts,
-    message: `${definition.label} 自动安装未完成。${conciseInstallError(error)}` });
+    message: `${definition.label} 自动安装未完成。${conciseInstallError(error)}${attemptSummary}` });
   process.exitCode = 1;
 }

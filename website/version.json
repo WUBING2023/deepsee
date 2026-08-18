@@ -1,14 +1,14 @@
 {
-  "version": "0.6.0-alpha.25",
+  "version": "0.6.0-alpha.26",
   "channel": "public-alpha",
-  "tag": "v0.6.0-alpha.25",
-  "assetName": "deepsee-0.6.0-alpha.25.tgz",
-  "sizeBytes": 154001,
-  "sha256": "d614e5078252c3b5148a1e16c7bf7ec17d87aa12aebbf7b0fd2b617dfc1274c5",
-  "downloadUrl": "https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.25/deepsee-0.6.0-alpha.25.tgz",
-  "sha256Url": "https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.25/deepsee-0.6.0-alpha.25.tgz.sha256",
-  "releaseUrl": "https://github.com/WUBING2023/deepsee/releases/tag/v0.6.0-alpha.25",
-  "sourceUrl": "https://github.com/WUBING2023/deepsee/tree/v0.6.0-alpha.25",
+  "tag": "v0.6.0-alpha.26",
+  "assetName": "deepsee-0.6.0-alpha.26.tgz",
+  "sizeBytes": 162886,
+  "sha256": "b2e200c18346b4541ba45edcc282ada6f86700c8e36f0673f039a7c96321a53e",
+  "downloadUrl": "https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.26/deepsee-0.6.0-alpha.26.tgz",
+  "sha256Url": "https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.26/deepsee-0.6.0-alpha.26.tgz.sha256",
+  "releaseUrl": "https://github.com/WUBING2023/deepsee/releases/tag/v0.6.0-alpha.26",
+  "sourceUrl": "https://github.com/WUBING2023/deepsee/tree/v0.6.0-alpha.26",
   "installCommand": "npx --yes github:WUBING2023/deepsee install",
   "requirements": {
     "node": ">=24",
@@ -20,5 +20,5 @@
     ]
   },
   "license": "MIT",
-  "generatedAt": "2026-08-17T10:47:36.969Z"
+  "generatedAt": "2026-08-18T08:28:41.659Z"
 }

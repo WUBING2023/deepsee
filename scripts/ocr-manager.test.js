@@ -61,4 +61,27 @@ describe("managed OCR catalog", () => {
     expect(() => getOCRStatus(stateRoot, "unknown")).toThrow("不存在");
     expect(() => uninstallOCR(stateRoot, "../outside")).toThrow("不存在");
   });
+
+  it("returns a concise redacted install diagnostic after an OCR failure", () => {
+    const { stateRoot } = fixture();
+    const logDir = join(stateRoot, ".opends-tools", "ocr", "rapidocr");
+    mkdirSync(logDir, { recursive: true });
+    writeFileSync(join(logDir, "install.stderr.log"), [
+      "uv download timed out",
+      "Authorization: Bearer secret-runtime-token",
+      "pip failed with sk-1234567890abcdef",
+    ].join("\n"));
+    writeOCRState(stateRoot, "rapidocr", {
+      status: "error",
+      installed: false,
+      attempts: [{ label: "UV", status: "failed", message: "timeout" }],
+      message: "RapidOCR 自动安装未完成。",
+    });
+
+    const status = getOCRStatus(stateRoot, "rapidocr");
+    expect(status.diagnostic).toContain("uv download timed out");
+    expect(status.diagnostic).toContain("<redacted>");
+    expect(status.diagnostic).not.toContain("secret-runtime-token");
+    expect(status.diagnostic).not.toContain("1234567890abcdef");
+  });
 });

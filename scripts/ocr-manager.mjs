@@ -75,6 +75,27 @@ function stateDetails(state) {
   };
 }
 
+function installDiagnostic(root, id, status) {
+  if (status?.status !== "error") return "";
+  const logPath = id === "mineru"
+    ? join(root, ".opends-tools", "mineru", "install.stderr.log")
+    : join(root, ".opends-tools", "ocr", id, "install.stderr.log");
+  if (!existsSync(logPath)) return "未找到安装日志；后台进程可能未成功启动。";
+  try {
+    const raw = readFileSync(logPath, "utf8").slice(-24_000)
+      .replace(/\x1B\[[0-?]*[ -\/]*[@-~]/g, "")
+      .replace(/sk-[A-Za-z0-9_-]{8,}/g, "sk-<redacted>")
+      .replace(/(authorization\s*[:=]\s*bearer\s+)\S+/ig, "$1<redacted>");
+    const lines = raw.split(/[\r\n]+/)
+      .map((line) => line.trim())
+      .filter((line) => line && !/^\d+%\|/.test(line));
+    return [...new Set(lines)].slice(-18).join("\n").slice(-6_000)
+      || "安装日志为空；后台进程可能未成功启动。";
+  } catch (error) {
+    return `安装日志无法读取：${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
 function adjacentPython(executable) {
   const bin = dirname(executable);
   const candidates = process.platform === "win32"
@@ -123,7 +144,9 @@ function pythonOCRStatus(root, id) {
 
 export function getOCRStatus(root, id) {
   getOCRDefinition(id);
-  return id === "mineru" ? getMinerUStatus(root) : pythonOCRStatus(root, id);
+  const status = id === "mineru" ? getMinerUStatus(root) : pythonOCRStatus(root, id);
+  const diagnostic = installDiagnostic(root, id, status);
+  return diagnostic ? { ...status, diagnostic } : status;
 }
 
 export function getOCRToolsState(root) {

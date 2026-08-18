@@ -82,7 +82,7 @@ export class VisionBridgeAdapter extends LlmAdapter {
       ...model,
       provider,
       name: visualName(model.name),
-      description: "\u7531\u6df1\u89c1\u8c03\u7528 " + selected.config.model + " \u8bc6\u56fe\uff0cDeepSeek \u5c06\u6839\u636e\u8bc6\u56fe\u7ed3\u679c\u7ee7\u7eed\u56de\u7b54",
+      description: "\u7531\u6df1\u89c1\u8c03\u7528 " + selected.config.model + " \u8bc6\u56fe\uff0c\u518d\u7531\u5f53\u524d\u4e3b\u6a21\u578b\u7ee7\u7eed\u56de\u7b54",
       inputModalities: ["text", "image"],
     }));
   }
@@ -94,7 +94,7 @@ export class VisionBridgeAdapter extends LlmAdapter {
       ...resolved,
       provider,
       name: visualName(resolved.name),
-      description: "\u7531\u6df1\u89c1\u8c03\u7528 " + selected.config.model + " \u8bc6\u56fe\uff0cDeepSeek \u5c06\u6839\u636e\u8bc6\u56fe\u7ed3\u679c\u7ee7\u7eed\u56de\u7b54",
+      description: "\u7531\u6df1\u89c1\u8c03\u7528 " + selected.config.model + " \u8bc6\u56fe\uff0c\u518d\u7531\u5f53\u524d\u4e3b\u6a21\u578b\u7ee7\u7eed\u56de\u7b54",
       inputModalities: ["text", "image"],
     };
   }
@@ -115,7 +115,7 @@ export class VisionBridgeAdapter extends LlmAdapter {
         cacheKey,
         () => selected.describer
           ? selected.describer(userMessage, options.signal)
-          : describeImages(this.ctx as Context, userMessage, config, options.signal),
+          : describeImages(this.ctx as Context, userMessage, config, options.signal, options.sessionId),
       );
       messages.push(rewriteWithVisualContext(userMessage, description, config));
     }

@@ -139,4 +139,28 @@ describe("CliRuntimeAdapter", () => {
     expect(await adapter.resolveModel("deepsee-cli-codex", "gpt-5.6-sol")).toMatchObject({ inputModalities: ["text", "image"] });
     expect(start).toHaveBeenCalledWith("codex", expect.objectContaining({ prompt: expect.arrayContaining([image]) }));
   });
+
+  it("uses the live initiator when Harness omits a base-model session id", async () => {
+    const initiator = { session: { header: { cwd: "C:\\workspace" } } };
+    const start = vi.fn(async () => ({
+      id: "child",
+      result: Promise.resolve({ output: [{ type: "text" as const, text: "INITIATOR_OK" }], stopReason: "completed" as const }),
+      dispose: vi.fn(async () => undefined),
+    }));
+    const currentInitiator = vi.fn(() => initiator);
+    const ctx = {
+      agents: { get: vi.fn(), currentInitiator },
+      subagents: { start },
+    } as unknown as Pick<Context, "agents" | "subagents">;
+    const adapter = new CliRuntimeAdapter(ctx, () => registry);
+    const request = options();
+    delete request.sessionId;
+
+    const chunks = [];
+    for await (const chunk of adapter.stream(request)) chunks.push(chunk);
+
+    expect(currentInitiator).toHaveBeenCalledOnce();
+    expect(start).toHaveBeenCalledWith("codex", expect.objectContaining({ parent: initiator }));
+    expect(chunks).toContainEqual({ type: "text-delta", index: 0, text: "INITIATOR_OK" });
+  });
 });

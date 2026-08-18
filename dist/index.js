@@ -73,12 +73,18 @@ export function resolveRuntimeConfig(config, registry, providerIds, ocr) {
     const vision = preferredVision?.visionLevel === "full-vision" && registered(preferredVision)
         ? preferredVision
         : fallbackVision;
-    const useOCR = registry.preferences?.visionMode === "ocr";
-    const readyOCRExecutable = useOCR && ocr.status === "ready" ? String(ocr.executable || "") : "";
+    const requestedOCR = registry.preferences?.visionMode === "ocr";
+    const useOCR = requestedOCR && ocr.status === "ready" && Boolean(ocr.executable);
+    const readyOCRExecutable = useOCR ? String(ocr.executable || "") : "";
     return {
         ...config,
-        provider: vision?.runtimeProvider || vision?.provider || config.provider,
-        model: vision?.runtimeModel || vision?.model || config.model,
+        // CLI routes are exposed to the LLM runtime through DeepSee's registered
+        // adapter, not through the native subagent provider used one layer below.
+        // Keep the selected CLI model too: `codex`/`codex-cli` are transport
+        // identities, while the adapter advertises concrete models such as
+        // `gpt-5.6-sol`.
+        provider: vision ? llmProvider(vision) : config.provider,
+        model: vision?.cliModel || vision?.runtimeModel || vision?.model || config.model,
         primaryProvider: primary ? llmProvider(primary) : config.primaryProvider,
         targetProviders: [...new Set([
                 ...config.targetProviders,
@@ -87,7 +93,7 @@ export function resolveRuntimeConfig(config, registry, providerIds, ocr) {
         autoVision: config.autoVision && (useOCR || Boolean(vision)),
         primeAutoWorkflow: registry.preferences?.primeAutoWorkflow ?? config.primeAutoWorkflow,
         visionMode: useOCR ? "ocr" : "model",
-        ocrTool: registry.preferences?.ocrTool || config.ocrTool,
+        ocrTool: useOCR ? (ocr.tool || registry.preferences?.ocrTool || config.ocrTool) : (registry.preferences?.ocrTool || config.ocrTool),
         ocrExecutable: readyOCRExecutable,
     };
 }
@@ -363,7 +369,7 @@ function installVisionBridge(ctx, config, resolveConfig) {
                     tool: current.ocrTool,
                     executable: current.ocrExecutable,
                 }, payload.signal)
-                : describeImages(ctx, message, callConfig, payload.signal));
+                : describeImages(ctx, message, callConfig, payload.signal, payload.agent.id));
             messages.push(rewriteWithVisualContext(message, description, callConfig));
         }
         return { kind: "enter", messages };
@@ -429,7 +435,14 @@ export async function apply(ctx, entryConfig) {
         const currentRegistry = getRegistry();
         const providerIds = new Set(ctx.llm.listProviders().map((provider) => provider.id));
         const selectedOCR = currentRegistry.preferences?.ocrTool || baseConfig.ocrTool;
-        return resolveRuntimeConfig(baseConfig, currentRegistry, providerIds, getOCRStatus(stateRoot, selectedOCR));
+        const ocrCandidates = [selectedOCR, "mineru", "paddleocr", "rapidocr"];
+        const uniqueCandidates = [...new Set(ocrCandidates)];
+        const statuses = uniqueCandidates.map((tool) => ({ tool, ...getOCRStatus(stateRoot, tool) }));
+        const selectedStatus = statuses.find((status) => status.tool === selectedOCR);
+        const effectiveOCR = selectedStatus.status === "ready"
+            ? selectedStatus
+            : (statuses.find((status) => status.status === "ready") || selectedStatus);
+        return resolveRuntimeConfig(baseConfig, currentRegistry, providerIds, effectiveOCR);
     };
     const config = resolveLiveConfig();
     const hasReadyVision = config.autoVision && (config.visionMode === "model" || Boolean(config.ocrExecutable));

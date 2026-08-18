@@ -19,6 +19,74 @@ window.__ModuleLoader__.load({
     let livePreferences = {};
     let liveOcrTools = [];
 
+    const deepSeeIconPaths = [
+      "M8.00192 6.64454C8.75026 6.64454 9.35732 7.25169 9.35739 8.00001C9.35739 8.74838 8.7503 9.35548 8.00192 9.35548C7.25367 9.35533 6.64743 8.74829 6.64743 8.00001C6.6475 7.25178 7.25371 6.64468 8.00192 6.64454Z",
+      "M9.97165 1.29981C11.5853 0.718916 13.271 0.642197 14.3144 1.68555C15.3577 2.72902 15.2811 4.41466 14.7002 6.02833C14.4707 6.66561 14.1504 7.32937 13.75 8.00001C14.1504 8.67062 14.4707 9.33444 14.7002 9.97169C15.2811 11.5854 15.3578 13.271 14.3144 14.3145C13.271 15.3579 11.5854 15.2811 9.97165 14.7002C9.3344 14.4708 8.67059 14.1505 7.99997 13.75C7.32933 14.1505 6.66558 14.4708 6.02829 14.7002C4.41461 15.2811 2.72899 15.3578 1.68552 14.3145C0.642155 13.271 0.71887 11.5854 1.29977 9.97169C1.52915 9.33454 1.84865 8.67049 2.24899 8.00001C1.84866 7.32953 1.52915 6.66544 1.29977 6.02833C0.718852 4.41459 0.64207 2.729 1.68552 1.68555C2.72897 0.642112 4.41456 0.718887 6.02829 1.29981C6.66541 1.52918 7.32949 1.8487 7.99997 2.24903C8.67045 1.84869 9.33451 1.52919 9.97165 1.29981ZM12.9404 9.2129C12.4391 9.893 11.8616 10.5681 11.2148 11.2149C10.568 11.8616 9.89296 12.4391 9.21286 12.9404C9.62532 13.1579 10.0271 13.338 10.4121 13.4766C11.9146 14.0174 12.9172 13.8738 13.3955 13.3955C13.8737 12.9173 14.0174 11.9146 13.4765 10.4121C13.3379 10.0271 13.1578 9.62535 12.9404 9.2129ZM3.05856 9.2129C2.84121 9.62523 2.66197 10.0272 2.52341 10.4121C1.98252 11.9146 2.12627 12.9172 2.60446 13.3955C3.08278 13.8737 4.08544 14.0174 5.58786 13.4766C5.97264 13.338 6.37389 13.1577 6.7861 12.9404C6.10624 12.4393 5.43168 11.8614 4.78513 11.2149C4.13823 10.5679 3.55992 9.89313 3.05856 9.2129ZM7.99899 3.792C7.23179 4.31419 6.45306 4.95512 5.70407 5.70411C4.95509 6.45309 4.31415 7.23184 3.79196 7.99903C4.3143 8.76666 4.95471 9.54653 5.70407 10.2959C6.45309 11.0449 7.23271 11.6848 7.99997 12.207C8.76725 11.6848 9.54683 11.0449 10.2959 10.2959C11.0449 9.54686 11.6848 8.76729 12.207 8.00001C11.6848 7.23275 11.0449 6.45312 10.2959 5.70411C9.5465 4.95475 8.76662 4.31434 7.99899 3.792ZM5.58786 2.52344C4.08533 1.98255 3.08272 2.12625 2.60446 2.6045C2.12621 3.08275 1.98252 4.08536 2.52341 5.5879C2.66189 5.97253 2.8414 6.37409 3.05856 6.78614C3.55983 6.10611 4.1384 5.43189 4.78513 4.78516C5.43186 4.13843 6.10606 3.55987 6.7861 3.0586C6.37405 2.84144 5.97249 2.66192 5.58786 2.52344ZM13.3955 2.6045C12.9172 2.12631 11.9146 1.98257 10.4121 2.52344C10.0272 2.66201 9.62519 2.84125 9.21286 3.0586C9.8931 3.55996 10.5679 4.13827 11.2148 4.78516C11.8614 5.43172 12.4392 6.10627 12.9404 6.78614C13.1577 6.37393 13.338 5.97267 13.4765 5.5879C14.0174 4.08549 13.8736 3.08281 13.3955 2.6045Z",
+    ];
+
+    function DeepSeeIcon({ size = 16, className }) {
+      return createElement("svg", {
+        width: size,
+        height: size,
+        className,
+        viewBox: "0 0 16 16",
+        fill: "none",
+        xmlns: "http://www.w3.org/2000/svg",
+        "aria-hidden": true,
+      },
+        createElement("title", null, "深见 DeepSee"),
+        deepSeeIconPaths.map((path, index) => createElement("path", { key: index, d: path, fill: "currentColor" })),
+      );
+    }
+
+    function createDeepSeeNavIcon() {
+      const namespace = "http://www.w3.org/2000/svg";
+      const wrapper = document.createElement("span");
+      wrapper.className = "opends-settings-nav-icon";
+      wrapper.setAttribute("aria-hidden", "true");
+      const svg = document.createElementNS(namespace, "svg");
+      svg.setAttribute("width", "16");
+      svg.setAttribute("height", "16");
+      svg.setAttribute("viewBox", "0 0 16 16");
+      svg.setAttribute("fill", "none");
+      const title = document.createElementNS(namespace, "title");
+      title.textContent = "深见 DeepSee";
+      svg.append(title);
+      deepSeeIconPaths.forEach((value) => {
+        const path = document.createElementNS(namespace, "path");
+        path.setAttribute("d", value);
+        path.setAttribute("fill", "currentColor");
+        svg.append(path);
+      });
+      wrapper.append(svg);
+      return wrapper;
+    }
+
+    function installDeepSeeSettingsNavIcon() {
+      const decorate = () => {
+        document.querySelectorAll('[role="dialog"] nav button').forEach((button) => {
+          if (button.querySelector(".opends-settings-nav-icon") || button.textContent?.trim() !== "深见") return;
+          const nativeIcon = button.querySelector("svg");
+          if (nativeIcon) {
+            nativeIcon.dataset.opendsNativeNavIcon = "true";
+            nativeIcon.style.display = "none";
+          }
+          button.insertBefore(createDeepSeeNavIcon(), button.firstChild);
+        });
+      };
+      decorate();
+      const observer = new MutationObserver(decorate);
+      observer.observe(document.body, { childList: true, subtree: true });
+      return () => {
+        observer.disconnect();
+        document.querySelectorAll(".opends-settings-nav-icon").forEach((icon) => icon.remove());
+        document.querySelectorAll('svg[data-opends-native-nav-icon="true"]').forEach((icon) => {
+          icon.style.display = "";
+          delete icon.dataset.opendsNativeNavIcon;
+        });
+      };
+    }
+
     function rememberServerState(state) {
       if (!state || typeof state !== "object") return;
       if (Array.isArray(state.routes)) liveRoutes = state.routes.filter((route) => route.source !== "ocr");
@@ -30,7 +98,9 @@ window.__ModuleLoader__.load({
       .opends-footer-button{box-sizing:border-box;width:100%;height:36px;border:0;border-radius:12px;background:transparent;color:var(--dsw-alias-label-primary);display:flex;align-items:center;gap:8px;padding:0 10px;cursor:pointer;font:inherit}
       .opends-footer-button:hover{background:var(--dsw-alias-interactive-bg-hover)}
       .opends-footer-button.rail{width:36px;border-radius:50%;justify-content:center;padding:0}
-      .opends-mark{width:20px;height:20px;border:1px solid currentColor;border-radius:6px;background:transparent;color:var(--dsw-alias-label-primary);font-size:9px;font-weight:650;display:inline-flex;align-items:center;justify-content:center;flex:none}
+      .opends-mark{width:20px;height:20px;color:var(--dsw-alias-label-primary);display:inline-flex;align-items:center;justify-content:center;flex:none}
+      .opends-mark svg{display:block}
+      .opends-settings-nav-icon{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:inherit}.opends-settings-nav-icon svg{display:block}
       .opends-footer-label{white-space:nowrap;overflow:hidden}
       .opends-mask{position:absolute;inset:0;background:rgba(25,27,32,.2);backdrop-filter:blur(1.5px)}
       .opends-title{font-size:17px;font-weight:600;color:var(--dsw-alias-label-primary)}
@@ -117,6 +187,7 @@ window.__ModuleLoader__.load({
       .opends-pref-label{font-size:13px;font-weight:540;color:var(--dsw-alias-label-primary)}.opends-pref-control{width:min(340px,100%);justify-self:end;border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-pref-action{justify-self:end}.opends-tool-install{min-width:72px}
       .opends-vision-controls{width:min(430px,100%);justify-self:end;display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px}.opends-vision-kind,.opends-vision-target{border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-vision-target{width:100%;min-width:0}.opends-ocr-target{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}.opends-ocr-target .opends-button{white-space:nowrap}.opends-mineru-progress{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;color:var(--dsw-alias-label-tertiary);font-size:10px}.opends-mineru-progress progress{width:100%;height:5px;border:0;border-radius:99px;overflow:hidden;background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-bar{background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-value{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-mineru-progress progress::-moz-progress-bar{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-ocr-feedback{grid-column:1/-1;padding:7px 9px;border-radius:8px;background:var(--dsw-alias-bg-module-platform);display:grid;gap:2px;color:var(--dsw-alias-label-secondary);font-size:10px;line-height:1.4}.opends-ocr-comparison{color:var(--dsw-alias-label-tertiary)}
       .opends-model-warning{color:#a56a45}
+      .opends-ocr-note{grid-column:1/-1;min-width:0;display:flex;align-items:center;gap:5px;padding:1px 2px 0;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-ocr-note:before{content:"i";width:13px;height:13px;border:1px solid rgba(127,127,127,.3);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;font:500 8px/1 ui-sans-serif,system-ui}.opends-ocr-note span{min-width:0;overflow:hidden;text-overflow:ellipsis}.opends-ocr-diagnostics{margin-top:2px}.opends-ocr-diagnostics summary{cursor:pointer;color:var(--dsw-alias-label-secondary)}.opends-ocr-diagnostics pre{max-height:120px;overflow:auto;margin:5px 0 0;padding:6px;border-radius:6px;background:rgba(127,127,127,.08);white-space:pre-wrap;word-break:break-word;font:9px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
       .opends-status-list{padding-top:6px}.opends-status-row{min-height:52px;display:grid;grid-template-columns:1fr 110px 90px;align-items:center;border-bottom:1px solid rgba(127,127,127,.14);gap:12px;font-size:12px}
       .opends-empty{padding:36px 0;text-align:center;color:var(--dsw-alias-label-tertiary);font-size:12px}
       .opends-select{box-sizing:border-box;width:100%;height:36px;border:1px solid rgba(127,127,127,.22);border-radius:9px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;padding:0 9px;outline:none}
@@ -149,19 +220,26 @@ window.__ModuleLoader__.load({
     function VisionBridgeNotice({ input }) {
       if (input.imageIds.length === 0) return null;
       let message;
+      const primary = liveRoutes.find((route) => route.id === livePreferences.primaryRouteId && route.enabled !== false && route.status === "ready")
+        || liveRoutes.find((route) => route.source === "harness" && /deepseek/i.test(`${route.provider} ${route.model}`) && route.status === "ready");
+      const primaryName = primary ? routeDisplayName(primary) : "当前主模型";
       if (livePreferences.visionMode === "ocr") {
         const selected = liveOcrTools.find((tool) => tool.id === (livePreferences.ocrTool || "mineru"));
-        message = selected?.status === "ready"
-          ? `DeepSeek 深见：当前由 ${selected.label} 本地 OCR 读取图片文字与版面，DeepSeek 将根据 OCR 结果继续回答`
-          : `DeepSeek 深见：当前选择的 ${selected?.label || "本地 OCR"} 尚不可用，请先在深见设置中完成安装`;
+        const activeOCR = selected?.status === "ready" ? selected : liveOcrTools.find((tool) => tool.status === "ready");
+        const fallbackVision = liveRoutes.find((route) => route.enabled !== false && route.visionLevel === "full-vision" && route.status === "ready");
+        message = activeOCR
+          ? `深见：${activeOCR === selected ? "当前由" : `所选 ${selected?.label || "OCR"} 不可用，本轮自动改用`} ${activeOCR.label} 本地 OCR 提取文字与版面，${primaryName} 将根据 OCR 结果继续回答`
+          : fallbackVision
+            ? `深见：所选 ${selected?.label || "OCR"} 不可用，本轮自动改用 ${routeDisplayName(fallbackVision)} · ${routeSourceLabel(fallbackVision)} 识图，${primaryName} 将继续回答`
+            : `深见：当前选择的 ${selected?.label || "本地 OCR"} 尚不可用，也没有可回退的视觉模型，请先在深见设置中完成安装或配置`;
       } else {
         const selected = liveRoutes.find((route) => route.id === livePreferences.visionRouteId);
         const vision = selected?.enabled !== false && selected?.visionLevel === "full-vision" && selected?.status === "ready"
           ? selected
           : liveRoutes.find((route) => route.enabled !== false && route.visionLevel === "full-vision" && route.status === "ready");
         message = vision
-          ? `DeepSeek 深见：当前由 ${routeDisplayName(vision)} · ${routeSourceLabel(vision)} 识图，DeepSeek 将根据识图结果继续回答`
-          : "DeepSeek 深见：当前没有可用的视觉模型，请在深见设置中完成配置";
+          ? `深见：当前由 ${routeDisplayName(vision)} · ${routeSourceLabel(vision)} 识图，${primaryName} 将根据识图结果继续回答`
+          : "深见：当前没有可用的视觉模型，请在深见设置中完成配置";
       }
       return createElement(
         "div",
@@ -608,9 +686,7 @@ window.__ModuleLoader__.load({
         try {
           const result = await requestAdmin("/v1/update/check", { method: "POST", body: "{}" });
           setUpdate(result.update);
-          if (result.update?.status === "available" || result.update?.status === "error") {
-            setMessage(result.update.message || "版本检查完成。");
-          }
+          setMessage(result.update?.message || "版本检查完成。");
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "版本检查失败。");
           await loadState();
@@ -802,6 +878,15 @@ window.__ModuleLoader__.load({
       const visionMode = preferences.visionMode === "ocr" ? "ocr" : "model";
       const selectedOCRId = ["mineru", "paddleocr", "rapidocr"].includes(preferences.ocrTool) ? preferences.ocrTool : "mineru";
       const selectedOCR = ocrTools.find((tool) => tool.id === selectedOCRId) || ocrTools[0];
+      const ocrColdStart = selectedOCRId === "mineru"
+        ? "30–120 秒"
+        : selectedOCRId === "paddleocr"
+          ? "10–60 秒"
+          : "3–20 秒";
+      const ocrDiagnosticText = [
+        ...(selectedOCR?.attempts || []).filter((attempt) => attempt.status === "failed").map((attempt) => `${attempt.label}: ${attempt.message || "未成功"}`),
+        selectedOCR?.diagnostic || "",
+      ].filter(Boolean).join("\n");
       const updateAvailable = update.status === "available";
       const updateManual = update.status === "manual-required";
       const updateBusy = update.status === "checking" || update.status === "updating";
@@ -817,7 +902,9 @@ window.__ModuleLoader__.load({
                 ? "需手动升级"
                 : update.status === "error"
                   ? "重试更新"
-                  : "更新";
+                  : update.status === "current"
+                    ? "已是最新"
+                    : "检查更新";
       const preferencesPanel = createElement("section", { className: "opends-preferences", "aria-label": "深见 DeepSee 首选项" },
         createElement("div", { className: "opends-pref-row", title: "Harness 的基础回答模型；Codex 与 Claude Code 使用本机已登录的订阅 Runtime。更改后重启生效。" },
           createElement("div", { className: "opends-pref-label" }, "主模型"),
@@ -854,6 +941,10 @@ window.__ModuleLoader__.load({
                     }, selectedOCR?.status === "ready"
                       ? selectedOCR?.managed === false ? "系统安装" : "卸载"
                       : selectedOCR?.status === "installing" ? "安装中…" : selectedOCR?.status === "error" ? "重试" : "安装"),
+                    createElement("div", {
+                      className: "opends-ocr-note",
+                      title: `首次读取通常需要 ${ocrColdStart} 加载本地模型。OCR 只提取文字与基础版面，不理解物体、场景、图表含义或视觉关系；语义识图请切换到“模型”。`,
+                    }, createElement("span", null, `首次使用约 ${ocrColdStart} · 仅提取文字和版面`)),
                   ),
                   selectedOCR?.status === "installing" && createElement("div", { className: "opends-mineru-progress opends-ocr-progress", title: selectedOCR.message || `${selectedOCR.label} 正在后台安装` },
                     createElement("progress", { max: 100, value: Number.isFinite(selectedOCR.progress) ? selectedOCR.progress : 5, "aria-label": `${selectedOCR.label} 安装进度` }),
@@ -862,6 +953,10 @@ window.__ModuleLoader__.load({
                   (selectedOCR?.status === "installing" || selectedOCR?.status === "error") && createElement("div", { className: "opends-ocr-feedback", role: "status" },
                     createElement("span", null, selectedOCR.message || `${selectedOCR.label} 正在准备隔离环境…`),
                     createElement("span", { className: "opends-ocr-comparison" }, "MinerU · 复杂文档　PaddleOCR · 多语言通用　RapidOCR · 轻量截图"),
+                    selectedOCR?.status === "error" && ocrDiagnosticText && createElement("details", { className: "opends-ocr-diagnostics" },
+                      createElement("summary", null, "查看安装诊断"),
+                      createElement("pre", null, ocrDiagnosticText),
+                    ),
                   ),
                 ),
           ),
@@ -927,7 +1022,7 @@ window.__ModuleLoader__.load({
         "aria-label": "打开深见 DeepSee",
         onClick: () => openNativeSettingsSection("深见"),
       },
-        createElement("span", { className: "opends-mark", "aria-hidden": true }, "见"),
+        createElement("span", { className: "opends-mark", "aria-hidden": true }, createElement(DeepSeeIcon, { size: 18 })),
         wide && createElement("span", { className: "opends-footer-label" }, "深见"),
       );
     }
@@ -985,7 +1080,7 @@ window.__ModuleLoader__.load({
       return createElement("div", { className: "opends-onboarding" },
         createElement("div", { className: "opends-mask" }),
         createElement("section", { className: "opends-onboarding-card", role: "dialog", "aria-modal": true, "aria-label": "配置深见视觉模型" },
-          createElement("span", { className: "opends-mark", "aria-hidden": true }, "见"),
+          createElement("span", { className: "opends-mark", "aria-hidden": true }, createElement(DeepSeeIcon, { size: 18 })),
           createElement("div", { className: "opends-title" }, "为深见配置视觉读取能力"),
           createElement("div", { className: "opends-help" }, "Prime 模式需要至少一条真实可用的视觉路线。推荐在模型设置中添加 Kimi、OpenAI、Claude 或兼容视觉 API。OCR-only Runtime 只能读取文字与版面。"),
           createElement("div", { className: "opends-footer-actions" },
@@ -999,6 +1094,8 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const scope = ctx.settingsScope.bind({ namespace: "opends-bridge" });
       const api = ctx.get("connection").api;
+      window.__deepSeeSettingsNavIconCleanup?.();
+      window.__deepSeeSettingsNavIconCleanup = installDeepSeeSettingsNavIcon();
       void fetch(`${adminBaseURL}/v1/models`)
         .then((response) => response.ok ? response.json() : undefined)
         .then(rememberServerState)

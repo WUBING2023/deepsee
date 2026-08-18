@@ -11,7 +11,10 @@ const mineruManager = readFileSync(new URL("./mineru-manager.mjs", import.meta.u
 const mineruWorker = readFileSync(new URL("./install-mineru-worker.mjs", import.meta.url), "utf8");
 const updateManager = readFileSync(new URL("./update-manager.mjs", import.meta.url), "utf8");
 const updateWorker = readFileSync(new URL("./update-worker.mjs", import.meta.url), "utf8");
+const updateLiveSmoke = readFileSync(new URL("./update-live-smoke.mjs", import.meta.url), "utf8");
 const pluginSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const ocrRunner = readFileSync(new URL("./ocr-runner.py", import.meta.url), "utf8");
+const ocrSource = readFileSync(new URL("../src/ocr.ts", import.meta.url), "utf8");
 
 describe("standard DeepSeek Harness bundle", () => {
   it("declares a distributable bundle and Web client", () => {
@@ -76,12 +79,26 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(builder).toContain("taskInput(request.prompt, spec.readImage");
     expect(builder).toContain('inputs.push({ type: "image", url:');
     expect(builder).toContain('const inject = ["attachments", "subagents", "subprocess"]');
+    expect(builder).toContain('approvalPolicy: "never"');
+    expect(builder).toContain('sandbox: "workspace-write"');
+    expect(builder).not.toContain('runtimeWorkspaceRoots: [cwd]');
+    expect(builder).toContain('exclude_tmpdir_env_var: true');
+    expect(builder).toContain('exclude_slash_tmp: true');
+    expect(builder).toContain('writable_roots: []');
+    expect(builder).not.toContain('sandbox: "danger-full-access"');
   });
 
   it("does not start a companion admin server", () => {
     expect(launcher).not.toContain("startDeepSeeAdminServer");
     expect(launcher).not.toContain("OPENDS_ADMIN_PORT");
     expect(launcher).not.toContain("3091");
+  });
+
+  it("uses the shared Harness home by default and names isolated development explicitly", () => {
+    expect(manifest.scripts["start:web"]).not.toContain("--local-home");
+    expect(manifest.scripts["start:headless"]).not.toContain("--local-home");
+    expect(manifest.scripts["start:web:isolated"]).toContain("--local-home");
+    expect(manifest.scripts["start:headless:isolated"]).toContain("--local-home");
   });
 
   it("installs MinerU through an automatic fallback chain", () => {
@@ -106,5 +123,13 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(updateManager).toContain("acquireDeepSeeUpdateLock");
     expect(updateWorker).toContain("claimDeepSeeUpdateLock");
     expect(updateWorker).toContain("validateDeepSeeManifest");
+    expect(manifest.scripts["update:live-smoke"]).toBe("node ./scripts/update-live-smoke.mjs");
+    expect(updateLiveSmoke).toContain('for (const profile of ["web", "headless"])');
+    expect(updateLiveSmoke).toContain('status.status !== "restart-required"');
+  });
+
+  it("keeps the local OCR protocol UTF-8 on Windows consoles", () => {
+    expect(ocrRunner).toContain('sys.stdout.reconfigure(encoding="utf-8"');
+    expect(ocrSource).toContain('PYTHONIOENCODING: "utf-8"');
   });
 });

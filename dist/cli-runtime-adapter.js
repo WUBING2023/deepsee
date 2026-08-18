@@ -134,7 +134,8 @@ export class CliRuntimeAdapter extends LlmAdapter {
     async *stream(options) {
         const route = this.route(options.provider, options.model);
         await this.resolveModel(options.provider, options.model);
-        const parent = options.sessionId ? this.ctx.agents.get(options.sessionId) : undefined;
+        const parent = (options.sessionId ? this.ctx.agents.get(options.sessionId) : undefined)
+            || this.ctx.agents.currentInitiator();
         if (!parent) {
             throw new Error(`${route.id} can be used as a base model only from a live Harness session.`);
         }

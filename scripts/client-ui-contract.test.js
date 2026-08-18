@@ -10,8 +10,9 @@ describe("DeepSee native-style model panel", () => {
   });
 
   it("uses the DeepSeek \u6df1\u89c1 name in the Harness-facing UI", () => {
-    expect(clientSource).toContain("DeepSeek \u6df1\u89c1\uff1a\u5f53\u524d\u7531");
+    expect(clientSource).toContain("\u6df1\u89c1\uff1a\u5f53\u524d\u7531");
     expect(clientSource).toContain('label: "DeepSeek \u6df1\u89c1"');
+    expect(clientSource).not.toContain("DeepSeek \u5c06\u6839\u636e OCR \u7ed3\u679c\u7ee7\u7eed\u56de\u7b54");
     expect(clientSource).not.toContain("DeepSee \u89c6\u89c9\u6865\uff1a");
   });
 
@@ -67,6 +68,14 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).toContain('name: "settings.section"');
     expect(clientSource).not.toContain('className: "opends-overlay"');
     expect(clientSource).not.toContain('aria-label": "深见 DeepSee 设置"');
+  });
+
+  it("replaces the native fallback gear with a dedicated DeepSee insight glyph", () => {
+    expect(clientSource).toContain("function DeepSeeIcon");
+    expect(clientSource).toContain("installDeepSeeSettingsNavIcon");
+    expect(clientSource).toContain("opends-settings-nav-icon");
+    expect(clientSource).toContain("MutationObserver");
+    expect(clientSource).not.toContain('className: "opends-mark", "aria-hidden": true }, "见"');
   });
 
   it("allows verified Codex and Claude Code subscription runtimes to become the base model", () => {
@@ -138,7 +147,15 @@ describe("DeepSee native-style model panel", () => {
 
   it("uses the selected live OCR or visual route and orders unavailable runtimes last", () => {
     expect(clientSource).toContain("livePreferences.visionMode === \"ocr\"");
-    expect(clientSource).toContain("本地 OCR 读取图片文字与版面");
+    expect(clientSource).toContain("本地 OCR 提取文字与版面");
+    expect(clientSource).toContain("${primaryName} 将根据 OCR 结果继续回答");
+    expect(clientSource).not.toContain("DeepSeek 将根据 OCR 结果继续回答");
+    expect(clientSource).toContain("opends-ocr-note");
+    expect(clientSource).toContain("首次使用约 ${ocrColdStart} · 仅提取文字和版面");
+    expect(clientSource).toContain("语义识图请切换到“模型”");
+    expect(clientSource).not.toContain("opends-ocr-advisory");
+    expect(clientSource).toContain("查看安装诊断");
+    expect(clientSource).toContain("本轮自动改用");
     expect(clientSource).toContain("route.id === livePreferences.visionRouteId");
     expect(clientSource).toContain("rank(left.group) - rank(right.group)");
     expect(clientSource).toContain('route.source === "harness" && /deepseek/i.test');
@@ -147,6 +164,9 @@ describe("DeepSee native-style model panel", () => {
   it("offers cached version checks and one-click automatic upgrades", () => {
     expect(clientSource).toContain('requestAdmin("/v1/update/check"');
     expect(clientSource).toContain('requestAdmin("/v1/update/install"');
+    expect(clientSource).toContain('setMessage(result.update?.message || "版本检查完成。")');
+    expect(clientSource).toContain('? "已是最新"');
+    expect(clientSource).toContain(': "检查更新"');
     expect(clientSource).toContain('"重试更新"');
     expect(clientSource).toContain('"重启生效"');
     expect(clientSource).toContain('"需手动升级"');

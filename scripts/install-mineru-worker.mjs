@@ -329,7 +329,8 @@ try {
     message: `MinerU 已通过 ${installed.method} 安装，可用于文档 OCR 与版面解析。`,
   });
 } catch (error) {
-  const lastFailures = attempts.filter((item) => item.status === "failed").slice(-3).map((item) => item.label).join("、");
+  const lastFailures = attempts.filter((item) => item.status === "failed").slice(-3);
+  const failureSummary = lastFailures.map((item) => `${item.label}（${item.message || "未知错误"}）`).join("；");
   writeMinerUState(root, {
     status: "error",
     installed: false,
@@ -338,7 +339,7 @@ try {
     progress,
     phase: "error",
     attempts,
-    message: `MinerU 自动安装未完成${lastFailures ? `（最后尝试：${lastFailures}）` : ""}。${conciseInstallError(error)}`,
+    message: `MinerU 自动安装未完成。${conciseInstallError(error)}${failureSummary ? ` 最后失败：${failureSummary}。` : ""}`,
   });
   process.exitCode = 1;
 }

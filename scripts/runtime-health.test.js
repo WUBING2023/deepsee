@@ -73,10 +73,11 @@ describe("runtime startup verification", () => {
     const unsupported = verifyRuntimeVision(claude, "claude", "sonnet", {
       run(args, options) {
         calls.push({ args, options });
-        return { status: 0, stdout: '{"type":"result","result":"DEEPSEE_VISION_UNAVAILABLE [Unsupported Image]"}', stderr: "" };
+        return { status: 0, stdout: '{"type":"result","model":"deepseek-v4-pro","result":"DEEPSEE_VISION_UNAVAILABLE [Unsupported Image]"}', stderr: "" };
       },
     });
     expect(unsupported.available).toBe(false);
+    expect(unsupported.reason).toContain("deepseek-v4-pro");
     expect(calls[0].options.input).toContain('"type":"image"');
     const ready = verifyRuntimeVision(claude, "claude", "sonnet", {
       run: () => ({ status: 0, stdout: '{"type":"result","result":"DEEPSEE_VISION_RED"}', stderr: "" }),

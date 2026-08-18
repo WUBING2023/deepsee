@@ -43,6 +43,8 @@ npx --yes github:WUBING2023/deepsee web
 
 The panel depends on `/api/deepsee`; Headless intentionally does not expose this Web route.
 
+If a local window and a reopened `127.0.0.1:3080` show the same conversations but different credentials or DeepSee preferences, the processes are usually using different `DSH_HOME` roots. Standard `deepsee web` and `pnpm start:web` now use the shared Harness home. Only the explicitly named `pnpm start:web:isolated` uses a project-local home. Stop the stale port-3080 process and restart the standard Web command as the same Windows user. Do not duplicate API keys into a second home.
+
 ## Port 3080 does not open
 
 Check whether another process already owns the default port on Windows:
@@ -114,6 +116,8 @@ Check these common constraints:
 - On Windows, do not point `OPENDS_OCR_HOME` at a PaddleOCR model path containing non-ASCII characters. Remove the override and DeepSee will choose a compatible location automatically.
 
 Advanced deployments can override package source, mirror, model source, and timeout with the documented `OPENDS_MINERU_*` or `OPENDS_OCR_*` variables in `.env.example`. Ordinary users should prefer retrying from the UI before changing them.
+
+The first OCR request must also load detection and recognition models and can take tens of seconds to two minutes on a low-end CPU. OCR extracts text and basic layout; it does not understand people, objects, scenes, chart semantics, or visual relationships. Use a verified visual model for those questions. After a failure, expand **View installation diagnostics** in the panel instead of locating the log manually.
 
 ## Upgrade fails or requests a manual upgrade
 
