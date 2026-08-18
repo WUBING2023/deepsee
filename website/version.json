@@ -3,8 +3,8 @@
   "channel": "public-alpha",
   "tag": "v0.6.0-alpha.26",
   "assetName": "deepsee-0.6.0-alpha.26.tgz",
-  "sizeBytes": 162864,
-  "sha256": "74a67603fd397a649819cacd1380029c38c85f1f058aa994cb9e0d64bc3b85b5",
+  "sizeBytes": 162886,
+  "sha256": "b2e200c18346b4541ba45edcc282ada6f86700c8e36f0673f039a7c96321a53e",
   "downloadUrl": "https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.26/deepsee-0.6.0-alpha.26.tgz",
   "sha256Url": "https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.26/deepsee-0.6.0-alpha.26.tgz.sha256",
   "releaseUrl": "https://github.com/WUBING2023/deepsee/releases/tag/v0.6.0-alpha.26",
@@ -20,5 +20,5 @@
     ]
   },
   "license": "MIT",
-  "generatedAt": "2026-08-18T08:21:45.988Z"
+  "generatedAt": "2026-08-18T08:28:41.659Z"
 }

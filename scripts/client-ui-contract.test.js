@@ -150,8 +150,10 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).toContain("本地 OCR 提取文字与版面");
     expect(clientSource).toContain("${primaryName} 将根据 OCR 结果继续回答");
     expect(clientSource).not.toContain("DeepSeek 将根据 OCR 结果继续回答");
-    expect(clientSource).toContain("冷启动提示");
-    expect(clientSource).toContain("OCR 只提取可见文字与基础版面");
+    expect(clientSource).toContain("opends-ocr-note");
+    expect(clientSource).toContain("首次使用约 ${ocrColdStart} · 仅提取文字和版面");
+    expect(clientSource).toContain("语义识图请切换到“模型”");
+    expect(clientSource).not.toContain("opends-ocr-advisory");
     expect(clientSource).toContain("查看安装诊断");
     expect(clientSource).toContain("本轮自动改用");
     expect(clientSource).toContain("route.id === livePreferences.visionRouteId");

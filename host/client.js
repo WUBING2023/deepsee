@@ -187,7 +187,7 @@ window.__ModuleLoader__.load({
       .opends-pref-label{font-size:13px;font-weight:540;color:var(--dsw-alias-label-primary)}.opends-pref-control{width:min(340px,100%);justify-self:end;border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-pref-action{justify-self:end}.opends-tool-install{min-width:72px}
       .opends-vision-controls{width:min(430px,100%);justify-self:end;display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px}.opends-vision-kind,.opends-vision-target{border:0;background:var(--dsw-alias-bg-module-platform);border-radius:12px}.opends-vision-target{width:100%;min-width:0}.opends-ocr-target{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}.opends-ocr-target .opends-button{white-space:nowrap}.opends-mineru-progress{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;color:var(--dsw-alias-label-tertiary);font-size:10px}.opends-mineru-progress progress{width:100%;height:5px;border:0;border-radius:99px;overflow:hidden;background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-bar{background:rgba(127,127,127,.16)}.opends-mineru-progress progress::-webkit-progress-value{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-mineru-progress progress::-moz-progress-bar{background:var(--dsw-alias-state-business-primary);border-radius:99px}.opends-ocr-feedback{grid-column:1/-1;padding:7px 9px;border-radius:8px;background:var(--dsw-alias-bg-module-platform);display:grid;gap:2px;color:var(--dsw-alias-label-secondary);font-size:10px;line-height:1.4}.opends-ocr-comparison{color:var(--dsw-alias-label-tertiary)}
       .opends-model-warning{color:#a56a45}
-      .opends-ocr-advisory{grid-column:1/-1;padding:7px 9px;border:1px solid rgba(217,139,32,.18);border-radius:8px;background:rgba(217,139,32,.045);display:grid;gap:3px;color:var(--dsw-alias-label-secondary);font-size:10px;line-height:1.45}.opends-ocr-advisory strong{color:var(--dsw-alias-label-primary);font-weight:550}.opends-ocr-diagnostics{margin-top:2px}.opends-ocr-diagnostics summary{cursor:pointer;color:var(--dsw-alias-label-secondary)}.opends-ocr-diagnostics pre{max-height:120px;overflow:auto;margin:5px 0 0;padding:6px;border-radius:6px;background:rgba(127,127,127,.08);white-space:pre-wrap;word-break:break-word;font:9px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+      .opends-ocr-note{grid-column:1/-1;min-width:0;display:flex;align-items:center;gap:5px;padding:1px 2px 0;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-ocr-note:before{content:"i";width:13px;height:13px;border:1px solid rgba(127,127,127,.3);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;font:500 8px/1 ui-sans-serif,system-ui}.opends-ocr-note span{min-width:0;overflow:hidden;text-overflow:ellipsis}.opends-ocr-diagnostics{margin-top:2px}.opends-ocr-diagnostics summary{cursor:pointer;color:var(--dsw-alias-label-secondary)}.opends-ocr-diagnostics pre{max-height:120px;overflow:auto;margin:5px 0 0;padding:6px;border-radius:6px;background:rgba(127,127,127,.08);white-space:pre-wrap;word-break:break-word;font:9px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
       .opends-status-list{padding-top:6px}.opends-status-row{min-height:52px;display:grid;grid-template-columns:1fr 110px 90px;align-items:center;border-bottom:1px solid rgba(127,127,127,.14);gap:12px;font-size:12px}
       .opends-empty{padding:36px 0;text-align:center;color:var(--dsw-alias-label-tertiary);font-size:12px}
       .opends-select{box-sizing:border-box;width:100%;height:36px;border:1px solid rgba(127,127,127,.22);border-radius:9px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;padding:0 9px;outline:none}
@@ -879,10 +879,10 @@ window.__ModuleLoader__.load({
       const selectedOCRId = ["mineru", "paddleocr", "rapidocr"].includes(preferences.ocrTool) ? preferences.ocrTool : "mineru";
       const selectedOCR = ocrTools.find((tool) => tool.id === selectedOCRId) || ocrTools[0];
       const ocrColdStart = selectedOCRId === "mineru"
-        ? "首次读取通常需要 30–120 秒加载文档模型"
+        ? "30–120 秒"
         : selectedOCRId === "paddleocr"
-          ? "首次读取通常需要 10–60 秒加载识别模型"
-          : "首次读取通常需要 3–20 秒初始化轻量模型";
+          ? "10–60 秒"
+          : "3–20 秒";
       const ocrDiagnosticText = [
         ...(selectedOCR?.attempts || []).filter((attempt) => attempt.status === "failed").map((attempt) => `${attempt.label}: ${attempt.message || "未成功"}`),
         selectedOCR?.diagnostic || "",
@@ -941,6 +941,10 @@ window.__ModuleLoader__.load({
                     }, selectedOCR?.status === "ready"
                       ? selectedOCR?.managed === false ? "系统安装" : "卸载"
                       : selectedOCR?.status === "installing" ? "安装中…" : selectedOCR?.status === "error" ? "重试" : "安装"),
+                    createElement("div", {
+                      className: "opends-ocr-note",
+                      title: `首次读取通常需要 ${ocrColdStart} 加载本地模型。OCR 只提取文字与基础版面，不理解物体、场景、图表含义或视觉关系；语义识图请切换到“模型”。`,
+                    }, createElement("span", null, `首次使用约 ${ocrColdStart} · 仅提取文字和版面`)),
                   ),
                   selectedOCR?.status === "installing" && createElement("div", { className: "opends-mineru-progress opends-ocr-progress", title: selectedOCR.message || `${selectedOCR.label} 正在后台安装` },
                     createElement("progress", { max: 100, value: Number.isFinite(selectedOCR.progress) ? selectedOCR.progress : 5, "aria-label": `${selectedOCR.label} 安装进度` }),
@@ -953,10 +957,6 @@ window.__ModuleLoader__.load({
                       createElement("summary", null, "查看安装诊断"),
                       createElement("pre", null, ocrDiagnosticText),
                     ),
-                  ),
-                  createElement("div", { className: "opends-ocr-advisory", role: "note" },
-                    createElement("strong", null, `冷启动提示：${ocrColdStart}`),
-                    createElement("span", null, "OCR 只提取可见文字与基础版面，不理解物体、场景、图表含义或视觉关系；需要语义识图时请切换到“模型”。"),
                   ),
                 ),
           ),
