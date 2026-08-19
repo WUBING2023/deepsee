@@ -3,6 +3,7 @@
 <p align="center"><strong>让 DeepSeek Harness 看见，也让合适的模型做合适的事。</strong></p>
 
 <p align="center">
+  <a href="https://deepsee-wubing2023.pages.dev/zh-CN/">官方网站</a> ·
   <a href="README.md">English</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>

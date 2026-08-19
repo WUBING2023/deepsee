@@ -3,6 +3,7 @@
 <p align="center"><strong>Give DeepSeek Harness eyes — and the right model for the job.</strong></p>
 
 <p align="center">
+  <a href="https://deepsee-wubing2023.pages.dev/">Website</a> ·
   <a href="README.md">English</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>
