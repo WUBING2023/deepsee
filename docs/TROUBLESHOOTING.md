@@ -118,6 +118,8 @@ Check these common constraints:
 
 Advanced deployments can override package source, mirror, model source, and timeout with the documented `OPENDS_MINERU_*` or `OPENDS_OCR_*` variables in `.env.example`. Ordinary users should prefer retrying from the UI before changing them.
 
+On Windows, `WinError 1114` or a `c10.dll` initialization failure triggers an automatic retry with the official PyTorch 2.8 CPU compatibility pair. If the operating system runtime is still missing, diagnostics link to Microsoft's official Visual C++ 2015–2022 x64 Redistributable installer.
+
 The first OCR request must also load detection and recognition models and can take tens of seconds to two minutes on a low-end CPU. OCR extracts text and basic layout; it does not understand people, objects, scenes, chart semantics, or visual relationships. Use a verified visual model for those questions. After a failure, expand **View installation diagnostics** in the panel instead of locating the log manually.
 
 ## Upgrade fails or requests a manual upgrade

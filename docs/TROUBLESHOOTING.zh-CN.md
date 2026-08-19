@@ -118,6 +118,8 @@ $DSH_HOME/deepsee/.opends-tools/ocr/<paddleocr|rapidocr>/install.stderr.log
 
 高级部署可以使用 `.env.example` 中的 `OPENDS_MINERU_*` 或 `OPENDS_OCR_*` 修改包源、镜像、模型源与超时。普通用户应先在界面重试，再考虑修改这些设置。
 
+Windows 出现 `WinError 1114` 或 `c10.dll` 初始化失败时，DeepSee 会自动切换到官方 PyTorch 2.8 CPU 兼容组合并再次验证。若系统仍缺少运行库，安装诊断会给出 Microsoft Visual C++ 2015–2022 x64 Redistributable 的官方安装地址。
+
 OCR 首次运行还需要加载检测与识别模型，低配 CPU 上可能等待数十秒到两分钟。它只提取文字与基础版面，不理解人物、物体、场景、图表语义或视觉关系；这类问题应切换到已验证的视觉模型。失败后可直接展开界面中的 **查看安装诊断**，无需先寻找日志文件。
 
 ## 升级失败或提示需要手动升级

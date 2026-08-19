@@ -5,6 +5,14 @@ import { findExecutable } from "./runtime-locator.mjs";
 export const MINERU_PACKAGE_SPEC = "mineru[core]>=3,<4";
 export const MINERU_SOURCE_ZIP_URL = "https://github.com/opendatalab/MinerU/archive/refs/heads/master.zip";
 export const ALIYUN_PYPI_INDEX = "https://mirrors.aliyun.com/pypi/simple";
+export const WINDOWS_TORCH_CPU_INDEX = "https://download.pytorch.org/whl/cpu";
+export const WINDOWS_TORCH_COMPAT_PACKAGES = ["torch==2.8.0", "torchvision==0.23.0"];
+
+export function isWindowsTorchDllFailure(output) {
+  const text = String(output || "").toLowerCase();
+  return text.includes("winerror 1114")
+    || (text.includes("c10.dll") && (text.includes("dll") || text.includes("dynamic link")));
+}
 
 export function mineruPackageSources(env = process.env) {
   const mirror = env.OPENDS_MINERU_PYPI_MIRROR?.trim() || ALIYUN_PYPI_INDEX;

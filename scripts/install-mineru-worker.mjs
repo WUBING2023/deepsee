@@ -18,12 +18,15 @@ import { resolveExecutableInvocation } from "./npx-command.mjs";
 import {
   conciseInstallError,
   discoverCompatiblePythonRuntimes,
+  isWindowsTorchDllFailure,
   mineruModelSources,
   mineruPackageSources,
   MINERU_PACKAGE_SPEC,
   MINERU_SOURCE_ZIP_URL,
   portableUvAsset,
   resolvePortableUvRelease,
+  WINDOWS_TORCH_COMPAT_PACKAGES,
+  WINDOWS_TORCH_CPU_INDEX,
 } from "./mineru-install-strategies.mjs";
 import { managedMinerUExecutable, managedMinerURoot, writeMinerUState } from "./mineru-manager.mjs";
 
@@ -47,6 +50,8 @@ const env = {
   MODELSCOPE_CACHE: join(toolRoot, "model-cache"),
   HF_HOME: join(toolRoot, "model-cache", "huggingface"),
   MINERU_TOOLS_CONFIG_JSON: join(toolRoot, "mineru.json"),
+  PYTHONUTF8: "1",
+  PYTHONIOENCODING: "utf-8",
 };
 let progress = 4;
 let phase = "detect";
@@ -91,6 +96,20 @@ function run(command, args, label, runEnv = env) {
 
 function runPython(runtime, args, label) {
   run(runtime.command, [...runtime.prefixArgs, ...args], label);
+}
+
+function capture(command, args) {
+  const invocation = resolveExecutableInvocation(command, args);
+  const result = spawnSync(invocation.command, invocation.args, {
+    cwd: root,
+    env,
+    encoding: "utf8",
+    windowsHide: true,
+    timeout: commandTimeoutMs,
+  });
+  const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+  if (output) console.error(output);
+  return { ...result, output };
 }
 
 function attempt(label, action) {
@@ -253,6 +272,54 @@ function modelDownloaderPath() {
     : join(venv, "bin", "mineru-models-download");
 }
 
+function installWindowsTorchCompatibility(installed) {
+  if (process.platform !== "win32") return;
+  writeProgress("正在验证 Windows PyTorch 运行库…", { phase: "verify", progress: 72 });
+  const initial = capture(python, ["-c", "import torch; print(torch.__version__)"]);
+  if (initial.status === 0) return;
+  if (!isWindowsTorchDllFailure(initial.output)) {
+    throw new Error(`PyTorch 无法启动：${conciseInstallError(initial.output || initial.error || `exit ${initial.status}`)}`);
+  }
+
+  const repaired = attempt("修复 Windows PyTorch CPU 兼容性", () => {
+    writeProgress("检测到 c10.dll 初始化失败，正在切换到 PyTorch 2.8 CPU 兼容组合…", {
+      phase: "repair",
+      progress: 73,
+    });
+    if (installed.uv) {
+      run(installed.uv, [
+        "pip",
+        "install",
+        "--python",
+        python,
+        "--reinstall",
+        ...WINDOWS_TORCH_COMPAT_PACKAGES,
+        "--index-url",
+        WINDOWS_TORCH_CPU_INDEX,
+      ], "安装 Windows PyTorch CPU 兼容组合");
+    } else {
+      run(python, [
+        "-m",
+        "pip",
+        "install",
+        "--reinstall",
+        ...WINDOWS_TORCH_COMPAT_PACKAGES,
+        "--index-url",
+        WINDOWS_TORCH_CPU_INDEX,
+      ], "安装 Windows PyTorch CPU 兼容组合");
+    }
+    const verified = capture(python, ["-c", "import torch; print(torch.__version__)"]);
+    if (verified.status !== 0) {
+      const detail = conciseInstallError(verified.output || verified.error || `exit ${verified.status}`);
+      throw new Error(`PyTorch 2.8 CPU 仍无法加载（${detail}）。请安装 Microsoft Visual C++ 2015–2022 x64 Redistributable 后重试：https://aka.ms/vs/17/release/vc_redist.x64.exe`);
+    }
+    return true;
+  });
+  if (!repaired) {
+    throw new Error("Windows PyTorch DLL 自动修复未完成。请打开安装诊断，按提示安装 Microsoft Visual C++ 运行库后重试。");
+  }
+}
+
 function installPackage() {
   mkdirSync(toolRoot, { recursive: true });
   writeProgress("正在检查 UV、Python 与安装源…", { phase: "detect", progress: 10 });
@@ -307,6 +374,7 @@ try {
   const installed = installPackage();
   const executable = managedMinerUExecutable(root);
   if (!installed || !existsSync(executable)) throw new Error("所有自动安装方式均未生成可用的 mineru 可执行文件。");
+  installWindowsTorchCompatibility(installed);
   writeProgress("MinerU 核心已安装，正在验证可执行文件…", { phase: "verify", progress: 74 });
   run(executable, ["--version"], "验证 MinerU");
   const modelDownloader = modelDownloaderPath();

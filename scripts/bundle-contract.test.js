@@ -130,6 +130,13 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(pythonOcrWorker).toContain("SHA-256 校验失败");
   });
 
+  it("repairs the known Windows PyTorch c10 DLL failure before MinerU verification", () => {
+    expect(mineruWorker).toContain("WINDOWS_TORCH_COMPAT_PACKAGES");
+    expect(mineruWorker).toContain("修复 Windows PyTorch CPU 兼容性");
+    expect(mineruWorker).toContain("Microsoft Visual C++ 2015–2022 x64 Redistributable");
+    expect(mineruWorker).toContain('PYTHONUTF8: "1"');
+  });
+
   it("checks and installs updates through the verified ZIP installer", () => {
     expect(updateManager).toContain("queueDeepSeeUpdateCheck");
     expect(updateManager).toContain("startDeepSeeUpdate");

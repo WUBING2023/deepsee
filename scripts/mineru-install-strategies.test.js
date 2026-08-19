@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ALIYUN_PYPI_INDEX,
   conciseInstallError,
+  isWindowsTorchDllFailure,
   isSupportedPythonVersion,
   mineruModelSources,
   mineruPackageSources,
@@ -9,9 +10,18 @@ import {
   probePythonRuntime,
   pythonLauncherCandidates,
   resolvePortableUvRelease,
+  WINDOWS_TORCH_COMPAT_PACKAGES,
+  WINDOWS_TORCH_CPU_INDEX,
 } from "./mineru-install-strategies.mjs";
 
 describe("MinerU installation strategies", () => {
+  it("recognizes the Windows PyTorch c10 DLL initialization failure", () => {
+    expect(isWindowsTorchDllFailure('OSError: [WinError 1114] Error loading "C:\\env\\torch\\lib\\c10.dll"')).toBe(true);
+    expect(isWindowsTorchDllFailure("network timeout")).toBe(false);
+    expect(WINDOWS_TORCH_COMPAT_PACKAGES).toEqual(["torch==2.8.0", "torchvision==0.23.0"]);
+    expect(WINDOWS_TORCH_CPU_INDEX).toBe("https://download.pytorch.org/whl/cpu");
+  });
+
   it("tries official PyPI before a configurable mainland mirror", () => {
     expect(mineruPackageSources({})).toEqual([
       { id: "pypi", label: "官方 PyPI", indexUrl: undefined },
