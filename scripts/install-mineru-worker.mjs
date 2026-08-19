@@ -7,11 +7,12 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
-  renameSync,
   rmSync,
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { downloadWithFallback } from "./download-fallback.mjs";
 import { findExecutable } from "./runtime-locator.mjs";
 import { resolveExecutableInvocation } from "./npx-command.mjs";
 import {
@@ -22,6 +23,7 @@ import {
   MINERU_PACKAGE_SPEC,
   MINERU_SOURCE_ZIP_URL,
   portableUvAsset,
+  resolvePortableUvRelease,
 } from "./mineru-install-strategies.mjs";
 import { managedMinerUExecutable, managedMinerURoot, writeMinerUState } from "./mineru-manager.mjs";
 
@@ -35,6 +37,7 @@ const packageSpec = process.env.OPENDS_MINERU_PACKAGE_SPEC?.trim() || MINERU_PAC
 const sourceExtra = process.env.OPENDS_MINERU_SOURCE_EXTRA?.trim() || "core";
 const sourceZipUrl = process.env.OPENDS_MINERU_SOURCE_ZIP?.trim() || MINERU_SOURCE_ZIP_URL;
 const toolRoot = managedMinerURoot(root);
+const downloadWorker = fileURLToPath(new URL("./download-file-worker.mjs", import.meta.url));
 const venv = join(toolRoot, ".venv");
 const python = process.platform === "win32" ? join(venv, "Scripts", "python.exe") : join(venv, "bin", "python");
 const env = {
@@ -138,31 +141,29 @@ function pythonInstall(runtime, source, installSpec = packageSpec) {
 }
 
 function downloadFile(url, target, pythonRuntime) {
-  mkdirSync(dirname(target), { recursive: true });
-  const partial = `${target}.partial`;
-  rmSync(partial, { force: true });
-  try {
-    const curl = findExecutable("curl");
-    if (curl) {
-      run(curl, ["--location", "--fail", "--retry", "2", "--connect-timeout", "30", "--output", partial, url], `下载 ${basename(target)}`);
-    } else if (process.platform === "win32" && (findExecutable("powershell") || findExecutable("powershell.exe"))) {
-      const powershell = findExecutable("powershell") || findExecutable("powershell.exe");
-      const script = "& { param([string]$url,[string]$output) $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $output }";
-      run(powershell, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script, url, partial], `下载 ${basename(target)}`);
-    } else if (pythonRuntime) {
-      runPython(pythonRuntime, [
-        "-c",
-        "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])",
-        url,
-        partial,
-      ], `下载 ${basename(target)}`);
-    } else {
-      throw new Error("没有可用的 curl、PowerShell 或 Python 下载器。");
-    }
-    renameSync(partial, target);
-  } finally {
-    rmSync(partial, { force: true });
-  }
+  const label = basename(target);
+  const strategies = [{
+    label: "DeepSee Node HTTPS",
+    download: (source, partial) => run(process.execPath, [downloadWorker, source, partial], `通过 DeepSee Node 下载 ${label}`),
+  }];
+  const curl = findExecutable("curl");
+  if (curl) strategies.push({
+    label: "curl",
+    download: (source, partial) => run(curl, ["--location", "--fail", "--retry", "2", "--connect-timeout", "30", "--output", partial, source], `通过 curl 下载 ${label}`),
+  });
+  const powershell = process.platform === "win32" && (findExecutable("powershell") || findExecutable("powershell.exe"));
+  if (powershell) strategies.push({
+    label: "PowerShell TLS 1.2",
+    download: (source, partial) => {
+      const script = "& { param([string]$url,[string]$output) $ProgressPreference='SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $output }";
+      run(powershell, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script, source, partial], `通过 PowerShell 下载 ${label}`);
+    },
+  });
+  if (pythonRuntime) strategies.push({
+    label: "Python urllib",
+    download: (source, partial) => runPython(pythonRuntime, ["-c", "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])", source, partial], `通过 Python 下载 ${label}`),
+  });
+  return downloadWithFallback(url, target, strategies);
 }
 
 function extractArchive(archive, destination, archiveType, pythonRuntime) {
@@ -204,8 +205,8 @@ function findFile(rootDirectory, name, depth = 4) {
   return undefined;
 }
 
-function verifySha256(archive, checksumFile) {
-  const expected = readFileSync(checksumFile, "utf8").match(/\b[a-fA-F0-9]{64}\b/)?.[0]?.toLowerCase();
+function verifySha256(archive, checksumFile, trustedDigest) {
+  const expected = trustedDigest || readFileSync(checksumFile, "utf8").match(/\b[a-fA-F0-9]{64}\b/)?.[0]?.toLowerCase();
   if (!expected) throw new Error("便携 UV 校验文件格式无效。");
   const actual = createHash("sha256").update(readFileSync(archive)).digest("hex");
   if (actual !== expected) throw new Error("便携 UV 压缩包 SHA-256 校验失败。");
@@ -217,9 +218,17 @@ function installPortableUv(pythonRuntime) {
   const bootstrapRoot = join(toolRoot, "bootstrap", "uv");
   const archive = join(toolRoot, "downloads", asset.fileName);
   const checksum = `${archive}.sha256`;
-  downloadFile(asset.url, archive, pythonRuntime);
-  downloadFile(asset.checksumUrl, checksum, pythonRuntime);
-  verifySha256(archive, checksum);
+  const releaseMetadata = join(toolRoot, "downloads", "uv-release.json");
+  let release;
+  try {
+    downloadFile(asset.releaseApiUrl, releaseMetadata, pythonRuntime);
+    release = resolvePortableUvRelease(JSON.parse(readFileSync(releaseMetadata, "utf8")), asset);
+  } catch (error) {
+    console.error(`[DeepSee MinerU] UV Release 元数据不可用，将改用官方校验文件：${conciseInstallError(error)}`);
+  }
+  downloadFile(release?.archiveUrl || asset.url, archive, pythonRuntime);
+  if (!release?.digest) downloadFile(release?.checksumUrl || asset.checksumUrl, checksum, pythonRuntime);
+  verifySha256(archive, checksum, release?.digest);
   extractArchive(archive, bootstrapRoot, asset.archiveType, pythonRuntime);
   const executable = findFile(bootstrapRoot, asset.executableName);
   if (!executable) throw new Error("便携 UV 解压完成，但未找到可执行文件。");

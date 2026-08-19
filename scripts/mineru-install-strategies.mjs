@@ -95,8 +95,25 @@ export function portableUvAsset(platform = process.platform, architecture = proc
     fileName,
     url,
     checksumUrl: `${url}.sha256`,
+    releaseApiUrl: "https://api.github.com/repos/astral-sh/uv/releases/latest",
     archiveType: extension,
     executableName: platform === "win32" ? "uv.exe" : "uv",
+  };
+}
+
+export function resolvePortableUvRelease(metadata, asset) {
+  if (!asset || !Array.isArray(metadata?.assets)) return undefined;
+  const archive = metadata.assets.find((candidate) => candidate?.name === asset.fileName);
+  if (!archive?.browser_download_url) return undefined;
+  const checksum = metadata.assets.find((candidate) => candidate?.name === `${asset.fileName}.sha256`);
+  const digest = typeof archive.digest === "string" && /^sha256:[a-fA-F0-9]{64}$/.test(archive.digest)
+    ? archive.digest.slice("sha256:".length).toLowerCase()
+    : undefined;
+  return {
+    archiveUrl: archive.browser_download_url,
+    checksumUrl: checksum?.browser_download_url,
+    digest,
+    tag: metadata.tag_name,
   };
 }
 

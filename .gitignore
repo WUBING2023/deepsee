@@ -18,6 +18,7 @@ node_modules/
 *.log
 design-demos/
 release/
+video/out/
 .wrangler/
 direction-approved.md
 product-facts.md

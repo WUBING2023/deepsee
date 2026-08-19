@@ -9,6 +9,8 @@ const installPolicy = readFileSync(new URL("./install-policy.mjs", import.meta.u
 const folderInstaller = readFileSync(new URL("./folder-install.mjs", import.meta.url), "utf8");
 const mineruManager = readFileSync(new URL("./mineru-manager.mjs", import.meta.url), "utf8");
 const mineruWorker = readFileSync(new URL("./install-mineru-worker.mjs", import.meta.url), "utf8");
+const pythonOcrWorker = readFileSync(new URL("./install-python-ocr-worker.mjs", import.meta.url), "utf8");
+const downloadFallback = readFileSync(new URL("./download-fallback.mjs", import.meta.url), "utf8");
 const updateManager = readFileSync(new URL("./update-manager.mjs", import.meta.url), "utf8");
 const updateWorker = readFileSync(new URL("./update-worker.mjs", import.meta.url), "utf8");
 const updateLiveSmoke = readFileSync(new URL("./update-live-smoke.mjs", import.meta.url), "utf8");
@@ -114,6 +116,18 @@ describe("standard DeepSeek Harness bundle", () => {
     const strategyFlow = mineruWorker.slice(mineruWorker.indexOf("function installPackage"));
     expect(strategyFlow.indexOf("系统 UV")).toBeLessThan(strategyFlow.indexOf("便携 UV"));
     expect(strategyFlow.indexOf("便携 UV")).toBeLessThan(strategyFlow.indexOf("官方源码 ZIP"));
+  });
+
+  it("falls back across independent OCR download transports without skipping digest verification", () => {
+    expect(downloadFallback).toContain("for (const strategy of strategies)");
+    expect(downloadFallback).toContain("下载结果为空");
+    expect(mineruWorker).toContain("downloadWithFallback");
+    expect(mineruWorker).toContain("resolvePortableUvRelease");
+    expect(pythonOcrWorker).toContain("downloadWithFallback");
+    expect(pythonOcrWorker).toContain("resolvePortableUvRelease");
+    expect(mineruWorker).toContain("verifySha256");
+    expect(pythonOcrWorker).toContain('createHash("sha256")');
+    expect(pythonOcrWorker).toContain("SHA-256 校验失败");
   });
 
   it("checks and installs updates through the verified ZIP installer", () => {

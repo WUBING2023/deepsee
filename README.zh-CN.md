@@ -21,6 +21,12 @@ DeepSee 是 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) 
 > [!IMPORTANT]
 > DeepSee 目前处于 Alpha 阶段，目标版本为 DeepSeek Harness `0.1.0-rc.6`。视觉路线、模型目录、Codex/Claude 桌面端与 CLI 适配、一键安装与升级流程已经实现；Runtime 支持会保持谨慎，真实边界见下文。
 
+## 38 秒产品演示
+
+[观看中文演示](https://deepsee-wubing2023.pages.dev/zh-CN/#demo) · [English demo](https://deepsee-wubing2023.pages.dev/#demo) · [中文无背景音乐版](https://deepsee-wubing2023.pages.dev/assets/deepsee-demo-zh-nobgm.mp4)
+
+演示使用真实公开界面，完整呈现一行安装、视觉模型或本地 OCR、验证后的模型路由、可见的多 Agent Workflow，以及可以直接打开的交付物。
+
 ## 一行安装
 
 电脑需要 [Node.js 24 或更高版本](https://nodejs.org/)。在 PowerShell 或终端中运行：
@@ -38,6 +44,8 @@ npx --yes github:WUBING2023/deepsee web
 打开 [http://127.0.0.1:3080/](http://127.0.0.1:3080/)，侧栏中会出现原生风格的 DeepSee 面板。
 
 如果你已经配置过 DeepSeek Harness，DeepSee 会直接复用已有供应商、模型 ID 和凭据引用。添加或修改 API 模型仍在 Harness 原生的 **设置 → 模型** 页面完成，插件不会要求你再保存一遍 Key。
+
+DeepSee 是独立开源项目，与 DeepSeek 没有隶属或官方合作关系。图片与任务内容只会发送到你选择的供应商或 Runtime；本地 OCR 留在本机。DeepSee 只保存 Harness 的凭据引用，不保存供应商原始 Key。
 
 [首次使用指南 →](docs/GETTING_STARTED.zh-CN.md) · [English guide →](docs/GETTING_STARTED.md)
 

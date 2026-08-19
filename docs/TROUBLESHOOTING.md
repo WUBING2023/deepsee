@@ -111,6 +111,7 @@ Check these common constraints:
 - Windows Python must be 3.10–3.12; Linux/macOS supports 3.10–3.13.
 - Package dependencies and model files require network access even with the source-ZIP fallback.
 - Antivirus or corporate policy may block the portable UV executable.
+- `curl exit 35` means the TLS handshake failed on an older Windows, proxy, or certificate chain; it does not mean the RapidOCR package is corrupt. The current installer automatically retries with DeepSee's bundled Node HTTPS path, PowerShell TLS 1.2, or Python and still verifies the official GitHub Release SHA-256 digest. Do not disable verification manually.
 - A PyPI or model host may be unreachable from the current region.
 - Disk space may be insufficient for the isolated environment and model files.
 - On Windows, do not point `OPENDS_OCR_HOME` at a PaddleOCR model path containing non-ASCII characters. Remove the override and DeepSee will choose a compatible location automatically.

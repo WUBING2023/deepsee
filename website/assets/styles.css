@@ -400,6 +400,47 @@ code {
 .route-lines span { padding: 8px 9px; color: #4f5e74; background: white; border: 1px solid var(--line); border-radius: 9px; font-size: 9px; }
 .route-lines b { flex: 1; height: 1px; background: #c5cbd5; }
 
+.demo-section { padding-top: 70px; }
+.demo-section .section-heading { max-width: 820px; }
+.demo-stage {
+  overflow: hidden;
+  background: #0b0f17;
+  border: 1px solid #252d3b;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+.demo-stage video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: block;
+  background: #0b0f17;
+  object-fit: contain;
+}
+.demo-meta {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 22px;
+  color: #eef2fa;
+  background: #151a24;
+  border-top: 1px solid #252d3b;
+}
+.demo-meta strong, .demo-meta span { display: block; }
+.demo-meta strong { font-size: 13px; }
+.demo-meta span { margin-top: 2px; color: #8e9aae; font-size: 10px; }
+.demo-links { display: flex; align-items: center; gap: 10px; }
+.demo-links a {
+  padding: 7px 10px;
+  color: #cbd8f4;
+  border: 1px solid #39455b;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 650;
+}
+.demo-links a:hover { color: #fff; background: #222a37; }
+
 .support-section { padding-top: 40px; }
 .support-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); }
 table { width: 100%; border-collapse: collapse; text-align: left; }
@@ -501,6 +542,10 @@ footer > p { grid-column: 1 / -1; margin: 0; color: #939ba8; }
   .workflow-grid li, .workflow-grid li + li { min-height: 0; padding: 22px 0 28px; border-right: 0; border-bottom: 1px solid var(--line); }
   .step-icon { margin: 25px 0 18px; }
   .feature-card { min-height: 315px; padding: 25px; }
+  .demo-stage { border-radius: 16px; }
+  .demo-meta { align-items: flex-start; flex-direction: column; gap: 12px; padding: 15px; }
+  .demo-links { width: 100%; align-items: stretch; flex-direction: column; }
+  .demo-links a { text-align: center; }
   th, td { min-width: 130px; padding: 14px; }
   .release-main { padding: 36px 24px; }
   .release-actions { align-items: stretch; flex-direction: column; }

@@ -19,6 +19,12 @@ const requiredFiles = [
   "assets/deepsee-mark.svg",
   "assets/deepsee-panel.svg",
   "assets/deepsee-panel.png",
+  "assets/deepsee-demo-en.mp4",
+  "assets/deepsee-demo-en-nobgm.mp4",
+  "assets/deepsee-demo-en-poster.png",
+  "assets/deepsee-demo-zh.mp4",
+  "assets/deepsee-demo-zh-nobgm.mp4",
+  "assets/deepsee-demo-zh-poster.png",
   "version.json",
   "_headers",
   "_redirects",
@@ -42,6 +48,8 @@ for (const page of pages) {
   for (const marker of ["data-download", "data-version", "data-sha256", "data-copy-install"]) {
     if (!html.includes(marker)) throw new Error(`${page.path} is missing ${marker}.`);
   }
+  if (!html.includes('<section class="section demo-section" id="demo"')) throw new Error(`${page.path} is missing the product demo.`);
+  if (!html.includes("-nobgm.mp4")) throw new Error(`${page.path} is missing the no-BGM demo delivery.`);
 }
 
 const manifestPath = join(root, contract.website.manifestPath);

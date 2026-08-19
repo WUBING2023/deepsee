@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 
 const TRACE_VERSION = 1;
@@ -17,6 +17,7 @@ const ARTIFACT_EXTENSIONS = new Set([
 let configuredRoot = "";
 let loadedPath = "";
 let state = { version: TRACE_VERSION, runs: {} };
+let saveCounter = 0;
 
 function tracePath(stateRoot = configuredRoot) {
   return stateRoot ? join(stateRoot, "execution-traces.json") : "";
@@ -41,9 +42,21 @@ function load(stateRoot = configuredRoot) {
 function save() {
   if (!loadedPath) return;
   mkdirSync(dirname(loadedPath), { recursive: true });
-  const temporary = `${loadedPath}.${process.pid}.tmp`;
+  const temporary = `${loadedPath}.${process.pid}.${Date.now()}.${saveCounter += 1}.tmp`;
   writeFileSync(temporary, `${JSON.stringify(state)}\n`, "utf8");
-  renameSync(temporary, loadedPath);
+  let lastError;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      renameSync(temporary, loadedPath);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!["EPERM", "EBUSY", "EACCES"].includes(error?.code) || attempt === 5) break;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 8 * (attempt + 1));
+    }
+  }
+  rmSync(temporary, { force: true });
+  throw lastError;
 }
 
 function insideWorkspace(path, cwd) {

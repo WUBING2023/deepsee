@@ -111,6 +111,7 @@ $DSH_HOME/deepsee/.opends-tools/ocr/<paddleocr|rapidocr>/install.stderr.log
 - Windows Python 应为 3.10–3.12；Linux/macOS 支持 3.10–3.13。
 - 即使走源码 ZIP，包依赖和模型文件仍需联网。
 - 杀毒软件或公司策略可能拦截便携 UV。
+- 如果诊断中出现 `curl exit 35`，这是旧 Windows、代理或证书链导致的 TLS 握手失败，不是 RapidOCR 包损坏。当前版本会自动改用 DeepSee 自带的 Node HTTPS、PowerShell TLS 1.2 或 Python 下载，并通过 GitHub Release 官方 SHA-256 digest 校验；不要手动关闭校验。
 - 当前地区可能无法连接某个 PyPI 或模型源。
 - 隔离环境与模型文件需要足够磁盘空间。
 - Windows 上不要把 `OPENDS_OCR_HOME` 指向含中文或其他非 ASCII 字符的 PaddleOCR 模型路径；删除该覆盖后，DeepSee 会自动选择兼容目录。

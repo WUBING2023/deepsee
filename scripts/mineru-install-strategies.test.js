@@ -8,6 +8,7 @@ import {
   portableUvAsset,
   probePythonRuntime,
   pythonLauncherCandidates,
+  resolvePortableUvRelease,
 } from "./mineru-install-strategies.mjs";
 
 describe("MinerU installation strategies", () => {
@@ -63,8 +64,26 @@ describe("MinerU installation strategies", () => {
       executableName: "uv.exe",
     });
     expect(portableUvAsset("win32", "x64").checksumUrl).toMatch(/\.zip\.sha256$/);
+    expect(portableUvAsset("win32", "x64").releaseApiUrl).toMatch(/api\.github\.com/);
     expect(portableUvAsset("linux", "arm64")).toMatchObject({ archiveType: "tar.gz", executableName: "uv" });
     expect(portableUvAsset("freebsd", "x64")).toBeUndefined();
+  });
+
+  it("uses the official GitHub asset digest when available", () => {
+    const asset = portableUvAsset("win32", "x64");
+    const digest = "a".repeat(64);
+    expect(resolvePortableUvRelease({
+      tag_name: "0.11.30",
+      assets: [
+        { name: asset.fileName, browser_download_url: "https://github.test/uv.zip", digest: `sha256:${digest}` },
+        { name: `${asset.fileName}.sha256`, browser_download_url: "https://github.test/uv.zip.sha256" },
+      ],
+    }, asset)).toEqual({
+      archiveUrl: "https://github.test/uv.zip",
+      checksumUrl: "https://github.test/uv.zip.sha256",
+      digest,
+      tag: "0.11.30",
+    });
   });
 
   it("keeps background failure summaries compact", () => {

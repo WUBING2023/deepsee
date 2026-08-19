@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { findExecutable } from "./runtime-locator.mjs";
 import { resolveExecutableInvocation } from "./npx-command.mjs";
-import { conciseInstallError, discoverCompatiblePythonRuntimes, portableUvAsset } from "./mineru-install-strategies.mjs";
+import { downloadWithFallback } from "./download-fallback.mjs";
+import { conciseInstallError, discoverCompatiblePythonRuntimes, portableUvAsset, resolvePortableUvRelease } from "./mineru-install-strategies.mjs";
 import { getOCRDefinition } from "./ocr-catalog.mjs";
 import { managedOCRPython, managedOCRRoot, writeOCRState } from "./ocr-manager.mjs";
 
@@ -18,6 +19,7 @@ if (!stateRoot || !id || process.env.OPENDS_OCR_INSTALL !== id || id === "mineru
 const definition = getOCRDefinition(id);
 const moduleRoot = fileURLToPath(new URL("../", import.meta.url));
 const runner = join(moduleRoot, "scripts", "ocr-runner.py");
+const downloadWorker = join(moduleRoot, "scripts", "download-file-worker.mjs");
 const startedAt = new Date().toISOString();
 const attempts = [];
 const commandTimeoutMs = Number(process.env.OPENDS_OCR_COMMAND_TIMEOUT_MS) || 60 * 60 * 1000;
@@ -117,23 +119,29 @@ function pythonInstall(runtime, source, installSpec) {
 }
 
 function downloadFile(url, target, pythonRuntime) {
-  mkdirSync(dirname(target), { recursive: true });
-  const partial = `${target}.partial`;
-  rmSync(partial, { force: true });
-  try {
-    const curl = findExecutable("curl");
-    if (curl) run(curl, ["--location", "--fail", "--retry", "2", "--connect-timeout", "30", "--output", partial, url], `下载 ${basename(target)}`);
-    else if (process.platform === "win32" && (findExecutable("powershell") || findExecutable("powershell.exe"))) {
-      const powershell = findExecutable("powershell") || findExecutable("powershell.exe");
-      const script = "& { param([string]$url,[string]$output) $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $output }";
-      run(powershell, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script, url, partial], `下载 ${basename(target)}`);
-    } else if (pythonRuntime) {
-      runPython(pythonRuntime, ["-c", "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])", url, partial], `下载 ${basename(target)}`);
-    } else throw new Error("没有可用的下载器。");
-    renameSync(partial, target);
-  } finally {
-    rmSync(partial, { force: true });
-  }
+  const label = basename(target);
+  const strategies = [{
+    label: "DeepSee Node HTTPS",
+    download: (source, partial) => run(process.execPath, [downloadWorker, source, partial], `通过 DeepSee Node 下载 ${label}`),
+  }];
+  const curl = findExecutable("curl");
+  if (curl) strategies.push({
+    label: "curl",
+    download: (source, partial) => run(curl, ["--location", "--fail", "--retry", "2", "--connect-timeout", "30", "--output", partial, source], `通过 curl 下载 ${label}`),
+  });
+  const powershell = process.platform === "win32" && (findExecutable("powershell") || findExecutable("powershell.exe"));
+  if (powershell) strategies.push({
+    label: "PowerShell TLS 1.2",
+    download: (source, partial) => {
+      const script = "& { param([string]$url,[string]$output) $ProgressPreference='SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $output }";
+      run(powershell, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script, source, partial], `通过 PowerShell 下载 ${label}`);
+    },
+  });
+  if (pythonRuntime) strategies.push({
+    label: "Python urllib",
+    download: (source, partial) => runPython(pythonRuntime, ["-c", "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])", source, partial], `通过 Python 下载 ${label}`),
+  });
+  return downloadWithFallback(url, target, strategies);
 }
 
 function extractArchive(archive, destination, archiveType, pythonRuntime) {
@@ -172,9 +180,20 @@ function installPortableUv(pythonRuntime) {
   if (!asset) throw new Error(`当前平台不支持便携 UV：${process.platform}/${process.arch}`);
   const archive = join(toolRoot, "downloads", asset.fileName);
   const checksum = `${archive}.sha256`;
-  downloadFile(asset.url, archive, pythonRuntime);
-  downloadFile(asset.checksumUrl, checksum, pythonRuntime);
-  const expected = readFileSync(checksum, "utf8").match(/\b[a-fA-F0-9]{64}\b/)?.[0]?.toLowerCase();
+  const releaseMetadata = join(toolRoot, "downloads", "uv-release.json");
+  let release;
+  try {
+    downloadFile(asset.releaseApiUrl, releaseMetadata, pythonRuntime);
+    release = resolvePortableUvRelease(JSON.parse(readFileSync(releaseMetadata, "utf8")), asset);
+  } catch (error) {
+    console.error(`[DeepSee ${definition.label}] UV Release 元数据不可用，将改用官方校验文件：${conciseInstallError(error)}`);
+  }
+  downloadFile(release?.archiveUrl || asset.url, archive, pythonRuntime);
+  let expected = release?.digest;
+  if (!expected) {
+    downloadFile(release?.checksumUrl || asset.checksumUrl, checksum, pythonRuntime);
+    expected = readFileSync(checksum, "utf8").match(/\b[a-fA-F0-9]{64}\b/)?.[0]?.toLowerCase();
+  }
   const actual = createHash("sha256").update(readFileSync(archive)).digest("hex");
   if (!expected || expected !== actual) throw new Error("便携 UV 压缩包 SHA-256 校验失败。");
   const destination = join(toolRoot, "cache", "portable-uv");

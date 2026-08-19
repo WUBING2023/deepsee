@@ -1,6 +1,6 @@
 {
   "name": "@wubing2023/deepsee",
-  "version": "0.6.0-alpha.27",
+  "version": "0.6.0-alpha.28",
   "description": "DeepSee — one-command vision and model-routing plugin for DeepSeek Harness",
   "license": "MIT",
   "repository": {

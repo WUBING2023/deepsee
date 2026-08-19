@@ -21,6 +21,12 @@ It stays inside the product you already use: the same Web UI, the same model set
 > [!IMPORTANT]
 > DeepSee is currently an alpha release and targets DeepSeek Harness `0.1.0-rc.6`. The core visual route, model directory, Codex/Claude Desktop and CLI adapters, installer, and update flow are implemented; runtime support is intentionally conservative and listed below.
 
+## 38-second product demo
+
+[Watch the English demo](https://deepsee-wubing2023.pages.dev/#demo) · [中文演示](https://deepsee-wubing2023.pages.dev/zh-CN/#demo) · [English version without background music](https://deepsee-wubing2023.pages.dev/assets/deepsee-demo-en-nobgm.mp4)
+
+The demo uses the real public interface and shows the complete route: one-line install, vision model or local OCR, verified model routing, a visible multi-agent Workflow, and directly openable deliverables.
+
 ## Install in one command
 
 You need [Node.js 24 or newer](https://nodejs.org/). In PowerShell or a terminal, run:
@@ -38,6 +44,8 @@ npx --yes github:WUBING2023/deepsee web
 Open [http://127.0.0.1:3080/](http://127.0.0.1:3080/). DeepSee appears as a native sidebar panel.
 
 Already have DeepSeek Harness configured? DeepSee reuses its providers, model IDs, and credential references. Add or edit API models on the native Harness **Settings → Models** page; DeepSee never asks you to copy the key into a separate store.
+
+DeepSee is an independent open-source project and is not affiliated with DeepSeek. Image and task content is sent only to the provider or runtime you select; local OCR stays on the machine. DeepSee stores Harness credential references, never raw provider keys.
 
 [First-run setup →](docs/GETTING_STARTED.md) · [中文上手指南 →](docs/GETTING_STARTED.zh-CN.md)
 

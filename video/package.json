@@ -1,0 +1,28 @@
+{
+  "name": "deepsee-demo-video",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture:styleframes": "node ./capture-styleframes.mjs",
+    "capture:product": "node ./capture-product.mjs",
+    "dev": "remotion studio src/index.ts",
+    "still": "remotion still src/index.ts DeepSeeDemoZh out/qa/zh.png",
+    "typecheck": "tsc --noEmit",
+    "render:zh": "remotion render src/index.ts DeepSeeDemoZh out/deepsee-demo-zh.mp4 --codec=h264 --pixel-format=yuv420p --color-space=bt709 && node ./tag-color-metadata.mjs out/deepsee-demo-zh.mp4",
+    "render:en": "remotion render src/index.ts DeepSeeDemoEn out/deepsee-demo-en.mp4 --codec=h264 --pixel-format=yuv420p --color-space=bt709 && node ./tag-color-metadata.mjs out/deepsee-demo-en.mp4",
+    "render:zh:nobgm": "remotion render src/index.ts DeepSeeDemoZh out/deepsee-demo-zh-nobgm.mp4 --codec=h264 --pixel-format=yuv420p --color-space=bt709 --props=props-nobgm.json && node ./tag-color-metadata.mjs out/deepsee-demo-zh-nobgm.mp4",
+    "render:en:nobgm": "remotion render src/index.ts DeepSeeDemoEn out/deepsee-demo-en-nobgm.mp4 --codec=h264 --pixel-format=yuv420p --color-space=bt709 --props=props-nobgm.json && node ./tag-color-metadata.mjs out/deepsee-demo-en-nobgm.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.484",
+    "playwright-core": "1.55.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "remotion": "4.0.484"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "typescript": "6.0.3"
+  }
+}
