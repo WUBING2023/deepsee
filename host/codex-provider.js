@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, isAbsolute, join } from "node:path";
+import { recordExecutionTrace } from "../scripts/execution-trace.mjs";
 import z from "@deepseek-ai/schemastery";
 import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
 import { NO_START_CAPABILITIES, assertPositiveFinite, resolveChildCwd, settleRunResult, subprocessRunHandle } from "@deepseek-ai/dsh-subagent";
@@ -73,6 +74,7 @@ async function raceAbort(pending, signal) {
 var CodexAppServerWire = class {
 	input;
 	transport;
+	trace;
 	fatal = Promise.withResolvers();
 	threadId;
 	turnId;
@@ -82,8 +84,9 @@ var CodexAppServerWire = class {
 	lastFinalAnswer;
 	lastUnphasedAnswer;
 	closed = false;
-	constructor(input, output) {
+	constructor(input, output, trace) {
 		this.input = input;
+		this.trace = trace;
 		this.transport = new JsonRpcLineTransport(input, output);
 		this.fatal.promise.catch(() => {});
 		this.transport.onRequest((method, params) => this.handleServerRequest(method, params));
@@ -275,7 +278,37 @@ var CodexAppServerWire = class {
 			return Promise.reject(normalized);
 		}
 	}
+	forwardTrace(method, params) {
+		try {
+			if (method === "turn/plan/updated" && Array.isArray(params.plan)) {
+				this.trace({ type: "agent.plan", eventId: "codex-plan", title: "Codex 执行计划", summary: params.plan.map((step) => `${step.status || "pending"} · ${step.step || ""}`).join("\n") });
+				return;
+			}
+			if (method === "item/reasoning/summaryTextDelta" && typeof params.delta === "string") {
+				this.trace({ type: "agent.summary", eventId: `codex-reasoning-${params.itemId || "current"}-${params.summaryIndex || 0}`, append: true, title: "Codex 推理摘要", summary: params.delta });
+				return;
+			}
+			if (method !== "item/started" && method !== "item/completed") return;
+			const item = params.item;
+			if (!item || typeof item !== "object") return;
+			const completed = method === "item/completed";
+			const status = completed ? (item.status === "failed" ? "failed" : "completed") : "running";
+			if (item.type === "commandExecution") {
+				this.trace({ type: "agent.tool", eventId: `codex-command-${item.id || "unknown"}-${completed ? "end" : "start"}`, title: completed ? "命令执行完成" : "执行命令", summary: typeof item.command === "string" ? item.command : Array.isArray(item.command) ? item.command.join(" ") : "", detail: completed ? item.aggregatedOutput || "" : "", status });
+			} else if (item.type === "fileChange") {
+				const artifacts = Array.isArray(item.changes) ? item.changes.map((change) => change?.path).filter((path) => typeof path === "string") : [];
+				this.trace({ type: completed ? "agent.artifact" : "agent.tool", eventId: `codex-file-${item.id || "unknown"}-${completed ? "end" : "start"}`, title: completed ? "文件变更已完成" : "正在修改文件", summary: artifacts.join("\n"), artifacts, status });
+			} else if (item.type === "imageView") {
+				this.trace({ type: "agent.tool", eventId: `codex-image-${item.id || "unknown"}`, title: "读取图片", summary: item.path || "", path: item.path, status });
+			} else if (item.type === "mcpToolCall" || item.type === "dynamicToolCall" || item.type === "webSearch") {
+				this.trace({ type: "agent.tool", eventId: `codex-tool-${item.id || "unknown"}-${completed ? "end" : "start"}`, title: item.tool || item.query || item.type, detail: item.error ? String(item.error) : "", status });
+			} else if (item.type === "agentMessage" && completed && item.phase === "commentary" && typeof item.text === "string") {
+				this.trace({ type: "agent.progress", eventId: `codex-commentary-${item.id || "unknown"}`, title: "Codex 进度", summary: item.text, status: "completed" });
+			}
+		} catch {}
+	}
 	handleNotification(method, params) {
+		this.forwardTrace(method, params);
 		if (method === "turn/started") {
 			if (string(params.threadId, "turn/started thread id") !== this.threadId) return;
 			const turn = object(params.turn, "turn/started turn");
@@ -421,6 +454,9 @@ async function disposeCodexChild(wire, child) {
 */
 async function startCodexRun(request, spec) {
 	const inputs = await taskInput(request.prompt, spec.readImage, request.signal);
+	const runId = SessionId(randomUUID());
+	const traceBase = { childId: String(runId), parentSessionId: String(request.parent.id), provider: "codex", model: spec.model || "default", cwd: spec.cwd };
+	const trace = (event) => recordExecutionTrace({ ...traceBase, ...event });
 	if (request.signal.aborted) throw new Error("subagent-codex: request was aborted before app-server startup");
 	const child = spec.spawn({
 		argv: codexAppServerArgv(),
@@ -433,7 +469,7 @@ async function startCodexRun(request, spec) {
 		graceMs: spec.disposeGraceMs,
 		env: spec.env
 	});
-	const wire = new CodexAppServerWire(child.stdout, child.stdin);
+	const wire = new CodexAppServerWire(child.stdout, child.stdin, trace);
 	const disposeProcess = () => disposeCodexChild(wire, child);
 	const processFailure = child.done.then((outcome) => Promise.reject(/* @__PURE__ */ new Error(`subagent-codex: app-server exited before the run settled (code ${String(outcome.exitCode)}, signal ${String(outcome.signal)})`)), (error) => Promise.reject(thrown(error)));
 	processFailure.catch(() => {});
@@ -451,6 +487,7 @@ async function startCodexRun(request, spec) {
 		wire.start();
 		await Promise.race([wire.initialize(request.signal), processFailure]);
 		await Promise.race([wire.startThread(spec.cwd, request.signal, spec.model), processFailure]);
+		trace({ type: "run.started", eventId: "codex-start", title: "Codex 已开始执行", status: "running" });
 	} catch (error) {
 		request.signal.removeEventListener("abort", onAbort);
 		try {
@@ -462,7 +499,7 @@ async function startCodexRun(request, spec) {
 		throw thrown(error);
 	}
 	const collectOutput = () => wire.collectOutput();
-	const result = settleRunResult({
+	const settledResult = settleRunResult({
 		attempt: () => Promise.race([wire.runTurn(inputs, runAbort.signal), processFailure]),
 		collectOutput,
 		cancelled: () => runAbort.signal.aborted,
@@ -470,8 +507,13 @@ async function startCodexRun(request, spec) {
 		signal: request.signal,
 		onAbort
 	});
+	const result = settledResult.then((value) => {
+		const output = value.output.filter((block) => block.type === "text" || block.type === "reasoning").map((block) => block.text).join("\n").trim();
+		trace({ type: value.stopReason === "completed" ? "run.completed" : "run.failed", eventId: "codex-end", title: value.stopReason === "completed" ? "Codex 已完成" : `Codex 已结束：${value.stopReason}`, summary: output, output, status: value.stopReason === "completed" ? "completed" : value.stopReason === "aborted" ? "cancelled" : "failed" });
+		return value;
+	});
 	return subprocessRunHandle({
-		id: SessionId(randomUUID()),
+		id: runId,
 		result,
 		signal: request.signal,
 		onAbort,

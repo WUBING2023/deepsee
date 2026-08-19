@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { modelCapabilityDefaults } from "./model-capability-catalog.mjs";
-import { readBridgeState, readModelSelection, writeModelSelection } from "./model-selection.mjs";
+import { DEFAULT_DEEPSEEK_SELECTION, readBridgeState, readModelSelection, writeModelSelection } from "./model-selection.mjs";
 
 export const REGISTRY_FILE = ".opends-models.json";
 
@@ -84,6 +84,10 @@ function cliRuntimeId(route) {
   return text(route.cliRuntimeId, text(route.id).replace(/@\d+$/, ""));
 }
 
+function isRetiredSyntheticRoute(route) {
+  return route?.provider === "opends-vision" || route?.runtimeProvider === "opends-bridge";
+}
+
 export function loadRegistryState(root) {
   const path = join(root, REGISTRY_FILE);
   if (!existsSync(path)) return { version: 1, routes: [], desktopApps: [], preferences: {} };
@@ -91,7 +95,7 @@ export function loadRegistryState(root) {
     const value = JSON.parse(readFileSync(path, "utf8"));
     return {
       version: 1,
-      routes: Array.isArray(value?.routes) ? value.routes : [],
+      routes: Array.isArray(value?.routes) ? value.routes.filter((route) => !isRetiredSyntheticRoute(route)) : [],
       desktopApps: Array.isArray(value?.desktopApps) ? value.desktopApps : [],
       preferences: value?.preferences && typeof value.preferences === "object" ? value.preferences : {},
     };
@@ -395,11 +399,20 @@ export function applyPreferencesToHarness(root, dshHome) {
       : primary.runtimeModel || primary.model,
     reasoningEffort: current?.reasoningEffort || state.previousModel?.reasoningEffort || "high",
   };
-  writeFileSync(settingsPath, writeModelSelection(settingsText, {
-    provider: "opends-vision",
-    model: target.model,
-    reasoningEffort: target.reasoningEffort,
-  }), "utf8");
+  writeFileSync(settingsPath, writeModelSelection(settingsText, target), "utf8");
   writeFileSync(statePath, `${JSON.stringify({ ...state, enabled: true, previousModel: target }, null, 2)}\n`, "utf8");
   return target;
+}
+
+export function migrateLegacyVisionSelection(root, dshHome) {
+  const settingsPath = join(dshHome, "settings.yaml");
+  const settingsText = existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : "";
+  const current = readModelSelection(settingsText);
+  if (current?.provider !== "opends-vision") return current;
+  const selected = applyPreferencesToHarness(root, dshHome);
+  if (selected) return selected;
+  const state = readBridgeState(join(root, ".opends-bridge.json"));
+  const fallback = state.previousModel || DEFAULT_DEEPSEEK_SELECTION;
+  writeFileSync(settingsPath, writeModelSelection(settingsText, fallback), "utf8");
+  return fallback;
 }

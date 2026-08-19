@@ -76,7 +76,19 @@ sequenceDiagram
 - CLI 路线只有通过验证后，才交给专用 provider 执行，因此同一个 Workflow 可以同时调用 Sonnet、Opus、Fable、不同 Codex 档位或 Gemini Auto/Pro/Flash 路线。
 - 路线不存在、被关闭或已经过期时明确失败，不会暗中换成无关模型。
 
-`/workflow <任务>` 是显式入口。Prime 只在存在多条独立工作流、清晰的跨能力角色，或已经批准并标记 `Execution mode: Workflow` 的计划时自动选择 Workflow。没有就绪的完整视觉路线时，Prime 自动编排会被关闭；显式 Workflow 仍可使用就绪的文本路线。
+`/workflow <任务>` 是百分之百触发的显式入口。开启自动 Workflow 的 Prime 采用平衡策略：存在两条以上真正独立的工作流、多项交付物或能力角色、实现加独立复核、明确的多模型/多方案对比，或已批准并标记 `Execution mode: Workflow` 的计划时，优先使用 Workflow。比较与复核会在有两个合适路线时使用不同模型，由主模型汇总分歧。视觉路线只限制图片任务，不再关闭纯文本、代码、研究或文档 Workflow。
+
+## Workflow 执行轨迹
+
+DeepSee 不另建 Workflow 引擎。Web 客户端扩展 Harness 原生 `workflow-run` 节点，阶段、成员、状态和持久化仍以 Harness 事件为准；插件只为 CLI / 桌面订阅 Runtime 补充公开执行轨迹与交付物。
+
+- Codex App Server 的计划更新、推理摘要、公开进度、工具动作和文件变更会进入轨迹。
+- Claude Code 的公开文本、工具动作与最终结果会进入轨迹；私有 `thinking` 块不会被转发。
+- 不支持流式事件的 Runtime 仍记录开始、结束、最终摘要和可识别的产物路径。
+- 轨迹保存在 `$DSH_HOME/deepsee/execution-traces.json`，有运行数、事件数和文本长度上限。
+- 只有工作区内的白名单文件类型能通过同源 `/api/deepsee/v1/artifacts` 预览或打开；工作区外路径会被拒绝。
+
+界面默认显示简短的“计划 / 进度 / 动作 / 结果”，原始命令只作为悬停信息保留。这里提供的是供应商公开暴露的摘要和动作，不承诺也不尝试展示模型的私有思维链。
 
 ## 状态与密钥边界
 

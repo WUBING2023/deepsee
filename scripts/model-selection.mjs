@@ -79,21 +79,13 @@ export function enableVisionSelection(settingsPath, statePath) {
   const state = readBridgeState(statePath);
   const text = existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : "";
   const current = readModelSelection(text);
-  const previousModel = current?.provider === VISION_PROVIDER
+  const selectedModel = current?.provider === VISION_PROVIDER
     ? state.previousModel ?? DEFAULT_DEEPSEEK_SELECTION
     : current ?? state.previousModel ?? DEFAULT_DEEPSEEK_SELECTION;
-  const deepseekModel = previousModel.provider.startsWith("deepseek")
-    ? previousModel.model
-    : DEFAULT_DEEPSEEK_SELECTION.model;
-  const next = {
-    provider: VISION_PROVIDER,
-    model: deepseekModel,
-    reasoningEffort: previousModel.reasoningEffort ?? DEFAULT_DEEPSEEK_SELECTION.reasoningEffort,
-  };
-  writeFileSync(settingsPath, writeModelSelection(text, next), "utf8");
-  const nextState = { ...state, enabled: true, previousModel };
+  writeFileSync(settingsPath, writeModelSelection(text, selectedModel), "utf8");
+  const nextState = { ...state, enabled: true, previousModel: selectedModel };
   writeFileSync(statePath, JSON.stringify(nextState, null, 2) + "\n", "utf8");
-  return next;
+  return selectedModel;
 }
 
 export function disableVisionSelection(settingsPath, statePath) {

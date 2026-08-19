@@ -126,6 +126,7 @@ function normalizeRoute(value: unknown): ModelRoute | undefined {
     || !SOURCE_VALUES.has(route.source as ModelSource)
     || !STATUS_VALUES.has(route.status as ModelStatus)
   ) return undefined;
+  if (route.provider === "opends-vision" || route.runtimeProvider === "opends-bridge") return undefined;
 
   const visionLevel = VISION_VALUES.has(route.visionLevel as VisionLevel)
     ? route.visionLevel as VisionLevel

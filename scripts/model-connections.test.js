@@ -56,7 +56,8 @@ describe("local model connections", () => {
     const text = readFileSync(patchPath, "utf8");
     expect(text).toContain(connection.runtimeProvider);
     expect(text).toContain("gpt-test");
-    expect(text).toContain("DeepSeek \u6df1\u89c1 \u00b7 OpenAI");
+    expect(text).toContain('displayName: "OpenAI"');
+    expect(text).not.toContain("视觉引擎");
     expect(text).not.toContain("DeepSee External API");
     expect(text).not.toContain("local-secret");
     expect(env[connection.apiKeyEnv]).toBe("local-secret");

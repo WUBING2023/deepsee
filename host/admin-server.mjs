@@ -25,6 +25,13 @@ import {
   queueDeepSeeUpdateCheck,
   startDeepSeeUpdate,
 } from "../scripts/update-manager.mjs";
+import { readFileSync, statSync } from "node:fs";
+import { extname } from "node:path";
+import {
+  configureExecutionTrace,
+  listExecutionTraces,
+  resolveExecutionArtifact,
+} from "../scripts/execution-trace.mjs";
 
 export const DEEPSEE_API_PREFIX = "/api/deepsee";
 
@@ -47,6 +54,39 @@ function send(res, status, value) {
     "content-length": Buffer.byteLength(body),
     "cache-control": "no-store",
     "x-content-type-options": "nosniff",
+  });
+  res.end(body);
+}
+
+const ARTIFACT_CONTENT_TYPES = {
+  ".avif": "image/avif",
+  ".bmp": "image/bmp",
+  ".csv": "text/csv; charset=utf-8",
+  ".gif": "image/gif",
+  ".htm": "text/html; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".json": "application/json; charset=utf-8",
+  ".md": "text/markdown; charset=utf-8",
+  ".pdf": "application/pdf",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".txt": "text/plain; charset=utf-8",
+  ".webp": "image/webp",
+  ".xml": "application/xml; charset=utf-8",
+};
+
+function sendArtifact(res, artifact) {
+  const stat = statSync(artifact.path);
+  const body = readFileSync(artifact.path);
+  res.writeHead(200, {
+    "content-type": ARTIFACT_CONTENT_TYPES[extname(artifact.path).toLowerCase()] || "application/octet-stream",
+    "content-length": stat.size,
+    "content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(artifact.name)}`,
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "content-security-policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox",
   });
   res.end(body);
 }
@@ -79,6 +119,7 @@ function routePath(req) {
 export function createDeepSeeAdminHandler(options = {}) {
   const paths = resolveDeepSeePaths(options);
   const { packageRoot, stateRoot, dshHome } = paths;
+  configureExecutionTrace(stateRoot);
   const state = () => {
     const registry = publicRegistryState(stateRoot);
     const selectedVision = registry.routes.find((route) => (
@@ -123,6 +164,17 @@ export function createDeepSeeAdminHandler(options = {}) {
     try {
       if (!requestIsSameOrigin(req)) return send(res, 403, { error: "origin_not_allowed" });
       const path = routePath(req);
+      const url = new URL(req.url || "/", "http://deepsee.local");
+      if (req.method === "GET" && path === "/v1/traces") {
+        const childIds = (url.searchParams.get("children") || "").split(",").map((id) => id.trim()).filter(Boolean).slice(0, 64);
+        return send(res, 200, { traces: listExecutionTraces(childIds) });
+      }
+      const artifactMatch = path.match(/^\/v1\/artifacts\/([^/]+)\/([^/]+)$/);
+      if (req.method === "GET" && artifactMatch) {
+        const artifact = resolveExecutionArtifact(decodeURIComponent(artifactMatch[1]), decodeURIComponent(artifactMatch[2]));
+        if (!artifact) return send(res, 404, { error: "artifact_not_found" });
+        return sendArtifact(res, artifact);
+      }
       if (req.method === "GET" && path === "/v1/models") {
         if (!options.disableUpdateCheck) {
           void queueDeepSeeUpdateCheck(stateRoot, packageRoot, { fetchImpl: options.updateFetch });
@@ -181,9 +233,31 @@ export function createDeepSeeAdminHandler(options = {}) {
         return send(res, 200, { route, state: state(), restartRequired: true });
       }
       if (req.method === "POST" && path === "/v1/preferences") {
-        const preferences = updateRegistryPreferences(stateRoot, await readJson(req));
+        const input = await readJson(req);
+        const preferences = updateRegistryPreferences(stateRoot, input);
         applyPreferencesToHarness(stateRoot, dshHome);
-        return send(res, 200, { preferences, state: state(), restartRequired: true });
+        let selection;
+        let liveApplied = false;
+        let liveError;
+        if (typeof input.primaryRouteId === "string") {
+          const route = state().routes.find((item) => item.id === preferences.primaryRouteId);
+          if (route && typeof options.syncPrimaryModel === "function") {
+            try {
+              selection = await options.syncPrimaryModel(route);
+              liveApplied = true;
+            } catch (error) {
+              liveError = error instanceof Error ? error.message : String(error);
+            }
+          }
+        }
+        return send(res, 200, {
+          preferences,
+          state: state(),
+          restartRequired: false,
+          liveApplied,
+          ...(selection ? { selection } : {}),
+          ...(liveError ? { liveError } : {}),
+        });
       }
       if (req.method === "POST" && path === "/v1/runtimes/verify") {
         await readJson(req);

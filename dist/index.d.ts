@@ -11,7 +11,7 @@ import "@deepseek-ai/dsh-tools";
 import { type ModelRegistryFile, type ModelRouteOverride } from "./model-registry.js";
 import { type OCRTool } from "./ocr.js";
 export declare const name = "deepsee";
-export declare const inject: readonly ["agents", "attachments", "commands", "llm", "settings", "subagents", "subprocess", "systemPrompt", "tools"];
+export declare const inject: readonly ["agentDefaultModel", "agents", "attachments", "commands", "llm", "settings", "subagents", "subprocess", "systemPrompt", "tools"];
 export interface Config {
     enabled: boolean;
     provider: string;
@@ -31,6 +31,10 @@ export interface Config {
     ocrExecutable: string;
 }
 export declare const Config: z<Config>;
+export declare function routeModelSelection(route: ModelRegistryFile["routes"][number]): {
+    provider: string;
+    model: string;
+};
 export declare function resolveRuntimeConfig(config: Config, registry: ModelRegistryFile, providerIds: ReadonlySet<string>, ocr: {
     status?: string;
     executable?: string;

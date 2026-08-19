@@ -36,6 +36,18 @@ describe("model registry", () => {
     expect(registry.routes[0]?.roles).toEqual(["review"]);
   });
 
+  it("drops retired synthetic vision routes from persisted registries", () => {
+    const registry = normalizeRegistry({
+      version: 1,
+      routes: [
+        vision,
+        { ...vision, id: "legacy-provider", runtimeProvider: "opends-bridge" },
+        { ...vision, id: "legacy-adapter", provider: "opends-vision" },
+      ],
+    });
+    expect(registry.routes.map((route) => route.id)).toEqual([vision.id]);
+  });
+
   it("preserves safe desktop runtime metadata during capability profiling reads", () => {
     const registry = normalizeRegistry({
       version: 1,

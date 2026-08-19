@@ -76,7 +76,19 @@ The routing contract is deliberately small:
 - CLI routes are handled by their dedicated provider only after validation, so sibling Sonnet/Opus/Fable, Codex variants, or Gemini Auto/Pro/Flash routes can run concurrently in one Workflow.
 - Missing, disabled, or stale route IDs fail loudly instead of silently falling back to an unrelated model.
 
-`/workflow <task>` is the explicit path. Prime may choose Workflow only for multiple independent workstreams, clear cross-capability roles, or an approved plan marked `Execution mode: Workflow`. Automatic Prime orchestration is disabled when no ready full-vision route exists; explicit Workflow can still use ready text routes.
+`/workflow <task>` is the guaranteed explicit path. With automatic Workflow enabled, Prime uses a balanced policy: prefer Workflow for two or more genuinely independent workstreams, multiple deliverables or capability roles, implementation plus independent review, explicit model/approach comparison, or an approved plan marked `Execution mode: Workflow`. Comparison and review use different suitable routes when at least two are ready, with the main model synthesizing disagreements. Missing vision limits image work but no longer disables text, code, research, or document Workflows.
+
+## Workflow execution trace
+
+DeepSee does not create a second Workflow engine. The Web client extends the native Harness `workflow-run` node, while Harness events remain authoritative for phases, members, state, and persistence. The plugin only adds public Runtime progress and deliverables for CLI and desktop-subscription routes.
+
+- Codex App Server plan updates, reasoning summaries, public progress, tool actions, and file changes become trace events.
+- Claude Code public text, tool actions, and final output become trace events; private `thinking` blocks are never forwarded.
+- A Runtime without streaming events still records lifecycle, final summary, and discoverable output paths.
+- The bounded store is `$DSH_HOME/deepsee/execution-traces.json`.
+- Only allowlisted files inside the active workspace can be previewed through same-origin `/api/deepsee/v1/artifacts`; outside paths are rejected.
+
+The UI renders concise plan/progress/action/result entries and keeps raw commands as hover details. This is a view of provider-exposed summaries and actions, not a promise or attempt to reveal private chain of thought.
 
 ## State and secret boundaries
 

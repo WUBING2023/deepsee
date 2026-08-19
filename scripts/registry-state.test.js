@@ -6,6 +6,7 @@ import {
   addRegistryCliModel,
   applyPreferencesToHarness,
   loadRegistryState,
+  migrateLegacyVisionSelection,
   removeRegistryCliModel,
   syncHarnessModels,
   updateRegistryPreferences,
@@ -33,6 +34,22 @@ afterEach(() => {
 });
 
 describe("registry preferences", () => {
+  it("hides retired synthetic vision routes from old registries", () => {
+    const root = fixture();
+    const registry = loadRegistryState(root);
+    registry.routes.push({
+      id: "api:legacy:vision",
+      source: "api",
+      provider: "legacy",
+      runtimeProvider: "opends-bridge",
+      model: "vision",
+      enabled: true,
+      status: "ready",
+    });
+    writeFileSync(join(root, ".opends-models.json"), JSON.stringify(registry));
+    expect(loadRegistryState(root).routes.some((route) => route.runtimeProvider === "opends-bridge")).toBe(false);
+  });
+
   it("persists editable preferences and rejects enabling an unavailable CLI", () => {
     const root = fixture();
     expect(() => updateRegistryRoute(root, { id: "cli:bad", enabled: true })).toThrow("not logged in");
@@ -149,7 +166,7 @@ describe("registry preferences", () => {
     expect(() => updateRegistryPreferences(root, { primaryRouteId: "harness:openai-official:gpt-image-2" })).toThrow("主模型类型不符合要求");
   });
 
-  it("syncs the preferred base model into Harness' composite vision selection", () => {
+  it("syncs the preferred base model directly into Harness", () => {
     const root = fixture();
     const dshHome = join(root, ".dsh");
     mkdirSync(dshHome, { recursive: true });
@@ -157,8 +174,20 @@ describe("registry preferences", () => {
     updateRegistryPreferences(root, { primaryRouteId: "api:kimi:v" });
     applyPreferencesToHarness(root, dshHome);
     const settings = readFileSync(join(dshHome, "settings.yaml"), "utf8");
-    expect(settings).toContain("provider: opends-vision");
+    expect(settings).toContain("provider: opends-api-kimi");
     expect(settings).toContain("model: v");
+  });
+
+  it("migrates an existing synthetic default back to the selected real provider", () => {
+    const root = fixture();
+    const dshHome = join(root, ".dsh");
+    mkdirSync(dshHome, { recursive: true });
+    writeFileSync(join(dshHome, "settings.yaml"), "agent-default-model:\n  provider: opends-vision\n  model: v\n");
+    updateRegistryPreferences(root, { primaryRouteId: "harness:deepseek:m" });
+    expect(migrateLegacyVisionSelection(root, dshHome)).toMatchObject({ provider: "deepseek", model: "m" });
+    const settings = readFileSync(join(dshHome, "settings.yaml"), "utf8");
+    expect(settings).toContain("provider: deepseek");
+    expect(settings).not.toContain("provider: opends-vision");
   });
 
   it("discards a previously verified placeholder profile and queues a clean replacement", () => {
@@ -216,7 +245,7 @@ describe("registry preferences", () => {
     updateRegistryPreferences(root, { primaryRouteId: "cli:codex" });
     applyPreferencesToHarness(root, dshHome);
     const settings = readFileSync(join(dshHome, "settings.yaml"), "utf8");
-    expect(settings).toContain("provider: opends-vision");
+    expect(settings).toContain("provider: deepsee-cli-codex");
     expect(settings).toContain("model: gpt-5.6-terra");
     expect(readFileSync(join(root, ".opends-bridge.json"), "utf8")).toContain("deepsee-cli-codex");
   });

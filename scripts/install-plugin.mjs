@@ -8,6 +8,8 @@ import { spawnSync } from "node:child_process";
 import { stageFolderPackage } from "./folder-install.mjs";
 import { resolveExecutableInvocation, resolveNpxInvocation } from "./npx-command.mjs";
 import { findExecutable } from "./runtime-locator.mjs";
+import { installPrimePreset } from "./prime-preset.mjs";
+import { loadRegistryState } from "./registry-state.mjs";
 import {
   describeInstallFailure,
   formatDuration,
@@ -162,6 +164,20 @@ for (const profile of options.profiles) {
     throw new Error(`${profile} profile command completed but DeepSee ${manifest.version} was not activated (found ${after.installedVersion ?? after.dependency ?? "nothing"}). Re-run the same command to resume safely.`);
   }
   console.log(`[DeepSee] ${profile} profile ready (${after.installedVersion ?? after.dependency}).`);
+}
+
+try {
+  const registry = loadRegistryState(join(dshHome, "deepsee"));
+  const hasReadyVision = registry.routes.some((route) => (
+    route.enabled !== false && route.status === "ready" && route.visionLevel === "full-vision"
+  ));
+  installPrimePreset(dshHome, {
+    hasReadyVision,
+    autoWorkflow: registry.preferences?.primeAutoWorkflow !== false,
+  });
+  console.log("[DeepSee] Prime preset refreshed with the balanced Workflow policy.");
+} catch (error) {
+  console.warn(`[DeepSee] Prime preset will be refreshed when Harness starts: ${error instanceof Error ? error.message : String(error)}`);
 }
 
 console.log("\nDeepSee is installed in the selected DSH profiles.");
