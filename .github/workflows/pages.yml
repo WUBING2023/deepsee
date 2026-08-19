@@ -38,6 +38,7 @@ jobs:
           mkdir -p .release-check
           gh release download "$TAG" --pattern "$ASSET" --pattern "${ASSET}.sha256" --dir .release-check
           (cd .release-check && sha256sum -c "${ASSET}.sha256")
+          node scripts/sync-public-release-manifest.mjs ".release-check/${ASSET}"
           node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('website/version.json'));const p='.release-check/${ASSET}';const s=fs.readFileSync(p+'.sha256','utf8').trim().split(/\\s+/)[0];const z=fs.statSync(p).size;if(m.version!=='${VERSION}'||m.sha256!==s||m.sizeBytes!==z)throw new Error('Website manifest does not match the public Release')"
           node scripts/validate-site.mjs
 

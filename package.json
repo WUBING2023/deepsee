@@ -124,6 +124,7 @@
     "release:tag-check": "node ./scripts/verify-release-tag.mjs",
     "update:live-smoke": "node ./scripts/update-live-smoke.mjs",
     "site:verify": "node ./scripts/validate-site.mjs",
+    "site:sync-release": "node ./scripts/sync-public-release-manifest.mjs",
     "security:verify": "node ./scripts/security-contract.mjs",
     "clean:smoke": "node ./scripts/clean-environment-smoke.mjs",
     "typecheck": "tsc --noEmit",
