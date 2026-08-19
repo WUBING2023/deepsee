@@ -70,6 +70,22 @@ describe("DeepSee native-style model panel", () => {
     expect(clientSource).not.toContain('aria-label": "深见 DeepSee 设置"');
   });
 
+  it("extends the native Workflow node with a public execution trace and deliverables", () => {
+    expect(clientSource).toContain('key: "workflow-run"');
+    expect(clientSource).toContain("priority: -20");
+    expect(clientSource).toContain("DeepSeeWorkflowRunPanel");
+    expect(clientSource).toContain('/v1/traces?children=');
+    expect(clientSource).toContain('"aria-label": "执行轨迹"');
+    expect(clientSource).toContain('"aria-label": "交付物"');
+    expect(clientSource).toContain("打开子会话");
+    expect(clientSource).toContain("新窗口打开");
+    expect(clientSource).toContain("visibleTraceEvents");
+    expect(clientSource).toContain("简要执行轨迹");
+    expect(clientSource).toContain('const activeChild = selectedChild || ""');
+    expect(clientSource).toContain("coalesced.length <= 24");
+    expect(clientSource).toContain("命令未通过，Agent 已自动调整并重试。");
+  });
+
   it("replaces the native fallback gear with a dedicated DeepSee insight glyph", () => {
     expect(clientSource).toContain("function DeepSeeIcon");
     expect(clientSource).toContain("installDeepSeeSettingsNavIcon");
@@ -81,6 +97,19 @@ describe("DeepSee native-style model panel", () => {
   it("allows verified Codex and Claude Code subscription runtimes to become the base model", () => {
     expect(clientSource).toContain('route.source === "harness" || route.source === "api" || route.source === "cli"');
     expect(clientSource).toContain("Codex 与 Claude Code 使用本机已登录的订阅 Runtime");
+  });
+
+  it("applies a main-model preference live to both the current and future sessions", () => {
+    expect(clientSource).toContain('"modelDirectories"');
+    expect(clientSource).toContain("ctx.modelDirectories.directoryFor(sessionId).select(selection)");
+    expect(clientSource).toContain("ctx.sessions.list.getSnapshot().current");
+    expect(clientSource).toContain("主模型已实时切换；当前会话与之后的新会话均已生效。");
+    expect(clientSource).not.toContain("主模型更改将在重启后完整生效");
+    expect(clientSource).not.toContain("更改后重启生效");
+  });
+
+  it("describes the balanced automatic Workflow policy in the setting", () => {
+    expect(clientSource).toContain("可并行任务、多产物、实现加复核和多模型对比选择可见 Workflow");
   });
 
   it("manages several model instances under one subscription while starting with one", () => {

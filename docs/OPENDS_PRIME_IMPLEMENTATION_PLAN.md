@@ -79,13 +79,13 @@ Harness 左侧栏增加 DeepSee 入口，打开轻量抽屉而不是独立管理
 Prime 是一个基于标准模式的 Agent preset，不另建 Agent 框架。它保留标准模式的工具、权限和会话行为，只增加 DeepSee 路由说明：
 
 - 简单、单线任务继续使用普通 Loop；
-- 一至两个短委派优先使用普通 Subagent；
-- 存在三个以上可独立工作流、明显跨能力分工、或用户显式要求团队执行时，选择 Workflow；
+- 单个短委派优先使用普通 Subagent；
+- 存在两条以上真正独立的工作流、多项交付物或能力角色、实现加独立复核、多模型/多方案对比，或用户显式要求团队执行时，优先选择 Workflow；
 - 用户选择 Prime 本身视为允许系统按任务复杂度自动决定是否使用 Workflow；
 - 经过用户批准的 Plan 若标记为 `Execution mode: Workflow`，后续实施必须继续使用 Workflow；
 - Plan 未标记 Workflow 时，不强行升级为 Workflow。
 
-Prime 的判断保持提示词层面的软策略，不增加复杂分类器。禁用模型与视觉就绪状态仍由 DeepSee 在调用边界校验。
+Prime 的判断保持提示词层面的平衡软策略，不增加复杂分类器。对比与复核在存在两个合适路线时使用不同模型，由主模型汇总分歧；视觉就绪状态只约束图片任务，不关闭纯文本、代码、研究或文档 Workflow。禁用模型仍由 DeepSee 在调用边界校验。
 
 ### 2.5 Plan 到 Workflow
 
@@ -226,7 +226,7 @@ DeepSee 根据任务需要过滤禁用和不可用路线，然后参考能力、
 - Workflow Plan 批准后继续使用 Workflow；
 - 模式选择器出现“Prime 模式”。
 
-验收：简单任务不启动 Workflow；显式 `/workflow` 必须启动请求；复杂独立任务和 Workflow Plan 会调用原生 Workflow。
+验收：单线简单任务不启动 Workflow；显式 `/workflow` 必须启动请求；两条以上独立工作流、多模型对比和 Workflow Plan 会调用原生 Workflow，并在存在两个合适路线时使用不同模型完成执行/复核或对比。
 
 ### Phase C：DeepSee 侧栏与首次配置
 

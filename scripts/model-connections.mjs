@@ -205,21 +205,6 @@ export function buildGeneratedPatch(root, env, outputPath) {
   const routesById = new Map(registry.routes.map((route) => [route.id, route]));
   const routeEnabled = (id) => !routesById.has(id) || routesById.get(id)?.enabled !== false;
   const providers = [];
-  if (env.OPENDS_BRIDGE_MODEL) {
-    const routeId = `api:${env.OPENDS_BRIDGE_VENDOR || "external"}:${env.OPENDS_BRIDGE_MODEL}`;
-    if (routeEnabled(routeId)) {
-      providers.push({
-        routeId,
-        runtimeProvider: "opends-bridge",
-        displayName: "DeepSeek 深见 · 视觉引擎",
-        apiKeyEnv: "OPENDS_BRIDGE_API_KEY",
-        api: env.OPENDS_BRIDGE_API || "openai-completions",
-        baseURL: env.OPENDS_BRIDGE_BASE_URL || "https://api.moonshot.cn/v1",
-        model: env.OPENDS_BRIDGE_MODEL,
-        vision: true,
-      });
-    }
-  }
   for (const connection of loadConnections(root)) {
     const routeId = `api:${connection.provider}:${connection.model}`;
     if (!routeEnabled(routeId)) continue;
@@ -227,7 +212,7 @@ export function buildGeneratedPatch(root, env, outputPath) {
     providers.push({
       routeId,
       runtimeProvider: connection.runtimeProvider,
-      displayName: `DeepSeek 深见 · ${connection.providerLabel}`,
+      displayName: connection.providerLabel,
       apiKeyEnv: connection.apiKeyEnv,
       api: connection.api,
       baseURL: connection.baseURL,
@@ -235,20 +220,9 @@ export function buildGeneratedPatch(root, env, outputPath) {
       vision: connection.visionLevel === "full-vision",
     });
   }
-  const fallback = providers[0] || {
-    routeId: "api:external:kimi-k3",
-    runtimeProvider: "opends-bridge",
-    displayName: "DeepSeek 深见 · 视觉引擎",
-    apiKeyEnv: "OPENDS_BRIDGE_API_KEY",
-    api: "openai-completions",
-    baseURL: "https://api.moonshot.cn/v1",
-    model: "kimi-k3",
-    vision: true,
-  };
   const preferredVision = registry.preferences?.visionRouteId;
   const vision = providers.find((provider) => provider.routeId === preferredVision && provider.vision)
-    || providers.find((provider) => provider.vision)
-    || fallback;
+    || providers.find((provider) => provider.vision);
   const preferredPrimary = registry.routes.find((route) => (
     route.id === registry.preferences?.primaryRouteId
     && route.status === "ready"
@@ -263,8 +237,11 @@ export function buildGeneratedPatch(root, env, outputPath) {
     && route.runtimeProvider === "codex"
   ));
   const quote = (value) => JSON.stringify(String(value));
-  const lines = ["- id: llm-pi-ai", "  config:", "    providers:"];
-  for (const provider of providers.length ? providers : [fallback]) {
+  const lines = [];
+  if (providers.length > 0) {
+    lines.push("- id: llm-pi-ai", "  config:", "    providers:");
+  }
+  for (const provider of providers) {
     lines.push(
       `      ${provider.runtimeProvider}:`,
       `        displayName: ${quote(provider.displayName)}`,
@@ -280,8 +257,8 @@ export function buildGeneratedPatch(root, env, outputPath) {
       `            input: ${provider.vision ? "[text, image]" : "[text]"}`,
     );
   }
+  if (providers.length > 0) lines.push("");
   lines.push(
-    "",
     "- insert:",
     ...(codexAdapterReady ? [
       "    - id: opends-subagent-codex",
@@ -293,11 +270,11 @@ export function buildGeneratedPatch(root, env, outputPath) {
     "      name: 'opends-bridge'",
     "      config:",
     "        enabled: true",
-    `        provider: ${quote(vision.runtimeProvider)}`,
-    `        model: ${quote(vision.model)}`,
+    `        provider: ${quote(vision?.runtimeProvider || "")}`,
+    `        model: ${quote(vision?.model || "")}`,
     `        maxTokens: ${Number(env.OPENDS_BRIDGE_MAX_TOKENS || 4096)}`,
-    `        autoVision: ${(useOCR || Boolean(env[vision.apiKeyEnv])) && env.OPENDS_BRIDGE_AUTO_VISION !== "0"}`,
-    `        allowTextTool: ${Boolean(env[vision.apiKeyEnv]) && env.OPENDS_BRIDGE_TEXT_TOOL === "1"}`,
+    `        autoVision: ${(useOCR || Boolean(vision && env[vision.apiKeyEnv])) && env.OPENDS_BRIDGE_AUTO_VISION !== "0"}`,
+    `        allowTextTool: ${Boolean(vision && env[vision.apiKeyEnv]) && env.OPENDS_BRIDGE_TEXT_TOOL === "1"}`,
     `        targetProviders: [${quote(primaryProvider)}]`,
     `        visionCacheEntries: ${Number(env.OPENDS_BRIDGE_VISION_CACHE || 128)}`,
     "        visionRoute: opends-vision",

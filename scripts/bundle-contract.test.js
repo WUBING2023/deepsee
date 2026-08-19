@@ -42,6 +42,8 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(patch).toContain("instructionFileCandidates: [AGENTS.md, CLAUDE.md, agent.md]");
     expect(patch).toMatch(/id: workflow-worker-thread[\s\S]*?provider: opends/);
     expect(pluginSource.match(/export const inject = \[([^\]]+)\]/)?.[1]).not.toContain("agentPresets");
+    expect(pluginSource).not.toContain("registerAdapter([config.visionRoute]");
+    expect(pluginSource).not.toContain('runtimeProvider: "opends-bridge"');
   });
 
   it("installs through the official plugin manager for both profiles", () => {
@@ -61,6 +63,8 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain("resolveProfileStoreDir");
     expect(installer).toContain("pnpm_config_store_dir");
     expect(installer).toContain("profileUsesPackage");
+    expect(installer).toContain("installPrimePreset(dshHome");
+    expect(installer).toContain("balanced Workflow policy");
     expect(installer).toContain("before.registered && options.force");
     expect(installer).toContain('"remove", legacyPackage');
     expect(installer).toContain('NO_UPDATE_NOTIFIER: "1"');

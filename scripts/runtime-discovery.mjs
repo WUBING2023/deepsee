@@ -94,20 +94,6 @@ function readJson(path, fallback) {
   }
 }
 
-function parseEnv(text) {
-  const values = {};
-  for (const line of text.split(/\r?\n/)) {
-    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
-    if (!match || line.trimStart().startsWith("#")) continue;
-    let value = match[2];
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    values[match[1]] = value;
-  }
-  return values;
-}
-
 function isPlaceholderCapability(value) {
   const normalized = String(value || "").trim().toLowerCase().replaceAll(" ", "");
   return /^(?:能力|任务|擅长|strength|capability|task)[-_]?\d+$/.test(normalized)
@@ -207,36 +193,6 @@ export async function discoverDeepSeeRuntimes(options = {}) {
       description: "DeepSeek Harness 当前主模型",
       descriptionSource: "declared",
       visionLevel: "none",
-      lastCheckedAt: now,
-    };
-    routes.push(preserveUserFields(route, oldRoutes.get(route.id)));
-  }
-
-  // Legacy development installs may still carry one external API in .env.
-  // Keep its registry entry during migration; standard installs use Harness'
-  // native provider settings and never copy credentials into DeepSee state.
-  const envPath = join(packageRoot, ".env");
-  const legacyEnv = existsSync(envPath) ? parseEnv(readFileSync(envPath, "utf8")) : {};
-  const runtimeEnv = { ...legacyEnv, ...(options.env || process.env) };
-  if (runtimeEnv.OPENDS_BRIDGE_MODEL) {
-    const vendor = runtimeEnv.OPENDS_BRIDGE_VENDOR || "external";
-    const route = {
-      id: `api:${vendor}:${runtimeEnv.OPENDS_BRIDGE_MODEL}`,
-      source: "api",
-      provider: vendor,
-      model: runtimeEnv.OPENDS_BRIDGE_MODEL,
-      runtimeProvider: "opends-bridge",
-      runtimeModel: runtimeEnv.OPENDS_BRIDGE_MODEL,
-      enabled: Boolean(runtimeEnv.OPENDS_BRIDGE_API_KEY),
-      status: runtimeEnv.OPENDS_BRIDGE_API_KEY ? "ready" : "unavailable",
-      capabilities: ["text", "vision", "long-context"],
-      weaknesses: ["复杂代码仓库修改", "严格工具执行"],
-      roles: ["vision", "document", "review"],
-      description: "等待模型自动生成能力画像",
-      descriptionSource: "inferred",
-      visionLevel: "full-vision",
-      profileStatus: runtimeEnv.OPENDS_BRIDGE_API_KEY ? "pending" : "error",
-      credentialRef: "env:OPENDS_BRIDGE_API_KEY",
       lastCheckedAt: now,
     };
     routes.push(preserveUserFields(route, oldRoutes.get(route.id)));

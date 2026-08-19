@@ -58,10 +58,10 @@ const registry: ModelRegistryFile = {
   ],
 };
 
-function testContext() {
+function testContext(output = "ok") {
   const run = {
     id: "child-id",
-    result: Promise.resolve({ output: [{ type: "text", text: "ok" }], stopReason: "completed" as const }),
+    result: Promise.resolve({ output: [{ type: "text", text: output }], stopReason: "completed" as const }),
     dispose: vi.fn(async () => undefined),
   };
   const codexStart = vi.fn(async (_request: unknown) => run);
@@ -122,6 +122,31 @@ describe("DeepSee Workflow subagent provider", () => {
         { type: "text", text: "GLOBAL_MEMORY_SENTINEL" },
         { type: "text", text: "Do the task" },
       ],
+    });
+  });
+
+  it("adapts Workflow structured output for CLI subscription models", async () => {
+    const { ctx, codexStart } = testContext('{"summary":"review complete"}');
+    const provider = createDeepSeeSubagentProvider(ctx, () => registry);
+    const run = await provider.start({
+      ...request("cli:codex"),
+      outputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["summary"],
+        properties: { summary: { type: "string" } },
+      },
+    } as never);
+
+    expect(codexStart.mock.calls[0]?.[0]).not.toHaveProperty("outputSchema");
+    expect(codexStart.mock.calls[0]?.[0]).toMatchObject({
+      prompt: expect.arrayContaining([
+        expect.objectContaining({ text: expect.stringContaining("Return ONLY one JSON object") }),
+      ]),
+    });
+    await expect(run.result).resolves.toMatchObject({
+      stopReason: "completed",
+      structured: { summary: "review complete" },
     });
   });
 

@@ -13,7 +13,7 @@ window.__ModuleLoader__.load({
       useSyncExternalStore,
     } = require("react");
 
-    const inject = ["connection", "remote", "settingsScope", "slots"];
+    const inject = ["connection", "modelDirectories", "remote", "sessions", "settingsScope", "slots"];
     const adminBaseURL = "/api/deepsee";
     let liveRoutes = [];
     let livePreferences = {};
@@ -193,6 +193,10 @@ window.__ModuleLoader__.load({
       .opends-select{box-sizing:border-box;width:100%;height:36px;border:1px solid rgba(127,127,127,.22);border-radius:9px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;padding:0 9px;outline:none}
       .opends-onboarding{position:fixed;inset:0;z-index:1300;display:flex;align-items:center;justify-content:center;padding:24px}
       .opends-onboarding-card{position:relative;z-index:1;width:min(520px,calc(100vw - 48px));border-radius:22px;background:var(--dsw-alias-bg-layer-2);box-shadow:0 18px 50px rgba(20,22,28,.18);padding:26px;display:flex;flex-direction:column;gap:16px}
+      .opends-workflow{margin:8px 0;border:1px solid rgba(127,127,127,.14);border-radius:13px;overflow:hidden;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
+      .opends-workflow-head{box-sizing:border-box;width:100%;min-height:38px;padding:0 12px;border:0;background:var(--dsw-alias-bg-module-platform);color:inherit;display:flex;align-items:center;gap:8px;font:inherit;cursor:pointer;text-align:left}.opends-workflow-chevron{width:14px;color:var(--dsw-alias-label-tertiary);transition:transform .16s}.opends-workflow.open .opends-workflow-chevron{transform:rotate(90deg)}.opends-workflow-title{font-size:13px;font-weight:580;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-workflow-count{margin-left:auto;color:var(--dsw-alias-label-tertiary);font-size:10px;white-space:nowrap}.opends-workflow-state{font-size:10px;color:var(--dsw-alias-label-secondary);white-space:nowrap}.opends-workflow-state:before,.opends-trace-dot{content:"";display:inline-block;width:6px;height:6px;margin-right:5px;border-radius:50%;background:#8b929d}.opends-workflow-state[data-status="running"]:before,.opends-trace-dot.running{background:#3979e8}.opends-workflow-state[data-status="completed"]:before,.opends-trace-dot.completed{background:#34a876}.opends-workflow-state[data-status="failed"]:before,.opends-trace-dot.failed{background:#d65b5b}
+      .opends-workflow-body{padding:6px 10px 10px}.opends-workflow-phase{margin-top:5px}.opends-workflow-phase-title{height:26px;display:flex;align-items:center;color:var(--dsw-alias-label-tertiary);font-size:10px}.opends-workflow-member{min-height:34px;display:grid;grid-template-columns:12px minmax(0,1fr) auto auto;align-items:center;gap:7px;padding:0 8px;border-radius:8px;color:var(--dsw-alias-label-secondary);font-size:11px}.opends-workflow-member:hover,.opends-workflow-member.active{background:rgba(127,127,127,.065)}.opends-workflow-member-main{min-width:0;border:0;outline:none;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer;padding:7px 0}.opends-workflow-member-main:focus-visible{border-radius:6px;box-shadow:inset 0 0 0 1px rgba(47,107,255,.32)}.opends-workflow-member-label{display:block;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-workflow-member-runtime{display:block;margin-top:1px;color:var(--dsw-alias-label-tertiary);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opends-workflow-open-session{height:24px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-tertiary);font:inherit;font-size:9px;cursor:pointer}.opends-workflow-open-session:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+      .opends-trace{margin:8px 0 0 20px;border-top:1px solid rgba(127,127,127,.12);padding:7px 0 0}.opends-trace-head{padding:2px 8px 5px;color:var(--dsw-alias-label-tertiary);font-size:9px}.opends-trace-empty{padding:8px;color:var(--dsw-alias-label-tertiary);font-size:10px}.opends-trace-event{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:6px;padding:5px 8px;font-size:10px;line-height:1.45}.opends-trace-dot{margin:4px 0 0}.opends-trace-event-title{color:var(--dsw-alias-label-primary)}.opends-trace-event-summary{margin-top:1px;color:var(--dsw-alias-label-secondary);white-space:pre-wrap;overflow-wrap:anywhere;max-height:56px;overflow:hidden}.opends-trace-event-time{color:var(--dsw-alias-label-tertiary);font-size:9px;white-space:nowrap}.opends-artifacts{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px}.opends-artifact{max-width:220px;height:27px;padding:0 9px;border:1px solid rgba(127,127,127,.14);border-radius:8px;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);font:inherit;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.opends-artifact:hover{color:var(--dsw-alias-label-primary);border-color:rgba(47,107,255,.25)}.opends-artifact-link{font-size:10px;color:var(--dsw-alias-state-business-primary);text-decoration:none}.opends-artifact-preview{margin:8px;border:1px solid rgba(127,127,127,.14);border-radius:10px;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}.opends-artifact-preview-head{height:30px;padding:0 9px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(127,127,127,.12);font-size:10px}.opends-artifact-preview-head span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.opends-artifact-preview-head button{margin-left:auto;border:0;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer}.opends-artifact-preview img{display:block;max-width:100%;max-height:520px;margin:auto}.opends-artifact-preview iframe{display:block;width:100%;height:420px;border:0;background:white}
        @media(max-width:700px){.opends-body{padding:4px 16px 16px}.opends-grid{grid-template-columns:1fr}.opends-field.wide{grid-column:auto}.opends-pref-row{grid-template-columns:1fr auto}.opends-pref-control,.opends-vision-controls{grid-column:1/-1;width:100%;justify-self:stretch;margin-bottom:10px}.opends-matrix col:nth-child(3),.opends-matrix th:nth-child(3),.opends-matrix td:nth-child(3){display:none}.opends-matrix col:nth-child(2){width:40%}.opends-directory-columns{grid-template-columns:54px minmax(0,40%) minmax(0,1fr)}.opends-directory-columns span:nth-child(3){display:none}.opends-head-actions .secondary{display:none}.opends-runtime-installer{grid-template-columns:1fr auto}.opends-runtime-installer .opends-input{grid-column:1/-1}}
     `;
 
@@ -440,7 +444,7 @@ window.__ModuleLoader__.load({
       openNativeSettingsSection("模型", exitCurrent);
     }
 
-    function DeepSeeSettings({ scope, api, exitToNativeModels }) {
+    function DeepSeeSettings({ scope, api, exitToNativeModels, selectCurrentSessionModel }) {
       const snapshot = useSettingsSnapshot(scope);
       const config = snapshot.value || {};
       const [localRoutes, setLocalRoutes] = useState(liveRoutes);
@@ -615,9 +619,26 @@ window.__ModuleLoader__.load({
               // Registry preferences remain canonical and are applied at restart.
             }
           }
+          if (typeof fields.primaryRouteId === "string") {
+            if (!result.liveApplied || !result.selection) {
+              setMessage(result.liveError
+                ? `主模型已保存，但 Harness 实时同步失败：${result.liveError}`
+                : "主模型已保存；当前 Harness 不支持实时同步，下次启动时生效。");
+              return;
+            }
+            try {
+              const currentApplied = await selectCurrentSessionModel?.(result.selection);
+              setMessage(currentApplied
+                ? "主模型已实时切换；当前会话与之后的新会话均已生效。"
+                : "主模型已实时保存；之后的新会话立即生效，当前没有可切换的主会话。");
+            } catch (error) {
+              setMessage(`主模型已用于之后的新会话；当前会话切换失败：${error instanceof Error ? error.message : String(error)}`);
+            }
+            return;
+          }
           setMessage(fields.visionMode || fields.visionRouteId || fields.ocrTool
             ? "视觉读取首选项已保存，并已对新请求实时生效。"
-            : "首选项已保存，并同步到 Harness；主模型更改将在重启后完整生效。");
+            : "首选项已保存，并已实时生效。");
         } catch (error) {
           setPreferences(before);
           setMessage(error instanceof Error ? error.message : "首选项保存失败。");
@@ -906,7 +927,7 @@ window.__ModuleLoader__.load({
                     ? "已是最新"
                     : "检查更新";
       const preferencesPanel = createElement("section", { className: "opends-preferences", "aria-label": "深见 DeepSee 首选项" },
-        createElement("div", { className: "opends-pref-row", title: "Harness 的基础回答模型；Codex 与 Claude Code 使用本机已登录的订阅 Runtime。更改后重启生效。" },
+        createElement("div", { className: "opends-pref-row", title: "Harness 的基础回答模型；Codex 与 Claude Code 使用本机已登录的订阅 Runtime。更改会立即应用到当前会话与之后的新会话。" },
           createElement("div", { className: "opends-pref-label" }, "主模型"),
           createElement("select", { className: "opends-select opends-pref-control", "aria-label": "首选主模型", value: preferredPrimary, disabled: !serviceReady || primaryOptions.length === 0, onChange: (event) => savePreferences({ primaryRouteId: event.target.value }) },
             primaryOptions.length === 0 && createElement("option", { value: "" }, "暂无可用主模型"),
@@ -961,7 +982,7 @@ window.__ModuleLoader__.load({
                 ),
           ),
         ),
-        createElement("div", { className: "opends-pref-row", title: "Prime 模式可为复杂任务选择 Harness 原生 Workflow。" },
+          createElement("div", { className: "opends-pref-row", title: "Prime 模式会为可并行任务、多产物、实现加复核和多模型对比选择可见 Workflow；单线任务仍使用 Loop。" },
           createElement("div", { className: "opends-pref-label" }, "自动 Workflow"),
           createElement("label", { className: "opends-switch opends-pref-action" },
             createElement("input", { type: "checkbox", checked: preferences.primeAutoWorkflow !== false, disabled: !serviceReady, "aria-label": "Prime 自动 Workflow", onChange: (event) => savePreferences({ primeAutoWorkflow: event.target.checked }) }),
@@ -1027,8 +1048,8 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function DeepSeeSettingsSection({ scope, api, close }) {
-      return createElement(DeepSeeSettings, { scope, api, exitToNativeModels: () => openNativeModelSettings(close) });
+    function DeepSeeSettingsSection({ scope, api, close, selectCurrentSessionModel }) {
+      return createElement(DeepSeeSettings, { scope, api, selectCurrentSessionModel, exitToNativeModels: () => openNativeModelSettings(close) });
     }
 
     function VisionOnboarding({ complete, openSection, api }) {
@@ -1091,6 +1112,167 @@ window.__ModuleLoader__.load({
       );
     }
 
+    const workflowStatusText = {
+      running: "运行中",
+      completed: "已完成",
+      failed: "失败",
+      cancelled: "已取消",
+      interrupted: "已中断",
+    };
+
+    function workflowMembers(node) {
+      return node.data.phases.flatMap((phase) => phase.members.map((member) => ({ ...member, phase: phase.phase })));
+    }
+
+    function traceRuntime(trace) {
+      if (!trace) return "等待 Runtime 轨迹";
+      return [trace.provider, trace.model].filter(Boolean).join(" · ");
+    }
+
+    function visibleTraceEvents(events = []) {
+      const hasProviderStart = events.some((event) => event.type === "run.started" && event.id !== "deepsee-lifecycle-start");
+      const hasProviderEnd = events.some((event) => ["run.completed", "run.failed"].includes(event.type) && event.id !== "deepsee-lifecycle-end");
+      const filtered = events.filter((event) => {
+        if (event.id === "deepsee-lifecycle-start" && hasProviderStart) return false;
+        if (event.id === "deepsee-lifecycle-end" && hasProviderEnd) return false;
+        return true;
+      });
+      const settledTools = new Set(filtered
+        .filter((event) => /-end$/.test(event.id || ""))
+        .map((event) => String(event.id).replace(/-end$/, "")));
+      const coalesced = filtered.filter((event) => !(/-start$/.test(event.id || "")
+        && settledTools.has(String(event.id).replace(/-start$/, ""))));
+      if (coalesced.length <= 24) return coalesced;
+      const first = coalesced.find((event) => event.type === "run.started");
+      const tail = coalesced.slice(first ? -23 : -24);
+      return first && !tail.includes(first) ? [first, ...tail] : tail;
+    }
+
+    function traceEventSummary(event) {
+      const raw = String(event.summary || event.detail || "").trim();
+      if (!raw) return { text: "", raw: "" };
+      if (event.type === "agent.tool" && /命令/.test(event.title || "")) {
+        if (event.status === "failed") return { text: "命令未通过，Agent 已自动调整并重试。", raw: [raw, event.detail].filter(Boolean).join("\n\n") };
+        if (/ExactMatch=True/i.test(event.detail || "")) return { text: "命令完成，内容校验通过。", raw: [raw, event.detail].filter(Boolean).join("\n\n") };
+        if (event.status === "completed") return { text: "命令执行完成。", raw: [raw, event.detail].filter(Boolean).join("\n\n") };
+        return { text: "正在运行 Runtime 命令…", raw };
+      }
+      if (["agent.artifact", "agent.tool"].includes(event.type) && /文件/.test(event.title || "")) {
+        const artifactPath = raw.match(/(?:^|[\\/])(artifacts[\\/].*)$/i)?.[1];
+        if (artifactPath) return { text: artifactPath, raw };
+      }
+      const cwd = String(event.cwd || "").replace(/[\\/]+$/, "");
+      const compact = cwd && raw.toLowerCase().startsWith(cwd.toLowerCase())
+        ? raw.slice(cwd.length).replace(/^[\\/]+/, "")
+        : raw;
+      return { text: compact.length > 240 ? `${compact.slice(0, 237)}…` : compact, raw };
+    }
+
+    function artifactPreview(artifact, close) {
+      const image = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".bmp", ".svg"].includes(artifact.extension);
+      return createElement("div", { className: "opends-artifact-preview" },
+        createElement("div", { className: "opends-artifact-preview-head" },
+          createElement("span", { title: artifact.relativePath }, artifact.relativePath),
+          createElement("a", { className: "opends-artifact-link", href: artifact.url, target: "_blank", rel: "noreferrer" }, "新窗口打开"),
+          createElement("button", { type: "button", onClick: close, "aria-label": "关闭预览" }, "×"),
+        ),
+        image
+          ? createElement("img", { src: artifact.url, alt: artifact.name })
+          : createElement("iframe", { src: artifact.url, title: artifact.name, sandbox: "" }),
+      );
+    }
+
+    function DeepSeeWorkflowRunPanel({ node, useSessions, openSession }) {
+      const members = useMemo(() => workflowMembers(node), [node]);
+      const childKey = members.map((member) => member.childId).join(",");
+      const sessionIds = useSessions((snapshot) => snapshot.ids);
+      const [open, setOpen] = useState(node.data.status !== "completed");
+      const [traces, setTraces] = useState([]);
+      const [selectedChild, setSelectedChild] = useState("");
+      const [preview, setPreview] = useState(null);
+
+      useEffect(() => {
+        let disposed = false;
+        let timer;
+        const refresh = async () => {
+          if (!childKey) return;
+          try {
+            const response = await fetch(`${adminBaseURL}/v1/traces?children=${encodeURIComponent(childKey)}`, { cache: "no-store" });
+            const value = response.ok ? await response.json() : undefined;
+            if (!disposed && Array.isArray(value?.traces)) setTraces(value.traces);
+          } catch {}
+          if (!disposed && node.data.status === "running") timer = window.setTimeout(refresh, 1_200);
+        };
+        void refresh();
+        return () => {
+          disposed = true;
+          if (timer) window.clearTimeout(timer);
+        };
+      }, [childKey, node.data.status]);
+
+      const traceByChild = useMemo(() => Object.fromEntries(traces.map((trace) => [trace.childId, trace])), [traces]);
+      const activeChild = selectedChild || "";
+      const selectedTrace = traceByChild[activeChild];
+      const availableSessions = new Set(sessionIds || []);
+      const totalArtifacts = traces.reduce((count, trace) => count + (trace.artifacts?.length || 0), 0);
+
+      return createElement("section", {
+        className: `opends-workflow${open ? " open" : ""}`,
+        "data-workflow-run": true,
+        "data-run-status": node.data.status,
+      },
+        createElement("button", { className: "opends-workflow-head", type: "button", onClick: () => setOpen((value) => !value), "aria-expanded": open },
+          createElement("span", { className: "opends-workflow-chevron", "aria-hidden": true }, "›"),
+          createElement("span", { className: "opends-workflow-title" }, node.data.name),
+          createElement("span", { className: "opends-workflow-count" }, `${members.length} 个 Agent${totalArtifacts ? ` · ${totalArtifacts} 个交付物` : ""}`),
+          createElement("span", { className: "opends-workflow-state", "data-status": node.data.status }, workflowStatusText[node.data.status] || node.data.status),
+        ),
+        open && createElement("div", { className: "opends-workflow-body" },
+          node.data.phases.map((phase) => createElement("section", { className: "opends-workflow-phase", key: phase.key },
+            createElement("div", { className: "opends-workflow-phase-title" }, phase.phase === null ? "未分阶段" : phase.phase || "未命名阶段"),
+            phase.members.map((member) => {
+              const trace = traceByChild[member.childId];
+              const selected = activeChild === member.childId;
+              return createElement("div", { className: `opends-workflow-member${selected ? " active" : ""}`, key: member.seq },
+                createElement("span", { className: `opends-trace-dot ${member.status}`, "aria-hidden": true }),
+                createElement("button", { className: "opends-workflow-member-main", type: "button", onClick: () => { setSelectedChild(selected ? "" : member.childId); setPreview(null); } },
+                  createElement("span", { className: "opends-workflow-member-label" }, member.label || "未命名 Agent"),
+                  createElement("span", { className: "opends-workflow-member-runtime" }, traceRuntime(trace)),
+                ),
+                availableSessions.has(member.childId) && createElement("button", { className: "opends-workflow-open-session", type: "button", onClick: () => openSession(member.childId) }, "打开子会话"),
+                createElement("span", { className: "opends-workflow-state", "data-status": member.status }, workflowStatusText[member.status] || member.status),
+              );
+            }),
+          )),
+          activeChild && createElement("div", { className: "opends-trace", "aria-label": "执行轨迹" },
+            selectedTrace
+              ? createElement(Fragment, null,
+                  createElement("div", { className: "opends-trace-head" }, `简要执行轨迹 · 最近 ${visibleTraceEvents(selectedTrace.events).length} 条`),
+                  visibleTraceEvents(selectedTrace.events).map((event) => {
+                    const summary = traceEventSummary({ ...event, cwd: selectedTrace.cwd });
+                    return createElement("div", { className: "opends-trace-event", key: `${event.id}-${event.time}` },
+                      createElement("span", { className: `opends-trace-dot ${event.status || selectedTrace.status}`, "aria-hidden": true }),
+                      createElement("div", null,
+                        createElement("div", { className: "opends-trace-event-title" }, event.title || event.type),
+                        summary.text && createElement("div", { className: "opends-trace-event-summary" }, summary.text),
+                      ),
+                      createElement("time", { className: "opends-trace-event-time", dateTime: event.time }, new Date(event.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })),
+                    );
+                  }),
+                  selectedTrace.artifacts?.length > 0 && createElement("div", { className: "opends-artifacts", "aria-label": "交付物" },
+                    selectedTrace.artifacts.map((artifact) => createElement(Fragment, { key: artifact.id },
+                      createElement("button", { className: "opends-artifact", type: "button", title: artifact.relativePath, onClick: () => setPreview(artifact) }, artifact.name),
+                      createElement("a", { className: "opends-artifact-link", href: artifact.url, target: "_blank", rel: "noreferrer", "aria-label": `打开 ${artifact.name}` }, "↗"),
+                    )),
+                  ),
+                  preview && artifactPreview(preview, () => setPreview(null)),
+                )
+              : createElement("div", { className: "opends-trace-empty" }, availableSessions.has(activeChild) ? "该 Agent 使用原生子会话，点击“打开子会话”查看完整过程。" : "正在等待 Runtime 返回可公开的执行轨迹。"),
+          ),
+        ),
+      );
+    }
+
     function apply(ctx) {
       const scope = ctx.settingsScope.bind({ namespace: "opends-bridge" });
       const api = ctx.get("connection").api;
@@ -1106,6 +1288,12 @@ window.__ModuleLoader__.load({
         order: 5,
         label: "DeepSeek 深见",
       }, VisionBridgeNotice));
+      ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
+        name: "conversation.chat.node",
+        key: "workflow-run",
+        priority: -20,
+        inject: () => ({ openSession: (id) => ctx.sessions.open(id) }),
+      }, DeepSeeWorkflowRunPanel));
       ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
         name: "sidebar.footer.action",
         id: "opends",
@@ -1118,7 +1306,16 @@ window.__ModuleLoader__.load({
         id: "opends",
         order: 25,
         label: "深见",
-        inject: () => ({ scope, api }),
+        inject: () => ({
+          scope,
+          api,
+          selectCurrentSessionModel: async (selection) => {
+            const sessionId = ctx.sessions.list.getSnapshot().current;
+            if (!sessionId || ctx.sessions.subagentAddress(sessionId) !== undefined) return false;
+            await ctx.modelDirectories.directoryFor(sessionId).select(selection);
+            return true;
+          },
+        }),
       }, DeepSeeSettingsSection));
       ctx.slots.inject("settings.onboarding", () => ctx.slots.register({
         name: "settings.onboarding",
@@ -1130,6 +1327,7 @@ window.__ModuleLoader__.load({
 
     exports.DeepSeeFooter = DeepSeeFooter;
     exports.DeepSeeSettings = DeepSeeSettings;
+    exports.DeepSeeWorkflowRunPanel = DeepSeeWorkflowRunPanel;
     exports.VisionBridgeNotice = VisionBridgeNotice;
     exports.VisionOnboarding = VisionOnboarding;
     exports.apply = apply;

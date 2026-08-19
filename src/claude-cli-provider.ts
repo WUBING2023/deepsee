@@ -12,6 +12,7 @@ import {
   type SubagentRun,
 } from "@deepseek-ai/dsh-subagent";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
+import { recordExecutionTrace } from "../scripts/execution-trace.mjs";
 
 const OUTPUT_LIMIT = 4 * 1024 * 1024;
 const DISPOSE_GRACE_MS = 3_000;
@@ -47,7 +48,6 @@ export async function prepareClaudeTask(
   }
   const visibleText = content.some((block) => block.type === "text" && String(block.text || "").trim());
   if (!visibleText && !hasImage) throw new Error("opends-claude-code: the delegated task must not be empty");
-  if (!hasImage) return { stdin: content.map((block) => block.text).join("\n\n"), streamJson: false };
   return {
     stdin: `${JSON.stringify({ type: "user", message: { role: "user", content } })}\n`,
     streamJson: true,
@@ -76,7 +76,13 @@ export function parseClaudeOutput(stdout: string): string {
 export function claudeArgv(executable: string, model: string | undefined, streamJson = false): { argv: string[]; env: NodeJS.ProcessEnv } {
   const args = [
     "--print",
-    ...(streamJson ? ["--input-format", "stream-json", "--output-format", "stream-json", "--verbose"] : ["--output-format", "json"]),
+    ...(streamJson ? [
+      "--input-format", "stream-json",
+      "--output-format", "stream-json",
+      "--verbose",
+      "--include-partial-messages",
+      "--forward-subagent-text",
+    ] : ["--output-format", "json"]),
     "--no-session-persistence",
     "--permission-mode", "acceptEdits",
     ...(model ? ["--model", model] : []),
@@ -92,6 +98,82 @@ export function claudeArgv(executable: string, model: string | undefined, stream
   return { argv: [executable, ...args], env };
 }
 
+export interface ClaudeTraceEvent {
+  type: string;
+  eventId?: string;
+  append?: boolean;
+  status?: string;
+  title?: string;
+  summary?: string;
+  detail?: string;
+  artifacts?: string[];
+}
+
+function traceArtifacts(input: unknown): string[] {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return [];
+  const value = input as Record<string, unknown>;
+  return ["file_path", "path", "notebook_path"]
+    .map((key) => value[key])
+    .filter((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0);
+}
+
+/** Convert Claude Code's public JSONL stream into DeepSee's provider-neutral execution trace. */
+export function claudeTraceEvents(value: Record<string, unknown>): ClaudeTraceEvent[] {
+  const result: ClaudeTraceEvent[] = [];
+  if (value.type === "system") {
+    result.push({ type: "agent.progress", eventId: "claude-system", title: "Claude Code 已连接", status: "running" });
+    return result;
+  }
+  if (value.type === "stream_event") {
+    const event = value.event as Record<string, unknown> | undefined;
+    const delta = event?.delta as Record<string, unknown> | undefined;
+    if (event?.type === "content_block_delta" && delta?.type === "text_delta" && typeof delta.text === "string") {
+      result.push({ type: "agent.summary", eventId: `claude-text-${String(event.index ?? 0)}`, append: true, summary: delta.text });
+    }
+    return result;
+  }
+  const message = value.message as Record<string, unknown> | undefined;
+  const blocks = Array.isArray(message?.content) ? message.content : [];
+  for (const raw of blocks) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const block = raw as Record<string, unknown>;
+    if (block.type === "text" && typeof block.text === "string" && block.text.trim()) {
+      result.push({
+        type: "agent.summary",
+        eventId: String(message?.id || value.uuid || `claude-text-${result.length}`),
+        title: "Claude Code 输出摘要",
+        summary: block.text,
+      });
+    } else if (block.type === "tool_use") {
+      result.push({
+        type: "agent.tool",
+        eventId: String(block.id || `claude-tool-${result.length}`),
+        title: `调用 ${String(block.name || "工具")}`,
+        detail: block.input ? JSON.stringify(block.input) : "",
+        status: "running",
+        artifacts: traceArtifacts(block.input),
+      });
+    } else if (block.type === "tool_result") {
+      const content = typeof block.content === "string"
+        ? block.content
+        : Array.isArray(block.content)
+          ? block.content.map((item) => typeof item === "object" && item && "text" in item ? String(item.text) : "").filter(Boolean).join("\n")
+          : "";
+      result.push({
+        type: "agent.tool",
+        eventId: `${String(block.tool_use_id || "unknown")}-result`,
+        title: block.is_error === true ? "工具执行失败" : "工具执行完成",
+        summary: content,
+        status: block.is_error === true ? "failed" : "completed",
+      });
+    }
+  }
+  if (value.type === "result" && typeof value.result === "string") {
+    result.push({ type: "agent.summary", eventId: "claude-result", title: "Claude Code 最终结果", summary: value.result });
+  }
+  return result;
+}
+
 async function startClaudeRun(ctx: Context, request: ResolvedSubagentStartRequest, executable: string): Promise<SubagentRun> {
   const parentCwd = request.parent.session.header.cwd;
   if (parentCwd === undefined) {
@@ -101,6 +183,14 @@ async function startClaudeRun(ctx: Context, request: ResolvedSubagentStartReques
   const { stdin, streamJson } = await prepareClaudeTask(ctx, request);
   const model = request.agentOptions?.model?.trim() || undefined;
   const { argv, env } = claudeArgv(executable, model, streamJson);
+  const runId = randomUUID() as SubagentRun["id"];
+  const traceBase = {
+    childId: String(runId),
+    parentSessionId: String(request.parent.id),
+    provider: "claude-code",
+    model: model || "default",
+    cwd,
+  };
   const child = ctx.subprocess.spawn({
     argv,
     cwd,
@@ -109,9 +199,36 @@ async function startClaudeRun(ctx: Context, request: ResolvedSubagentStartReques
     graceMs: DISPOSE_GRACE_MS,
     stdio: {
       stdin: { data: stdin },
-      stdout: { maxBytes: OUTPUT_LIMIT, spill: { maxBytes: OUTPUT_LIMIT * 4 } },
+      stdout: "pipe",
       stderr: { maxBytes: OUTPUT_LIMIT },
     },
+  });
+  recordExecutionTrace({ ...traceBase, type: "run.started", eventId: "claude-start", title: "Claude Code 已开始执行", status: "running" });
+  let stdout = "";
+  let pending = "";
+  const stdoutDone = new Promise<void>((resolveStream, rejectStream) => {
+    const stream = child.stdout;
+    if (!stream) return rejectStream(new Error("opends-claude-code: stdout pipe was not created"));
+    const consumeLine = (line: string) => {
+      if (!line.trim()) return;
+      try {
+        const value = JSON.parse(line) as Record<string, unknown>;
+        for (const event of claudeTraceEvents(value)) recordExecutionTrace({ ...traceBase, ...event });
+      } catch {}
+    };
+    stream.setEncoding("utf8");
+    stream.on("data", (chunk: string) => {
+      stdout = `${stdout}${chunk}`.slice(-OUTPUT_LIMIT * 4);
+      pending += chunk;
+      const lines = pending.split(/\r?\n/);
+      pending = lines.pop() || "";
+      for (const line of lines) consumeLine(line);
+    });
+    stream.once("error", rejectStream);
+    stream.once("end", () => {
+      consumeLine(pending);
+      resolveStream();
+    });
   });
   let cancelled = request.signal.aborted;
   const requestCancel = () => {
@@ -121,13 +238,13 @@ async function startClaudeRun(ctx: Context, request: ResolvedSubagentStartReques
   const onAbort = () => requestCancel();
   request.signal.addEventListener("abort", onAbort, { once: true });
 
-  const collectText = (stream: "stdout" | "stderr") => child.collected[stream]?.readFrom(0).text || "";
+  const collectText = (stream: "stdout" | "stderr") => stream === "stdout" ? stdout : child.collected.stderr?.readFrom(0).text || "";
   const collectOutput = () => {
     const text = collectText("stdout").trim();
     return text ? [{ type: "text" as const, text }] : [];
   };
   const attempt = async (): Promise<SubagentResult> => {
-    const outcome = await child.done;
+    const [outcome] = await Promise.all([child.done, stdoutDone]);
     const stdout = collectText("stdout");
     const stderr = collectText("stderr").trim();
     if (outcome.exitCode !== 0) {
@@ -152,7 +269,7 @@ async function startClaudeRun(ctx: Context, request: ResolvedSubagentStartReques
     await child.done.catch(() => undefined);
   };
   return subprocessRunHandle({
-    id: randomUUID() as SubagentRun["id"],
+    id: runId,
     result,
     signal: request.signal,
     onAbort,
