@@ -156,6 +156,7 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(updateWorker).toContain("claimDeepSeeUpdateLock");
     expect(updateWorker).toContain("validateDeepSeeManifest");
     expect(manifest.scripts["update:live-smoke"]).toBe("node ./scripts/update-live-smoke.mjs");
+    expect(manifest.scripts["release:verify"]).toContain("harness:web-smoke");
     expect(updateLiveSmoke).toContain('for (const profile of ["web", "headless"])');
     expect(updateLiveSmoke).toContain('status.status !== "restart-required"');
   });
