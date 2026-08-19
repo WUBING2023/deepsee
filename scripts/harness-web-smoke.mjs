@@ -40,7 +40,7 @@ async function waitForDeepSee(port, child, timeoutMs = 30_000) {
   while (Date.now() < deadline) {
     if (child.exitCode !== null) throw new Error(`Harness Web exited before readiness (code ${child.exitCode}).`);
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/api/deepsee`, { signal: AbortSignal.timeout(2_000) });
+      const response = await fetch(`http://127.0.0.1:${port}/api/deepsee/v1/models`, { signal: AbortSignal.timeout(2_000) });
       if (response.ok) return response;
       lastError = new Error(`DeepSee endpoint returned HTTP ${response.status}.`);
     } catch (error) {
@@ -48,7 +48,7 @@ async function waitForDeepSee(port, child, timeoutMs = 30_000) {
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  throw new Error(`Harness Web did not expose /api/deepsee within ${timeoutMs}ms: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+  throw new Error(`Harness Web did not expose /api/deepsee/v1/models within ${timeoutMs}ms: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 let web;
@@ -83,7 +83,7 @@ try {
   web.stdout.pipe(process.stdout);
   web.stderr.pipe(process.stderr);
   await waitForDeepSee(port, web);
-  console.log(JSON.stringify({ ok: true, port, endpoint: "/api/deepsee" }, null, 2));
+  console.log(JSON.stringify({ ok: true, port, endpoint: "/api/deepsee/v1/models" }, null, 2));
 } finally {
   if (web && web.exitCode === null) {
     web.kill();
