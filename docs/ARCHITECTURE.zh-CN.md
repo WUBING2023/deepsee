@@ -94,7 +94,13 @@ DeepSee 不另建 Workflow 引擎。Web 客户端扩展 Harness 原生 `workflow
 
 默认可变状态位于 `$DSH_HOME/deepsee`，包括模型注册表、OCR 状态和日志、暂存的 ZIP 包与升级状态。受管 OCR 的 Python 环境与模型缓存位于独立的应用数据目录，卸载时只删除白名单子目录。生成的 Prime preset 位于 `$DSH_HOME/.agent-presets/prime`，因为这里是 Harness 的发现目录。
 
-DeepSee 不会把原始供应商密钥复制到注册表，也不会把凭据引用返回浏览器。API Key 仍由 Harness 管理。旧 `OPENDS_BRIDGE_*` 配置迁移时只迁移供应商元数据与凭据引用，不迁移密钥值。
+DeepSee 不接收、读取或复制原始供应商密钥，也不会把凭据引用返回浏览器。API Key 只由 Harness 管理。旧版明文连接入口已返回 `410 native_harness_credentials_required`；遗留文件不会参与路由。为避免升级时静默销毁凭据，只有用户显式运行 `deepsee doctor --scrub-legacy-secrets` 才会清除其中的明文字段与失效 API 路由。
+
+## 插件组边界
+
+发布单元是一个原子插件组 `deepsee-suite`，包含 `deepsee-core`、`deepsee-codex`、`deepsee-client` 与 `deepsee-workflow-policy`。普通安装和卸载以整个组为单位，避免 profile 中留下半套功能；包导出保持独立，因此第三方插件可以只复用某个组件。卸载只移除包注册与带有 DeepSee 所有权标记的 Prime preset，不删除 `$DSH_HOME/deepsee` 中的用户状态或受管 OCR。
+
+Workflow 成本控制采用软策略：计划声明 Focused、Balanced 或 Deep 推理档位，通过职责收窄、定向上下文、简短检查点和产物复用减少消耗。它不设置运行时间、Token、步骤或 Agent 的硬终止阈值，因此不会让仍在正常推进的长任务在交付前被强制中止。
 
 工作区内的 `AGENTS.md`、`CLAUDE.md` 与 `agent.md` 仍由 Harness 原生指令加载器负责。DeepSee 额外只读检查用户目录、`.claude` 和 `.codex` 中的同名全局文件，将去重且受大小限制的内容放入 system prompt；Codex/Claude 订阅基模与 Workflow 子任务走同一继承链。`$DSH_HOME/AGENTS.md` 只显示为 Harness 原生来源，不会被 DeepSee 重复注入。浏览器接口只得到文件名、来源、大小与截断状态，不得到正文或绝对路径。
 

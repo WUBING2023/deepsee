@@ -27,18 +27,40 @@ export function balancedWorkflowReason(text) {
     }
     return undefined;
 }
-function automaticWorkflowInstruction(reason) {
+export function workflowReasoningProfile(text) {
+    const value = text.replace(/\s+/g, " ").trim();
+    if (/(?:深度|全面|彻底|长期|复杂|系统性|不要停止|持续执行|deep|exhaustive|comprehensive)/i.test(value))
+        return "deep";
+    if (/(?:简单|快速|轻量|简短|只需|仅需|focused|quick|minimal)/i.test(value))
+        return "focused";
+    return "balanced";
+}
+export function workflowReasoningGuidance(text) {
+    const profile = workflowReasoningProfile(text);
+    const detail = profile === "focused"
+        ? "Use the fewest useful agents, give each a narrow role and only the files or evidence it needs, and return concise structured findings."
+        : profile === "deep"
+            ? "Allow broader investigation and verification where uncertainty justifies it, but checkpoint conclusions and pass summaries or artifacts instead of replaying full transcripts."
+            : "Use a small set of complementary agents, avoid duplicate exploration except for intentional comparison, and have the main agent synthesize compact results.";
+    return [
+        `Reasoning profile: ${profile}.`,
+        detail,
+        "This profile is orchestration guidance, not a hard runtime, token, step, or agent limit. Never stop a productive long-running task solely because it has run for a long time; reduce repeated context and unnecessary reasoning instead.",
+    ].join(" ");
+}
+function automaticWorkflowInstruction(reason, taskText) {
     return [
         "[DeepSee balanced automatic Workflow decision]",
         `This Prime request matches: ${reason}. The user's Prime selection is explicit permission for a visible native Workflow.`,
         "Before any further repository inspection or task execution, you MUST use the native workflow tool. If routes are not known, call opends_list_models first; the Workflow must be the next nontrivial tool call.",
         "During this decision step only opends_list_models and workflow are available. Do not call Glob, Read, Pwsh, Bash, run_code, or any other inspection/execution tool before Workflow starts.",
         "Use at least two different enabled model routes for comparison or independent review when suitable routes exist. Pass each exact DeepSee route id as the child model and omit provider. Let the main agent synthesize agreements and disagreements.",
+        workflowReasoningGuidance(taskText),
     ].join("\n");
 }
-function workflowContext(reason) {
+function workflowContext(reason, taskText) {
     return createUserMessage({
-        content: [{ type: "text", text: automaticWorkflowInstruction(reason) }],
+        content: [{ type: "text", text: automaticWorkflowInstruction(reason, taskText) }],
         source: {
             kind: "plugin",
             plugin: "deepsee",
@@ -73,12 +95,13 @@ export function installBalancedWorkflowTrigger(ctx, automaticWorkflowEnabled) {
             messages.push(message);
             if (message.source.kind !== "user" || injected.has(String(message.id)))
                 continue;
-            const reason = balancedWorkflowReason(userText(message));
+            const taskText = userText(message);
+            const reason = balancedWorkflowReason(taskText);
             if (!reason)
                 continue;
             injected.add(String(message.id));
             changed = true;
-            messages.push(workflowContext(reason));
+            messages.push(workflowContext(reason, taskText));
             const agentId = String(payload.agent.id);
             if (!workflowGates.has(agentId)) {
                 try {

@@ -94,7 +94,13 @@ The UI renders concise plan/progress/action/result entries and keeps raw command
 
 Default mutable state is rooted at `$DSH_HOME/deepsee` and includes the model registry, OCR status and logs, staged ZIP packages, and update state. Managed OCR Python environments and model caches use isolated app-data directories; uninstall removes only allowlisted children. The generated Prime preset lives under `$DSH_HOME/.agent-presets/prime` because that is the Harness discovery location.
 
-DeepSee does not copy raw provider secrets into the registry or return credential references to the browser. API keys remain managed by Harness. Legacy `OPENDS_BRIDGE_*` configuration can migrate provider metadata and a credential reference, not the secret value itself.
+DeepSee does not accept, read, or copy raw provider secrets and never returns credential references to the browser. API keys are owned exclusively by Harness. The legacy plaintext connection endpoint now returns `410 native_harness_credentials_required`, and legacy files no longer participate in routing. To avoid silently destroying credentials during an upgrade, plaintext fields and stale API routes are removed only after the user explicitly runs `deepsee doctor --scrub-legacy-secrets`.
+
+## Plugin-group boundary
+
+The release unit is the atomic `deepsee-suite` plugin group: `deepsee-core`, `deepsee-codex`, `deepsee-client`, and `deepsee-workflow-policy`. Normal install and uninstall operate on the complete group so a profile cannot retain half of the product, while subpath exports let another plugin reuse one component. Uninstall removes package registrations and only a Prime preset carrying DeepSee's ownership marker; it preserves `$DSH_HOME/deepsee` user state and managed OCR installations.
+
+Workflow cost control is a soft policy. Plans declare a Focused, Balanced, or Deep reasoning profile and reduce waste through narrow roles, targeted context, compact checkpoints, and artifact reuse. No runtime, token, step, or agent hard cutoff is imposed, so productive long work is not terminated immediately before delivery.
 
 Harness continues to own project-level `AGENTS.md`, `CLAUDE.md`, and `agent.md` loading. DeepSee additionally checks conventional files in the user directory, `.claude`, and `.codex`, deduplicates and size-bounds them, and installs the result in the system prompt. Codex/Claude subscription base models and Workflow children receive the same inherited memory. `$DSH_HOME/AGENTS.md` is reported as a Harness-native source and is not injected twice. Browser state receives only file names, sources, sizes, and truncation status—never text or absolute paths.
 

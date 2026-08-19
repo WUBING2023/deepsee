@@ -32,3 +32,28 @@ jobs:
 
       - name: Verify source, package, and product site
         run: pnpm run release:verify
+
+  clean-install-matrix:
+    name: Clean install · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Enable pinned pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build plugin group
+        run: pnpm run build:plugin
+      - name: Verify clean folder install, credential migration, OCR and Runtime catalogs
+        run: pnpm run clean:smoke

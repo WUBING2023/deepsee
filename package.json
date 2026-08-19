@@ -1,6 +1,6 @@
 {
   "name": "@wubing2023/deepsee",
-  "version": "0.6.0-alpha.26",
+  "version": "0.6.0-alpha.27",
   "description": "DeepSee — one-command vision and model-routing plugin for DeepSeek Harness",
   "license": "MIT",
   "repository": {
@@ -18,6 +18,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./workflow-policy": {
+      "types": "./dist/workflow-policy.d.ts",
+      "default": "./dist/workflow-policy.js"
     },
     "./client": {
       "default": "./host/client.js"
@@ -48,6 +56,32 @@
     "legacyPackageAliases": [
       "deepsee-harness"
     ],
+    "pluginGroup": {
+      "id": "deepsee-suite",
+      "installMode": "atomic",
+      "components": [
+        {
+          "id": "deepsee-core",
+          "export": "./core",
+          "description": "Vision, runtime registry and native Workflow routing"
+        },
+        {
+          "id": "deepsee-codex",
+          "export": "./codex",
+          "description": "Codex subscription Runtime adapter"
+        },
+        {
+          "id": "deepsee-client",
+          "export": "./client",
+          "description": "Harness Web settings and execution-trace UI"
+        },
+        {
+          "id": "deepsee-workflow-policy",
+          "export": "./workflow-policy",
+          "description": "Reusable soft-budget orchestration policy"
+        }
+      ]
+    },
     "update": {
       "protocol": 1,
       "minimumUpdaterVersion": "0.6.0-alpha.6"
@@ -86,14 +120,14 @@
     "pack:release": "pnpm run build:plugin && pnpm pack",
     "release:build": "pnpm run build:plugin && node ./scripts/build-release.mjs",
     "release:smoke": "node ./scripts/release-smoke.mjs",
-    "release:verify": "pnpm run typecheck && pnpm test && pnpm run release:build && pnpm run release:smoke && pnpm run site:verify",
+    "release:verify": "pnpm run typecheck && pnpm test && pnpm run security:verify && pnpm run release:build && pnpm run release:smoke && pnpm run clean:smoke && pnpm run site:verify",
     "release:tag-check": "node ./scripts/verify-release-tag.mjs",
     "update:live-smoke": "node ./scripts/update-live-smoke.mjs",
     "site:verify": "node ./scripts/validate-site.mjs",
+    "security:verify": "node ./scripts/security-contract.mjs",
+    "clean:smoke": "node ./scripts/clean-environment-smoke.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "setup": "node ./scripts/setup.mjs",
-    "test:connection": "node ./scripts/test-connection.mjs",
     "doctor": "node ./scripts/doctor.mjs",
     "discover": "node ./scripts/discover-runtimes.mjs",
     "bridge:enable": "node ./scripts/bridge-state.mjs enable",

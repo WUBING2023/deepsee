@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
+import { PRIME_OWNER_FILE } from "./plugin-group.mjs";
 
 const require = createRequire(import.meta.url);
 
@@ -31,7 +32,7 @@ export function installPrimePreset(dshHome, options = {}) {
     "    text: |-",
     "      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.",
     "",
-    `      You are running in DeepSee Prime mode. ${routingPolicy}${visionPolicy} If model capability matters, consult \`opends_list_models\` and respect enabled routes and user-edited capability descriptions. In a Workflow, choose a listed route by setting the child agent's \`model\` option to the exact DeepSee route id; omit the child \`provider\` because the native Workflow engine is already routed through DeepSee. For comparison or independent review, use different enabled model routes when at least two suitable routes are available; use the main agent to synthesize disagreements. Keep long runs token-efficient: batch related diagnostics, read targeted ranges or diffs instead of rereading whole files, keep progress summaries concise, and after two failed retries on the same check reassess the root cause before another edit. Do not print raw test dumps unless the user needs them. Treat a null child result as failure and never bypass DeepSee by launching Codex, Claude Code, or another CLI through pwsh/bash. Never add agents merely to make a small task look sophisticated.`,
+    `      You are running in DeepSee Prime mode. ${routingPolicy}${visionPolicy} If model capability matters, consult \`opends_list_models\` and respect enabled routes and user-edited capability descriptions. In a Workflow, choose a listed route by setting the child agent's \`model\` option to the exact DeepSee route id; omit the child \`provider\` because the native Workflow engine is already routed through DeepSee. For comparison or independent review, use different enabled model routes when at least two suitable routes are available; use the main agent to synthesize disagreements. Declare a focused, balanced, or deep reasoning profile before starting. The profile is soft guidance, never a hard runtime, token, step, or agent cutoff: do not terminate productive long work merely because it ran long. Control cost through narrow roles, targeted context, compact checkpoints, artifact reuse, and no duplicated exploration except intentional comparison; read targeted ranges or diffs instead of rereading whole files, and after two failed retries on the same check reassess the root cause before another edit. Treat a null child result as failure and never bypass DeepSee by launching Codex, Claude Code, or another CLI through pwsh/bash. Never add agents merely to make a small task look sophisticated.`,
   ].join("\n");
   if (!sourceComposition.includes(standardPersona)) {
     throw new Error("DeepSee Prime preset is incompatible with this Harness persona layout.");
@@ -44,7 +45,7 @@ export function installPrimePreset(dshHome, options = {}) {
   const primePlanPolicy = [
     planAnchor,
     "",
-    "              In every completed plan, add one top-level line: `Execution mode: Loop`, `Execution mode: Subagent`, or `Execution mode: Workflow`. Choose Workflow for two or more genuinely independent workstreams, multiple deliverables or capability roles, implementation plus independent review, explicit model/approach comparison, or explicit multi-agent intent. When Workflow is selected, name each workstream's capability role. For comparison or review, consult `opends_list_models` and assign different enabled routes when at least two suitable routes exist. After approval, implementation must keep that execution mode and use the native workflow tool.",
+    "              In every completed plan, add one top-level line: `Execution mode: Loop`, `Execution mode: Subagent`, or `Execution mode: Workflow`. Choose Workflow for two or more genuinely independent workstreams, multiple deliverables or capability roles, implementation plus independent review, explicit model/approach comparison, or explicit multi-agent intent. When Workflow is selected, also declare `Reasoning profile: Focused`, `Reasoning profile: Balanced`, or `Reasoning profile: Deep`, name each workstream's capability role, and control cost through targeted context and compact checkpoints—not a hard stopping limit. For comparison or review, consult `opends_list_models` and assign different enabled routes when at least two suitable routes exist. After approval, implementation must keep that execution mode and use the native workflow tool.",
   ].join("\n");
 
   const workflowWorkerAnchor = [
@@ -68,5 +69,10 @@ export function installPrimePreset(dshHome, options = {}) {
     "order: 0",
     "",
   ].join("\n"), "utf8");
+  writeFileSync(join(destinationRoot, PRIME_OWNER_FILE), `${JSON.stringify({
+    owner: "@wubing2023/deepsee",
+    component: "deepsee-prime",
+    version: 1,
+  }, null, 2)}\n`, "utf8");
   return destinationRoot;
 }

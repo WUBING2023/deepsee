@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,6 +66,19 @@ describe("embedded DeepSee Host route", () => {
     expect(state.tools.ocr.catalog.map((tool) => tool.id)).toEqual(["mineru", "paddleocr", "rapidocr"]);
     expect(state.tools.runtimes.catalog.map((runtime) => runtime.id)).toEqual(["gemini"]);
     expect(state.update).toMatchObject({ currentVersion: manifest.version });
+  });
+
+  it("refuses raw provider credentials and delegates configuration to Harness", async () => {
+    const base = await fixture();
+    const response = await fetch(`${base}${DEEPSEE_API_PREFIX}/v1/models`, {
+      method: "POST",
+      headers: { origin: base, "content-type": "application/json" },
+      body: JSON.stringify({ provider: "kimi", model: "test", apiKey: "must-not-be-stored" }),
+    });
+    expect(response.status).toBe(410);
+    expect(await response.json()).toMatchObject({ error: "native_harness_credentials_required" });
+    const legacyStore = join(fixtureRoot, ".opends-connections.json");
+    expect(existsSync(legacyStore) ? readFileSync(legacyStore, "utf8") : "").not.toContain("must-not-be-stored");
   });
 
   it("checks the official update manifest through the same-origin route", async () => {

@@ -80,3 +80,10 @@ jobs:
             --title "DeepSee ${VERSION}" \
             --notes-file "$NOTES" \
             "${FLAGS[@]}"
+
+  deploy-site:
+    needs: publish
+    permissions:
+      contents: read
+    uses: ./.github/workflows/pages.yml
+    secrets: inherit

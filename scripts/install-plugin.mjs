@@ -10,6 +10,8 @@ import { resolveExecutableInvocation, resolveNpxInvocation } from "./npx-command
 import { findExecutable } from "./runtime-locator.mjs";
 import { installPrimePreset } from "./prime-preset.mjs";
 import { loadRegistryState } from "./registry-state.mjs";
+import { migrateLegacyConnections, scrubLegacyDotEnv } from "./model-connections.mjs";
+import { readPluginGroup } from "./plugin-group.mjs";
 import {
   describeInstallFailure,
   formatDuration,
@@ -40,6 +42,7 @@ const env = {
   npm_config_update_notifier: "false",
 };
 const options = resolveInstallOptions(args, env);
+const pluginGroup = readPluginGroup(manifest);
 
 function resolveProfileStoreDir(profile) {
   const modulesMetadata = join(dshHome, "profiles", profile, "node_modules", ".modules.yaml");
@@ -134,7 +137,16 @@ function runDsh(argv, profile, actionLabel = `Installing ${profile} profile`) {
 
 console.log(`[DeepSee] DSH_HOME: ${dshHome}`);
 console.log(`[DeepSee] Profiles: ${options.profiles.join(", ")}`);
+console.log(`[DeepSee] Plugin group: ${pluginGroup.components.map((component) => component.id).join(", ")}`);
 if (stagedFolder) console.log(`[DeepSee] ZIP package staged at: ${stagedFolder}`);
+
+const migration = migrateLegacyConnections(join(dshHome, "deepsee"));
+const dotenvMigration = scrubLegacyDotEnv(root);
+const detectedSecrets = (migration.detectedSecrets || 0) + (dotenvMigration.detectedSecrets || 0);
+if (detectedSecrets > 0) {
+  console.warn(`[DeepSee] Security notice: ${detectedSecrets} inactive legacy plaintext credential entr${detectedSecrets === 1 ? "y was" : "ies were"} detected.`);
+  console.warn("[DeepSee] Run `deepsee doctor --scrub-legacy-secrets` after confirming providers exist in Harness Settings > Models.");
+}
 
 for (const profile of options.profiles) {
   for (const legacyPackage of legacyPackageAliases) {
@@ -180,7 +192,7 @@ try {
   console.warn(`[DeepSee] Prime preset will be refreshed when Harness starts: ${error instanceof Error ? error.message : String(error)}`);
 }
 
-console.log("\nDeepSee is installed in the selected DSH profiles.");
+console.log("\nThe complete DeepSee plugin group is installed in the selected DSH profiles.");
 console.log("The configuration service is embedded in the plugin host; no companion process or port is used.");
 if (stagedFolder) {
   const stagedCli = join(stagedFolder, "scripts", "cli.mjs");

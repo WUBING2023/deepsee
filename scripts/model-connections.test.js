@@ -2,12 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  addConnection,
-  buildGeneratedPatch,
-  publicConnections,
-  updateRegistryWithConnection,
-} from "./model-connections.mjs";
+import { migrateLegacyConnections, scrubLegacyDotEnv } from "./model-connections.mjs";
 
 const roots = [];
 
@@ -15,94 +10,45 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe("local model connections", () => {
-  it("keeps API keys out of public routes and the model registry", () => {
-    const root = mkdtempSync(join(tmpdir(), "opends-connections-"));
+describe("legacy credential migration", () => {
+  it("irreversibly removes stored keys and legacy provider routes", () => {
+    const root = mkdtempSync(join(tmpdir(), "deepsee-security-"));
     roots.push(root);
-    const connection = addConnection(root, {
-      provider: "kimi",
-      model: "kimi-test",
-      apiKey: "secret-key",
-      capabilities: ["vision", "text"],
-      weaknesses: ["coding"],
-      visionLevel: "full-vision",
-    });
-    const route = updateRegistryWithConnection(root, connection);
-    expect(route).toMatchObject({
-      id: "api:kimi:kimi-test",
-      capabilities: ["vision", "text"],
-      weaknesses: ["coding"],
-    });
-    expect(JSON.stringify(publicConnections(root))).not.toContain("secret-key");
-    expect(readFileSync(join(root, ".opends-models.json"), "utf8")).not.toContain("secret-key");
-  });
-
-  it("generates a Harness provider for every stored connection", () => {
-    const root = mkdtempSync(join(tmpdir(), "opends-patch-"));
-    roots.push(root);
-    const connection = addConnection(root, {
-      provider: "openai",
-      model: "gpt-test",
-      apiKey: "local-secret",
-      capabilities: ["text"],
-      visionLevel: "none",
-    });
-    const env = {
-      OPENDS_MODEL_REGISTRY_FILE: join(root, ".opends-models.json"),
-      OPENDS_BRIDGE_MAX_TOKENS: "2048",
-    };
-    const patchPath = join(root, "generated.yml");
-    buildGeneratedPatch(root, env, patchPath);
-    const text = readFileSync(patchPath, "utf8");
-    expect(text).toContain(connection.runtimeProvider);
-    expect(text).toContain("gpt-test");
-    expect(text).toContain('displayName: "OpenAI"');
-    expect(text).not.toContain("视觉引擎");
-    expect(text).not.toContain("DeepSee External API");
-    expect(text).not.toContain("local-secret");
-    expect(env[connection.apiKeyEnv]).toBe("local-secret");
-    expect(connection.weaknesses).toEqual(["长篇中文内容创作", "低延迟轻量任务"]);
-  });
-
-  it("loads the official Codex provider when the verified CLI route is enabled", () => {
-    const root = mkdtempSync(join(tmpdir(), "opends-codex-patch-"));
-    roots.push(root);
+    writeFileSync(join(root, ".opends-connections.json"), JSON.stringify({
+      version: 1,
+      connections: [{ provider: "kimi", model: "kimi-test", baseURL: "https://example.test/v1", apiKey: "live-secret" }],
+    }));
     writeFileSync(join(root, ".opends-models.json"), JSON.stringify({
       version: 1,
-      routes: [{
-        id: "cli:codex",
-        source: "cli",
-        provider: "openai",
-        model: "codex-cli",
-        runtimeProvider: "codex",
-        enabled: true,
-        status: "ready",
-      }],
-      preferences: {},
+      routes: [
+        { id: "api:kimi:kimi-test", runtimeProvider: "opends-api-123", credentialRef: "env:OPENDS_PROVIDER_123_API_KEY" },
+        { id: "harness:deepseek:model", source: "harness" },
+      ],
+      preferences: { primaryRouteId: "api:kimi:kimi-test", visionRouteId: "api:kimi:kimi-test" },
     }));
-    const patchPath = join(root, "generated.yml");
-    buildGeneratedPatch(root, { OPENDS_MODEL_REGISTRY_FILE: join(root, ".opends-models.json") }, patchPath);
-    expect(readFileSync(patchPath, "utf8")).toContain("name: '@deepseek-ai/dsh-subagent-codex'");
+
+    expect(migrateLegacyConnections(root)).toMatchObject({ requiresUserAction: true, detectedSecrets: 1, secretsRemoved: 0 });
+    expect(readFileSync(join(root, ".opends-connections.json"), "utf8")).toContain("live-secret");
+    const result = migrateLegacyConnections(root, { scrub: true });
+    const connections = readFileSync(join(root, ".opends-connections.json"), "utf8");
+    const registry = JSON.parse(readFileSync(join(root, ".opends-models.json"), "utf8"));
+    expect(result).toMatchObject({ secretsRemoved: 1, routesRemoved: 1 });
+    expect(connections).not.toContain("live-secret");
+    expect(connections).not.toContain("apiKey");
+    expect(registry.routes.map((route) => route.id)).toEqual(["harness:deepseek:model"]);
+    expect(registry.preferences).toEqual({});
   });
 
-  it("does not require a heavyweight external Claude adapter", () => {
-    const root = mkdtempSync(join(tmpdir(), "opends-claude-patch-"));
+  it("is idempotent and scrubs only DeepSee's legacy dotenv key", () => {
+    const root = mkdtempSync(join(tmpdir(), "deepsee-dotenv-"));
     roots.push(root);
-    writeFileSync(join(root, ".opends-models.json"), JSON.stringify({
-      version: 1,
-      routes: [{
-        id: "cli:claude-code",
-        source: "cli",
-        provider: "anthropic",
-        model: "claude-code",
-        runtimeProvider: "claude-code",
-        enabled: true,
-        status: "ready",
-      }],
-      preferences: {},
-    }));
-    const patchPath = join(root, "generated.yml");
-    buildGeneratedPatch(root, { OPENDS_MODEL_REGISTRY_FILE: join(root, ".opends-models.json") }, patchPath);
-    expect(readFileSync(patchPath, "utf8")).not.toContain("name: '@deepseek-ai/dsh-subagent-claude-code'");
+    writeFileSync(join(root, ".env"), "OPENDS_BRIDGE_API_KEY=secret\nUNRELATED_VALUE=keep\n");
+    expect(scrubLegacyDotEnv(root)).toMatchObject({ detectedSecrets: 1, secretsRemoved: 0 });
+    expect(scrubLegacyDotEnv(root, { scrub: true }).secretsRemoved).toBe(1);
+    const source = readFileSync(join(root, ".env"), "utf8");
+    expect(source).toContain("OPENDS_BRIDGE_API_KEY=");
+    expect(source).not.toContain("secret");
+    expect(source).toContain("UNRELATED_VALUE=keep");
+    expect(migrateLegacyConnections(root)).toMatchObject({ found: false, secretsRemoved: 0 });
   });
 });

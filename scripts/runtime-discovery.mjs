@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { homedir } from "node:os";
 import { DEFAULT_DEEPSEEK_SELECTION, readBridgeState, readModelSelection } from "./model-selection.mjs";
 import { findExecutable } from "./runtime-locator.mjs";
-import { connectionToRoute, loadConnections } from "./model-connections.mjs";
+import { migrateLegacyConnections, scrubLegacyDotEnv } from "./model-connections.mjs";
 import { runtimeDefinitions, verifyRuntime, verifyRuntimeVision } from "./runtime-health.mjs";
 import { discoverCodexModels } from "./cli-model-catalog.mjs";
 import { discoverDesktopApps, publicDesktopApps } from "./desktop-runtime.mjs";
@@ -161,6 +161,8 @@ export async function discoverDeepSeeRuntimes(options = {}) {
   const paths = resolveDeepSeePaths(options);
   const { packageRoot, dshHome, stateRoot, registryFile } = paths;
   migrateLegacyState(paths);
+  migrateLegacyConnections(stateRoot, { registryFile });
+  scrubLegacyDotEnv(packageRoot);
   mkdirSync(dirname(registryFile), { recursive: true });
 
   const now = new Date().toISOString();
@@ -195,12 +197,6 @@ export async function discoverDeepSeeRuntimes(options = {}) {
       visionLevel: "none",
       lastCheckedAt: now,
     };
-    routes.push(preserveUserFields(route, oldRoutes.get(route.id)));
-  }
-
-  for (const connection of loadConnections(stateRoot)) {
-    const route = connectionToRoute(connection);
-    if (routes.some((candidate) => candidate.id === route.id)) continue;
     routes.push(preserveUserFields(route, oldRoutes.get(route.id)));
   }
 

@@ -1,7 +1,4 @@
-import {
-  addConnection,
-  updateRegistryWithConnection,
-} from "../scripts/model-connections.mjs";
+import { migrateLegacyConnections, scrubLegacyDotEnv } from "../scripts/model-connections.mjs";
 import {
   addRegistryCliModel,
   applyPreferencesToHarness,
@@ -119,6 +116,8 @@ function routePath(req) {
 export function createDeepSeeAdminHandler(options = {}) {
   const paths = resolveDeepSeePaths(options);
   const { packageRoot, stateRoot, dshHome } = paths;
+  migrateLegacyConnections(stateRoot, { registryFile: paths.registryFile });
+  scrubLegacyDotEnv(packageRoot);
   configureExecutionTrace(stateRoot);
   const state = () => {
     const registry = publicRegistryState(stateRoot);
@@ -192,17 +191,10 @@ export function createDeepSeeAdminHandler(options = {}) {
         return send(res, 405, { error: "method_not_allowed" });
       }
       if (req.method === "POST" && path === "/v1/models") {
-        const connection = addConnection(stateRoot, await readJson(req));
-        const route = updateRegistryWithConnection(stateRoot, connection);
-        const registry = publicRegistryState(stateRoot);
-        if (route.visionLevel === "full-vision" && !registry.preferences?.visionRouteId) {
-          updateRegistryPreferences(stateRoot, { visionRouteId: route.id });
-        }
-        return send(res, 201, {
-          route,
-          state: state(),
-          restartRequired: true,
-          message: "模型已同步到 DeepSee；重启 Harness 后会加入实际路由。",
+        await readJson(req);
+        return send(res, 410, {
+          error: "native_harness_credentials_required",
+          message: "DeepSee 不再接收或保存 API Key。请在 DeepSeek Harness 的“设置 → 模型”中添加供应商，然后返回深见点击验证。",
         });
       }
       if (req.method === "POST" && path === "/v1/harness/models") {

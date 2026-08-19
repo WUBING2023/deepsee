@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Context } from "@deepseek-ai/cordis";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
-import { balancedWorkflowReason, installBalancedWorkflowTrigger } from "./workflow-policy.js";
+import { balancedWorkflowReason, installBalancedWorkflowTrigger, workflowReasoningGuidance, workflowReasoningProfile } from "./workflow-policy.js";
 
 describe("balanced automatic Workflow policy", () => {
   it("recognizes comparison, implementation-review, and divided synthesis without matching a single-track task", () => {
@@ -9,6 +9,14 @@ describe("balanced automatic Workflow policy", () => {
     expect(balancedWorkflowReason("先完成海报设计，然后由另一个角色独立核验成品")).toContain("review");
     expect(balancedWorkflowReason("分别研究两个方向，最后汇总结论")).toContain("workstreams");
     expect(balancedWorkflowReason("请修复这个函数中的边界错误")).toBeUndefined();
+  });
+
+  it("uses soft reasoning profiles without imposing a hard cutoff", () => {
+    expect(workflowReasoningProfile("快速比较两个模型")).toBe("focused");
+    expect(workflowReasoningProfile("彻底完成复杂的长期迁移")).toBe("deep");
+    const guidance = workflowReasoningGuidance("实现并复核功能");
+    expect(guidance).toContain("Reasoning profile: balanced");
+    expect(guidance).toContain("not a hard runtime, token, step, or agent limit");
   });
 
   it("injects a mandatory native Workflow decision only into an enabled top-level Prime request", async () => {
@@ -37,6 +45,7 @@ describe("balanced automatic Workflow policy", () => {
     });
     expect(decision.messages[1].content[0].text).toContain("MUST use the native workflow tool");
     expect(decision.messages[1].content[0].text).toContain("two different enabled model routes");
+    expect(decision.messages[1].content[0].text).toContain("Reasoning profile: balanced");
     expect(restrict).toHaveBeenCalledWith({ allow: ["opends_list_models", "workflow"] });
   });
 

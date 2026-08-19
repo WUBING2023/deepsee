@@ -193,8 +193,7 @@ export function queryRoutes(registry, query = {}) {
     });
 }
 export function defaultRoutes(config) {
-    return [
-        {
+    return [{
             id: `${config.primaryProvider}:default`,
             source: "harness",
             provider: config.primaryProvider,
@@ -207,23 +206,7 @@ export function defaultRoutes(config) {
             description: "Harness 当前主模型路线",
             descriptionSource: "declared",
             visionLevel: "none",
-        },
-        {
-            id: `${config.provider}:${config.model}`,
-            source: "api",
-            provider: config.provider,
-            model: config.model,
-            enabled: true,
-            status: "ready",
-            capabilities: ["text", "vision"],
-            weaknesses: ["复杂代码仓库修改", "严格工具执行"],
-            roles: ["vision", "document", "review"],
-            description: "DeepSee 已配置的视觉 API",
-            descriptionSource: "verified",
-            visionLevel: "full-vision",
-            credentialRef: "env:OPENDS_BRIDGE_API_KEY",
-        },
-    ];
+        }];
 }
 export function withFallbackRoutes(registry, fallback) {
     const ids = new Set(registry.routes.map((route) => route.id));

@@ -99,6 +99,12 @@ flowchart LR
 
 [Architecture and extension points →](docs/ARCHITECTURE.md)
 
+## One entry point, four reusable components
+
+DeepSee ships as a **plugin group**. Users still install once: Web and Headless receive the core router, Codex subscription adapter, sidebar client, and Workflow policy together. One uninstall removes the whole group and the DeepSee-owned Prime preset while preserving model metadata and managed OCR installs.
+
+Developers can reuse only what they need through `@wubing2023/deepsee/core`, `@wubing2023/deepsee/codex`, `@wubing2023/deepsee/client`, or `@wubing2023/deepsee/workflow-policy`. Run `deepsee group` to inspect the component contract for the installed version.
+
 ## Common commands
 
 ```powershell
@@ -107,6 +113,8 @@ npx --yes github:WUBING2023/deepsee web        # Start the Harness Web UI
 npx --yes github:WUBING2023/deepsee doctor     # Check bundle, runtimes, and configuration
 npx --yes github:WUBING2023/deepsee uninstall  # Remove the plugin and preserve user state
 ```
+
+If an early alpha wrote a key to DeepSee's own `.env` or `.opends-connections.json`, this release neither reads nor silently deletes it. After confirming the provider works in Harness **Settings → Models**, run `deepsee doctor --scrub-legacy-secrets` to remove that inactive plaintext permanently. A key previously shared in chat still must be rotated at the provider because code cannot revoke it.
 
 Update checks are cached and automatic; installing an update always requires a click in the DeepSee panel. The updater pins an immutable Git commit, verifies the package before installation, and can resume a partially completed two-profile upgrade. Restart Harness when the panel shows **Restart to apply**.
 
