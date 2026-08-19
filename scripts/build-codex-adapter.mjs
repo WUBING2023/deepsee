@@ -13,6 +13,12 @@ function replaceRequired(source, search, replacement, label) {
 
 if (!existsSync(sourcePath)) throw new Error("missing @deepseek-ai/dsh-subagent-codex");
 let source = readFileSync(sourcePath, "utf8");
+source = replaceRequired(
+  source,
+  'import { JsonRpcLineTransport } from "@deepseek-ai/dsh-sdk-protocol";',
+  'import { JsonRpcLineTransport } from "../scripts/json-rpc-line-transport.mjs";',
+  "vendored JSON-RPC transport",
+);
 source = `import { existsSync, readFileSync } from "node:fs";\nimport { homedir } from "node:os";\nimport { basename, isAbsolute, join } from "node:path";\nimport { recordExecutionTrace } from "../scripts/execution-trace.mjs";\n${source}`;
 source = replaceRequired(source,
   "var CodexAppServerWire = class {\n\tinput;\n\ttransport;",

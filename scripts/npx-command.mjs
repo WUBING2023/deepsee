@@ -24,6 +24,19 @@ export function resolveNpxInvocation(args, options = {}) {
   return { command: "npx", args };
 }
 
+export function resolveNpxPackageInvocation(packageSpec, executable, args = [], options = {}) {
+  return resolveNpxInvocation([
+    "--yes",
+    "--prefer-offline",
+    "--no-audit",
+    "--no-fund",
+    `--package=${packageSpec}`,
+    "--",
+    executable,
+    ...args,
+  ], options);
+}
+
 export function resolveExecutableInvocation(executable, args, options = {}) {
   const platform = options.platform ?? process.platform;
   const extension = (platform === "win32" ? win32 : posix).extname(executable).toLowerCase();

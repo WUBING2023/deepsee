@@ -18,9 +18,9 @@
 在 PowerShell 或终端中运行：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install
-npx --yes github:WUBING2023/deepsee doctor
-npx --yes github:WUBING2023/deepsee web
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee doctor
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee web
 ```
 
 打开 [http://127.0.0.1:3080/](http://127.0.0.1:3080/)。
@@ -30,15 +30,15 @@ npx --yes github:WUBING2023/deepsee web
 网络特别慢时，可以关闭 DeepSee 自身的超时，同时保留底层包管理器的输出：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install --timeout-ms 0
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --timeout-ms 0
 ```
 
 其他恢复选项：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install --retries 3
-npx --yes github:WUBING2023/deepsee install --profile headless
-npx --yes github:WUBING2023/deepsee install --force
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --retries 3
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --profile headless
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --force
 ```
 
 ## 2. 配置第一个视觉读取器
@@ -137,7 +137,7 @@ npx --yes @deepseek-ai/dsh@0.1.0-rc.6 --profile web
 卸载插件并保留模型偏好、路由与 MinerU 状态：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee uninstall
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee uninstall
 ```
 
 用户状态会保留在 `$DSH_HOME/deepsee`。只有在确实需要完全重置时，才手动删除这个目录。

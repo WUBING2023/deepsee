@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveExecutableInvocation, resolveNpxInvocation } from "./npx-command.mjs";
+import { resolveExecutableInvocation, resolveNpxInvocation, resolveNpxPackageInvocation } from "./npx-command.mjs";
 
 describe("npx command resolution", () => {
   it("runs npm's JavaScript entry directly when available", () => {
@@ -28,6 +28,28 @@ describe("npx command resolution", () => {
     });
     expect(invocation.command).toBe("C:\\Windows\\System32\\cmd.exe");
     expect(invocation.args).toEqual(["/d", "/s", "/c", "call", "npx.cmd", "--yes", "example"]);
+  });
+
+  it("names the executable explicitly for a scoped npm package", () => {
+    const invocation = resolveNpxPackageInvocation("@deepseek-ai/dsh@0.1.0-rc.6", "dsh", ["plugin", "--profile", "web"], {
+      platform: "win32",
+      execPath: "C:\\node\\node.exe",
+      npmExecPath: "C:\\node\\node_modules\\npm\\bin\\npm-cli.js",
+      existsSync: (path) => path.endsWith("npx-cli.js"),
+    });
+    expect(invocation.args).toEqual([
+      "C:\\node\\node_modules\\npm\\bin\\npx-cli.js",
+      "--yes",
+      "--prefer-offline",
+      "--no-audit",
+      "--no-fund",
+      "--package=@deepseek-ai/dsh@0.1.0-rc.6",
+      "--",
+      "dsh",
+      "plugin",
+      "--profile",
+      "web",
+    ]);
   });
 
   it("runs an existing Windows DSH batch shim through cmd", () => {

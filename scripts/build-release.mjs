@@ -63,6 +63,7 @@ const sha256 = createHash("sha256").update(bytes).digest("hex");
 writeFileSync(checksumFile, `${sha256}  ${assetName}\n`, "utf8");
 
 const releaseBase = `${contract.github.releaseBaseUrl}/download/${tag}`;
+const publicPackageSpec = `${releaseBase}/${assetName}`;
 const websiteManifest = {
   version: contract.product.version,
   channel: contract.product.channel,
@@ -74,7 +75,7 @@ const websiteManifest = {
   sha256Url: `${releaseBase}/${assetName}.sha256`,
   releaseUrl: `${contract.github.releaseBaseUrl}/tag/${tag}`,
   sourceUrl: `${contract.github.sourceUrl}/tree/${tag}`,
-  installCommand: "npx --yes github:WUBING2023/deepsee install",
+  installCommand: `npm exec --yes --package=${publicPackageSpec} -- deepsee install`,
   requirements: {
     node: manifest.engines.node,
     harness: manifest.deepsee.harnessRuntime,

@@ -2,12 +2,12 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { resolveExecutableInvocation, resolveNpxInvocation } from "../scripts/npx-command.mjs";
+import { resolveExecutableInvocation, resolveNpxPackageInvocation } from "../scripts/npx-command.mjs";
 import { findExecutable } from "../scripts/runtime-locator.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-const dshSpec = `@deepseek-ai/dsh@${manifest.deepsee?.harnessRuntime || manifest.peerDependencies["@deepseek-ai/dsh"]}`;
+const dshSpec = `@deepseek-ai/dsh@${manifest.deepsee?.harnessRuntime || manifest.peerDependencies?.["@deepseek-ai/dsh"]}`;
 const argv = process.argv.slice(2);
 const localHomeIndex = argv.indexOf("--local-home");
 if (localHomeIndex !== -1) {
@@ -36,7 +36,7 @@ if (existsSync(localDsh)) {
   const installedDsh = findExecutable("dsh");
   const invocation = installedDsh
     ? resolveExecutableInvocation(installedDsh, process.argv.slice(2))
-    : resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, "--", ...process.argv.slice(2)]);
+    : resolveNpxPackageInvocation(dshSpec, "dsh", process.argv.slice(2));
   const result = spawnSync(invocation.command, invocation.args, {
     env: {
       ...process.env,

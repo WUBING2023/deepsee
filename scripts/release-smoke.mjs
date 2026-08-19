@@ -66,6 +66,10 @@ try {
   if (websiteManifest.version !== contract.product.version || websiteManifest.sha256 !== digest) {
     throw new Error("Website release manifest does not match the packaged candidate.");
   }
+  const expectedInstallCommand = `npm exec --yes --package=${websiteManifest.downloadUrl} -- deepsee install`;
+  if (websiteManifest.installCommand !== expectedInstallCommand) {
+    throw new Error(`Website install command is not explicit and immutable: ${websiteManifest.installCommand}`);
+  }
   for (const field of ["downloadUrl", "sha256Url", "releaseUrl", "sourceUrl"]) {
     const url = new URL(websiteManifest[field]);
     if (url.protocol !== "https:" || !["github.com"].includes(url.hostname)) {

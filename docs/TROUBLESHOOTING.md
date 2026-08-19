@@ -5,10 +5,16 @@
 Start with one non-destructive diagnostic command:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee doctor
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee doctor
 ```
 
 It reports the resolved `DSH_HOME`, plugin status for Web and Headless, and local prerequisites without printing secrets. In the current alpha, some diagnostic labels still use the legacy `Bridge` / `OPENDS_*` names; those lines are compatibility information, not a requirement to duplicate API keys already stored by Harness.
+
+## The old one-line command downloads and then prints nothing
+
+Do not use `npx --yes github:WUBING2023/deepsee install` anymore. That form asks npm to infer the executable from a GitHub package and resolves the full Harness peer graph before DeepSee starts; some Windows/npm combinations return immediately or show no useful progress.
+
+Starting with alpha.30, use the `npm exec --package=... -- deepsee` command at the top of this guide. It pins the published versioned package and the `deepsee` executable explicitly. Once started, it immediately prints `DSH_HOME`, target profiles, and per-step progress.
 
 ## Installation times out
 
@@ -23,10 +29,10 @@ This usually means the nested Harness package download exceeded the installer de
 Try the resumable path first:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install --timeout-ms 0 --retries 3
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --timeout-ms 0 --retries 3
 ```
 
-Already completed profiles are skipped. If `npx github:` itself cannot finish, use the [ZIP fallback](GETTING_STARTED.md#zip-fallback), which removes that download step entirely.
+Already completed profiles are skipped. If the Release package itself cannot be downloaded, use the [ZIP fallback](GETTING_STARTED.md#zip-fallback), which removes that download step entirely.
 
 ## The DeepSee panel is missing
 
@@ -37,8 +43,8 @@ Already completed profiles are skipped. If `npx github:` itself cannot finish, u
 5. If the manifest is stale, run:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install --force
-npx --yes github:WUBING2023/deepsee web
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --force
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee web
 ```
 
 The panel depends on `/api/deepsee`; Headless intentionally does not expose this Web route.

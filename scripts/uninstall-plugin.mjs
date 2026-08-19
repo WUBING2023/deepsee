@@ -5,14 +5,14 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { resolveNpxInvocation } from "./npx-command.mjs";
+import { resolveNpxPackageInvocation } from "./npx-command.mjs";
 import { DEFAULT_INSTALL_TIMEOUT_MS, parseNonNegativeInteger } from "./install-policy.mjs";
 import { pluginGroupPackages, readPluginGroup, removeOwnedPrimePreset } from "./plugin-group.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const dshBin = join(root, "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js");
-const dshSpec = `@deepseek-ai/dsh@${manifest.deepsee?.harnessRuntime || manifest.peerDependencies["@deepseek-ai/dsh"]}`;
+const dshSpec = `@deepseek-ai/dsh@${manifest.deepsee?.harnessRuntime || manifest.peerDependencies?.["@deepseek-ai/dsh"]}`;
 const local = process.argv.includes("--local");
 const dshHome = local ? join(root, ".dsh") : process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || homedir(), ".dsh");
 const env = { ...process.env, ...(dshHome ? { DSH_HOME: dshHome } : {}) };
@@ -32,7 +32,7 @@ for (const profile of ["web", "headless"]) {
     if (!current.dependencies?.[packageName]) continue;
     const localDsh = existsSync(dshBin);
     const argv = ["plugin", "--profile", profile, "remove", packageName];
-    const npx = resolveNpxInvocation(["--yes", "--prefer-offline", "--no-audit", "--no-fund", dshSpec, "--", ...argv]);
+    const npx = resolveNpxPackageInvocation(dshSpec, "dsh", argv);
     const result = spawnSync(localDsh ? process.execPath : npx.command, localDsh ? [dshBin, ...argv] : npx.args, {
       cwd: process.cwd(), env, stdio: "inherit", windowsHide: true, shell: false,
       ...(timeoutMs > 0 ? { timeout: timeoutMs } : {}),

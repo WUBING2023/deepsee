@@ -32,13 +32,13 @@ The demo uses the real public interface and shows the complete route: one-line i
 You need [Node.js 24 or newer](https://nodejs.org/). In PowerShell or a terminal, run:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install
 ```
 
 Then start the Harness Web UI:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee web
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee web
 ```
 
 Open [http://127.0.0.1:3080/](http://127.0.0.1:3080/). DeepSee appears as a native sidebar panel.
@@ -117,10 +117,10 @@ Developers can reuse only what they need through `@wubing2023/deepsee/core`, `@w
 ## Common commands
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install    # Install or safely resume Web + Headless
-npx --yes github:WUBING2023/deepsee web        # Start the Harness Web UI
-npx --yes github:WUBING2023/deepsee doctor     # Check bundle, runtimes, and configuration
-npx --yes github:WUBING2023/deepsee uninstall  # Remove the plugin and preserve user state
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install    # Install or safely resume Web + Headless
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee web        # Start the Harness Web UI
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee doctor     # Check bundle, runtimes, and configuration
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee uninstall  # Remove the plugin and preserve user state
 ```
 
 If an early alpha wrote a key to DeepSee's own `.env` or `.opends-connections.json`, this release neither reads nor silently deletes it. After confirming the provider works in Harness **Settings → Models**, run `deepsee doctor --scrub-legacy-secrets` to remove that inactive plaintext permanently. A key previously shared in chat still must be rotated at the provider because code cannot revoke it.

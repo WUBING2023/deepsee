@@ -18,9 +18,9 @@ You do not need to install a separate DeepSee server. If `dsh` is not already av
 Run in PowerShell or a terminal:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install
-npx --yes github:WUBING2023/deepsee doctor
-npx --yes github:WUBING2023/deepsee web
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee doctor
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee web
 ```
 
 Open [http://127.0.0.1:3080/](http://127.0.0.1:3080/).
@@ -30,15 +30,15 @@ The installer adds the same standard bundle to the Harness `web` and `headless` 
 If the connection is unusually slow, remove DeepSee's own deadline while keeping the underlying package-manager output:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install --timeout-ms 0
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --timeout-ms 0
 ```
 
 Other recovery options:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install --retries 3
-npx --yes github:WUBING2023/deepsee install --profile headless
-npx --yes github:WUBING2023/deepsee install --force
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --retries 3
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --profile headless
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --force
 ```
 
 ## 2. Configure the first visual reader
@@ -137,7 +137,7 @@ Opening the DeepSee panel performs a cached update check, at most once every six
 To remove the plugin while keeping model preferences, routing state, and MinerU state:
 
 ```powershell
-npx --yes github:WUBING2023/deepsee uninstall
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee uninstall
 ```
 
 User state remains under `$DSH_HOME/deepsee`. Remove that directory manually only when you intentionally want a full reset.

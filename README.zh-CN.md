@@ -32,13 +32,13 @@ DeepSee 是 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) 
 电脑需要 [Node.js 24 或更高版本](https://nodejs.org/)。在 PowerShell 或终端中运行：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install
 ```
 
 然后启动 Harness Web 界面：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee web
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee web
 ```
 
 打开 [http://127.0.0.1:3080/](http://127.0.0.1:3080/)，侧栏中会出现原生风格的 DeepSee 面板。
@@ -117,10 +117,10 @@ DeepSee 以**插件组**发布：普通用户仍只需安装一次，Web 与 Hea
 ## 常用命令
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install    # 安装或安全续装 Web + Headless
-npx --yes github:WUBING2023/deepsee web        # 启动 Harness Web 界面
-npx --yes github:WUBING2023/deepsee doctor     # 检查插件、Runtime 与配置
-npx --yes github:WUBING2023/deepsee uninstall  # 卸载插件并保留用户状态
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install    # 安装或安全续装 Web + Headless
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee web        # 启动 Harness Web 界面
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee doctor     # 检查插件、Runtime 与配置
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee uninstall  # 卸载插件并保留用户状态
 ```
 
 早期 alpha 若曾把 Key 写入 DeepSee 自己的 `.env` 或 `.opends-connections.json`，新版不会再读取它，也不会静默删除。确认供应商已在 Harness **设置 → 模型** 中可用后，执行 `deepsee doctor --scrub-legacy-secrets` 可永久清除这些失效明文。由于聊天中暴露过的 Key 无法通过代码撤回，发布前仍应在供应商后台轮换。

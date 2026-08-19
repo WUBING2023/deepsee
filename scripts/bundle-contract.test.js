@@ -5,6 +5,7 @@ const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.
 const patch = readFileSync(new URL("../cordis.patch.yml", import.meta.url), "utf8");
 const launcher = readFileSync(new URL("../host/bin.mjs", import.meta.url), "utf8");
 const installer = readFileSync(new URL("./install-plugin.mjs", import.meta.url), "utf8");
+const npxCommand = readFileSync(new URL("./npx-command.mjs", import.meta.url), "utf8");
 const installPolicy = readFileSync(new URL("./install-policy.mjs", import.meta.url), "utf8");
 const folderInstaller = readFileSync(new URL("./folder-install.mjs", import.meta.url), "utf8");
 const mineruManager = readFileSync(new URL("./mineru-manager.mjs", import.meta.url), "utf8");
@@ -31,9 +32,11 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(manifest.scripts.build).toBeUndefined();
     expect(manifest.scripts["build:plugin"]).toContain("tsc -p tsconfig.build.json");
     expect(manifest.name).toBe("@wubing2023/deepsee");
-    expect(manifest.dependencies["@deepseek-ai/dsh-sdk-protocol"]).toBe("^0.1.0-rc.6");
-    expect(manifest.peerDependencies["@deepseek-ai/dsh-sdk-protocol"]).toBeUndefined();
-    expect(manifest.peerDependencies["@deepseek-ai/dsh"]).toBe("^0.1.0-rc.6");
+    expect(manifest.dependencies).toBeUndefined();
+    expect(manifest.peerDependencies).toBeUndefined();
+    expect(manifest.deepsee.runtimeDependencies["@deepseek-ai/dsh-llm"]).toBe("0.1.0-rc.6");
+    expect(manifest.deepsee.runtimeDependencies["@deepseek-ai/dsh-client-ui-conversation"]).toBe("0.1.0-rc.6");
+    expect(readFileSync(new URL("./json-rpc-line-transport.mjs", import.meta.url), "utf8")).toContain("class JsonRpcLineTransport");
     expect(manifest.deepsee.harnessRuntime).toBe("0.1.0-rc.6");
     expect(manifest.engines.node).toBe(">=24");
     expect(manifest.deepsee.installSpec).toBe("github:WUBING2023/deepsee#main");
@@ -53,9 +56,11 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain("for (const profile of options.profiles)");
     expect(installer).toContain('["plugin", "--profile", profile, "add", spec]');
     expect(installer).toContain("manifest.deepsee?.installSpec");
-    expect(installer).toContain('"--prefer-offline"');
-    expect(installer).toContain('dshSpec, "--", ...argv');
-    expect(launcher).toContain('dshSpec, "--", ...process.argv.slice(2)');
+    expect(installer).toContain('resolveNpxPackageInvocation(dshSpec, "dsh", argv)');
+    expect(launcher).toContain('resolveNpxPackageInvocation(dshSpec, "dsh", process.argv.slice(2))');
+    expect(npxCommand).toContain('"--prefer-offline"');
+    expect(npxCommand).toContain('`--package=${packageSpec}`');
+    expect(npxCommand).toContain('"--",');
     expect(launcher).toContain('findExecutable("dsh")');
     expect(launcher).toContain('manifest.deepsee?.harnessRuntime');
     expect(installer).toContain("resolveInstallOptions");
@@ -72,6 +77,8 @@ describe("standard DeepSeek Harness bundle", () => {
     expect(installer).toContain('NO_UPDATE_NOTIFIER: "1"');
     expect(installPolicy).toContain('args.includes("--from-folder")');
     expect(folderInstaller).toContain('join(dshHome, "deepsee", "packages")');
+    expect(folderInstaller).toContain("manifest.deepsee?.runtimeDependencies");
+    expect(installer).toContain("shouldStageCurrentPackage");
     expect(installer).not.toContain("timeout: 180_000");
     expect(readFileSync(new URL("./cli.mjs", import.meta.url), "utf8")).toContain("Installation failed / 安装失败");
     expect(installer).not.toContain("installProfileShim");

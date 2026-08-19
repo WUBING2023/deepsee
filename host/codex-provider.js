@@ -7,7 +7,7 @@ import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
 import { NO_START_CAPABILITIES, assertPositiveFinite, resolveChildCwd, settleRunResult, subprocessRunHandle } from "@deepseek-ai/dsh-subagent";
 import { randomUUID } from "node:crypto";
 import { SessionId } from "@deepseek-ai/dsh-session";
-import { JsonRpcLineTransport } from "@deepseek-ai/dsh-sdk-protocol";
+import { JsonRpcLineTransport } from "../scripts/json-rpc-line-transport.mjs";
 //#region lib/types/wire.js
 /**
 * Minimal Codex app-server 0.147.0 protocol adapter. The shared JSON-RPC

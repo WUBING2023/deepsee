@@ -5,10 +5,16 @@
 先运行一条不会修改配置的诊断命令：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee doctor
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee doctor
 ```
 
 它会显示实际使用的 `DSH_HOME`、Web 与 Headless 的插件状态，以及本地前置条件，不会打印密钥。当前 Alpha 的部分诊断名称仍保留旧的 `Bridge` / `OPENDS_*` 字样；这是兼容信息，不代表已经在 Harness 中保存的 API Key 还要再填一次。
+
+## 旧的一行命令下载后没有输出
+
+不要再使用 `npx --yes github:WUBING2023/deepsee install`。这个写法让 npm 猜测 GitHub 包的可执行入口，并会提前解析 Harness 的整套 peer 依赖；在部分 Windows/npm 组合上会直接返回，或者长时间没有可见进度。
+
+alpha.30 起请使用本文顶部的 `npm exec --package=... -- deepsee` 命令。它明确指定已发布、带版本号的安装包和 `deepsee` 入口，启动后会立即打印 `DSH_HOME`、目标 profile 与每一步安装进度。
 
 ## 安装出现超时
 
@@ -23,10 +29,10 @@ Error: spawnSync ... node.exe ETIMEDOUT
 先尝试可续跑的安装：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install --timeout-ms 0 --retries 3
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --timeout-ms 0 --retries 3
 ```
 
-已经完成的 profile 会被跳过。如果连 `npx github:` 本身都无法完成，请使用[压缩包兜底安装](GETTING_STARTED.zh-CN.md#压缩包兜底安装)，直接绕过这一步下载。
+已经完成的 profile 会被跳过。如果 Release 安装包本身也无法下载，请使用[压缩包兜底安装](GETTING_STARTED.zh-CN.md#压缩包兜底安装)，直接绕过这一步下载。
 
 ## 侧栏没有 DeepSee
 
@@ -37,8 +43,8 @@ npx --yes github:WUBING2023/deepsee install --timeout-ms 0 --retries 3
 5. 如果 profile 清单过期，运行：
 
 ```powershell
-npx --yes github:WUBING2023/deepsee install --force
-npx --yes github:WUBING2023/deepsee web
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee install --force
+npm exec --yes --package=https://github.com/WUBING2023/deepsee/releases/download/v0.6.0-alpha.30/deepsee-0.6.0-alpha.30.tgz -- deepsee web
 ```
 
 DeepSee 面板依赖 `/api/deepsee`；Headless 有意不提供这条 Web 接口。

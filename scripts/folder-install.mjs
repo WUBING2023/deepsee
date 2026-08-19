@@ -8,6 +8,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, isAbsolute, join, normalize, relative } from "node:path";
 
@@ -71,6 +72,9 @@ function isCompleteStage(target, manifest) {
   const stagedManifest = readJson(join(target, "package.json"));
   return stagedManifest?.name === manifest.name
     && stagedManifest?.version === manifest.version
+    && Object.keys(manifest.deepsee?.runtimeDependencies ?? {}).every(
+      (name) => stagedManifest?.dependencies?.[name] === manifest.deepsee.runtimeDependencies[name],
+    )
     && existsSync(join(target, "dist", "index.js"))
     && existsSync(join(target, "scripts", "cli.mjs"))
     && existsSync(join(target, "scripts", "install-policy.mjs"));
@@ -95,6 +99,11 @@ export function stageFolderPackage(sourceRoot, dshHome, manifest, options = {}) 
 
   try {
     copyRelative(sourceRoot, staging, "package.json");
+    const stagedManifest = {
+      ...manifest,
+      dependencies: { ...(manifest.deepsee?.runtimeDependencies ?? {}) },
+    };
+    writeFileSync(join(staging, "package.json"), `${JSON.stringify(stagedManifest, null, 2)}\n`, "utf8");
     for (const entry of manifest.files ?? []) {
       if (/\/\*\.[A-Za-z0-9]+$/.test(entry)) copyGlob(sourceRoot, staging, entry);
       else copyRelative(sourceRoot, staging, entry);
